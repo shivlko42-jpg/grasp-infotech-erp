@@ -203,6 +203,7 @@ const DOC_META = {
     sale: { label: "Tax Invoice", short: "Sale", prefix: "INV", color: "#10B981", tint: "#E3FBF1", copyTag: "ORIGINAL FOR RECIPIENT" },
     purchase: { label: "Purchase Bill", short: "Purchase", prefix: "PUR", color: "#F59E0B", tint: "#FEF3DD", copyTag: "FOR RECORD" },
     quotation: { label: "Quotation", short: "Quotation", prefix: "QUO", color: "#7C3AED", tint: "#F1ECFE", copyTag: "NOT A TAX INVOICE" },
+    proforma: { label: "Proforma Invoice", short: "Proforma", prefix: "PI", color: "#0891B2", tint: "#CFFAFE", copyTag: "PROFORMA - NOT A TAX INVOICE" },
     challan: { label: "Delivery Challan", short: "Challan", prefix: "DC", color: "#0EA5E9", tint: "#E3F3FD", copyTag: "NOT A TAX INVOICE" },
     credit_note: { label: "Credit Note", short: "Credit Note", prefix: "CN", color: "#EF4444", tint: "#FEE2E2", copyTag: "ORIGINAL" },
     debit_note: { label: "Debit Note", short: "Debit Note", prefix: "DN", color: "#DB2777", tint: "#FCE7F3", copyTag: "ORIGINAL" },
@@ -239,7 +240,7 @@ function placeOfSupplyLabel(place) {
 }
 const DEFAULT_PROFILE = {
     name: "Grasp Infotech", address: "", state: "", gstin: "", pan: "", phone: "", email: "",
-    bankName: "", accountNumber: "", ifsc: "", branch: "", upiId: "", openingBalance: 0,
+    bankName: "", accountNumber: "", ifsc: "", branch: "", upiId: "", openingBalance: 0, officeStartTime: "09:30",
     terms: "Thanks for doing business with us!\n1. All disputes are subject to home jurisdiction only.\n2. Any complaint regarding this invoice must be made within 7 days.\n3. Goods once sold will not be taken back.\n4. Interest @ 2% will be applicable post due date.",
 };
 // ---- db <-> app mappers ----
@@ -301,7 +302,7 @@ function profFromDb(r) {
         name: r.name || "Grasp Infotech", address: r.address || "", state: r.state || "", gstin: r.gstin || "",
         pan: r.pan || "", phone: r.phone || "", email: r.email || "", bankName: r.bank_name || "",
         accountNumber: r.account_number || "", ifsc: r.ifsc || "", branch: r.branch || "", upiId: r.upi_id || "",
-        openingBalance: Number(r.opening_balance) || 0,
+        openingBalance: Number(r.opening_balance) || 0, officeStartTime: r.office_start_time || "09:30",
         terms: r.terms || DEFAULT_PROFILE.terms,
     };
 }
@@ -309,12 +310,12 @@ function profToDb(p) {
     return {
         id: "main", name: p.name, address: p.address, state: p.state, gstin: p.gstin, pan: p.pan, phone: p.phone,
         email: p.email, bank_name: p.bankName, account_number: p.accountNumber, ifsc: p.ifsc, branch: p.branch,
-        upi_id: p.upiId, opening_balance: p.openingBalance || 0, terms: p.terms,
+        upi_id: p.upiId, opening_balance: p.openingBalance || 0, office_start_time: p.officeStartTime || "09:30", terms: p.terms,
     };
 }
 function getStatus(inv) {
     if (!FINANCIAL_DOC_TYPES.includes(inv.docType)) {
-        if (inv.docType === "quotation" || inv.docType === "challan" || inv.docType === "purchase_order")
+        if (inv.docType === "quotation" || inv.docType === "challan" || inv.docType === "purchase_order" || inv.docType === "proforma")
             return inv.convertedTo ? "Converted" : "Pending";
         return "Draft";
     }
@@ -516,7 +517,7 @@ function BillingApp({ session, perms }) {
     const [invoices, setInvoices] = useState([]);
     const [parties, setParties] = useState([]);
     const [profile, setProfile] = useState(DEFAULT_PROFILE);
-    const [counters, setCounters] = useState({ sale: 0, purchase: 0, quotation: 0, challan: 0, credit_note: 0, debit_note: 0, purchase_order: 0 });
+    const [counters, setCounters] = useState({ sale: 0, purchase: 0, quotation: 0, challan: 0, credit_note: 0, debit_note: 0, purchase_order: 0, proforma: 0 });
     const [itemCatalog, setItemCatalog] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [staffNames, setStaffNames] = useState({});
@@ -548,7 +549,7 @@ function BillingApp({ session, perms }) {
                 setInvoices((invRes.data || []).map(invFromDb));
                 setParties(parRes.data || []);
                 setProfile(profFromDb(profRes.data));
-                setCounters(cntRes.data ? { sale: cntRes.data.sale, purchase: cntRes.data.purchase, quotation: cntRes.data.quotation, challan: cntRes.data.challan || 0, credit_note: cntRes.data.credit_note || 0, debit_note: cntRes.data.debit_note || 0, purchase_order: cntRes.data.purchase_order || 0 } : { sale: 0, purchase: 0, quotation: 0, challan: 0, credit_note: 0, debit_note: 0, purchase_order: 0 });
+                setCounters(cntRes.data ? { sale: cntRes.data.sale, purchase: cntRes.data.purchase, quotation: cntRes.data.quotation, challan: cntRes.data.challan || 0, credit_note: cntRes.data.credit_note || 0, debit_note: cntRes.data.debit_note || 0, purchase_order: cntRes.data.purchase_order || 0, proforma: cntRes.data.proforma || 0 } : { sale: 0, purchase: 0, quotation: 0, challan: 0, credit_note: 0, debit_note: 0, purchase_order: 0, proforma: 0 });
                 setItemCatalog((catRes.data || []).map(catalogFromDb));
                 setExpenses((expRes.data || []).map(expenseFromDb));
                 const nameMap = {};
@@ -829,7 +830,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), staffNames: staffNames })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.canEditBusiness || perms.canViewPurchases || perms.isAdmin) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings") })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && (perms.canEditBusiness || perms.isAdmin) ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), staffNames: staffNames })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.canEditBusiness || perms.canViewPurchases || perms.isAdmin) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings") })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && (perms.canEditBusiness || perms.isAdmin) ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
                 error && React.createElement("div", { className: "no-print", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error)),
             view !== "preview" && React.createElement("div", { className: "no-print" },
                 React.createElement(BottomNav, { view: view, setView: setView, perms: perms }))),
@@ -855,7 +856,134 @@ function FYSelect({ fy, fyOptions, setFy }) {
             f)))),
         React.createElement(Icon, { size: 11, style: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: COLORS.indigo } }, "\u25BE")));
 }
-function Home({ totals, invoices, fy, fyOptions, setFy, perms, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, staffNames }) {
+function AttendanceWidget({ session, profile }) {
+    const [record, setRecord] = useState(null);
+    const [loaded, setLoaded] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+    const today = todayISO();
+    useEffect(() => {
+        sb.from("grasp_attendance").select("*").eq("staff_email", session.user.email).eq("date", today).maybeSingle().then(({ data }) => {
+            setRecord(data || null);
+            setLoaded(true);
+        });
+    }, []);
+    const getLocation = () => new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            resolve(null);
+            return;
+        }
+        navigator.geolocation.getCurrentPosition((pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }), () => resolve(null), { timeout: 8000, maximumAge: 60000 });
+    });
+    const isLate = (d) => {
+        const parts = (profile.officeStartTime || "09:30").split(":").map(Number);
+        const threshold = new Date(d);
+        threshold.setHours(parts[0], (parts[1] || 0) + 15, 0, 0);
+        return d > threshold;
+    };
+    const handleCheckIn = async () => {
+        setBusy(true);
+        setError("");
+        const loc = await getLocation();
+        const now = new Date();
+        const rec = {
+            id: uid(), staff_email: session.user.email, staff_id: session.user.id, date: today,
+            check_in_time: now.toISOString(), check_in_lat: loc ? loc.lat : null, check_in_lng: loc ? loc.lng : null,
+            status: isLate(now) ? "late" : "present",
+        };
+        const { error } = await sb.from("grasp_attendance").insert(rec);
+        if (error)
+            setError(error.message);
+        else
+            setRecord(rec);
+        setBusy(false);
+    };
+    const handleCheckOut = async () => {
+        setBusy(true);
+        setError("");
+        const loc = await getLocation();
+        const now = new Date();
+        const patch = { check_out_time: now.toISOString(), check_out_lat: loc ? loc.lat : null, check_out_lng: loc ? loc.lng : null };
+        const { error } = await sb.from("grasp_attendance").update(patch).eq("id", record.id);
+        if (error)
+            setError(error.message);
+        else
+            setRecord(Object.assign(Object.assign({}, record), patch));
+        setBusy(false);
+    };
+    if (!loaded)
+        return null;
+    const fmtTime = (iso) => new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+    return (React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 } },
+        React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "Today's Attendance"),
+            !record ? (React.createElement("div", { style: { fontSize: 12.5, color: COLORS.muted, marginTop: 2 } }, "Abhi tak check-in nahi kiya")) : !record.check_out_time ? (React.createElement("div", { style: { fontSize: 12.5, marginTop: 2 } },
+                React.createElement("span", { style: { color: record.status === "late" ? COLORS.amber : COLORS.emerald, fontWeight: 700 } }, record.status === "late" ? "Late" : "Present"),
+                " \u00B7 In: ",
+                fmtTime(record.check_in_time))) : (React.createElement("div", { style: { fontSize: 12.5, marginTop: 2 } },
+                React.createElement("span", { style: { color: COLORS.emerald, fontWeight: 700 } }, "Done"),
+                " \u00B7 ",
+                fmtTime(record.check_in_time),
+                " \u2013 ",
+                fmtTime(record.check_out_time))),
+            error && React.createElement("div", { style: { fontSize: 10.5, color: COLORS.rose, marginTop: 2 } }, error)),
+        !record ? (React.createElement("button", { onClick: handleCheckIn, disabled: busy, style: { padding: "10px 18px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5, flexShrink: 0 } }, busy ? "\u2026" : "Check In")) : !record.check_out_time ? (React.createElement("button", { onClick: handleCheckOut, disabled: busy, style: { padding: "10px 18px", borderRadius: 11, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 12.5, flexShrink: 0 } }, busy ? "\u2026" : "Check Out")) : (React.createElement(Icon, { size: 22, style: { color: COLORS.emerald } }, "\u2705"))));
+}
+function DailyGoalWidget({ session, perms, invoices }) {
+    const [record, setRecord] = useState(null);
+    const [loaded, setLoaded] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const today = todayISO();
+    const hasTarget = Number(perms.targetAmount) > 0;
+    useEffect(() => {
+        if (!hasTarget) {
+            setLoaded(true);
+            return;
+        }
+        sb.from("grasp_daily_goals").select("*").eq("staff_email", session.user.email).eq("date", today).maybeSingle().then(({ data }) => {
+            setRecord(data || null);
+            setLoaded(true);
+        });
+    }, []);
+    if (!hasTarget || !loaded)
+        return null;
+    const now = new Date();
+    const monthlyTarget = Number(perms.targetAmount) / 12;
+    const y = now.getFullYear(), m = now.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    let workingDays = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+        if (new Date(y, m, d).getDay() !== 0)
+            workingDays++;
+    }
+    const dailyGoal = Math.round(monthlyTarget / Math.max(1, workingDays));
+    const todaySales = invoices.filter((i) => i.docType === "sale" && (i.date || "").slice(0, 10) === today).reduce((s, i) => s + i.total, 0);
+    const respond = async (yes) => {
+        setBusy(true);
+        const rec = { id: (record && record.id) || uid(), staff_email: session.user.email, staff_id: session.user.id, date: today, goal_amount: dailyGoal, achieved: yes, actual_sales: todaySales };
+        const { error } = await sb.from("grasp_daily_goals").upsert(rec, { onConflict: "staff_email,date" });
+        if (!error)
+            setRecord(rec);
+        setBusy(false);
+    };
+    const answered = record && (record.achieved === true || record.achieved === false);
+    return (React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "Aaj ka Daily Income Goal (DIG)"),
+                React.createElement("div", { className: "num", style: { fontSize: 17, fontWeight: 800, color: COLORS.violet, marginTop: 2 } },
+                    "\u20B9",
+                    fmt(dailyGoal)),
+                React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted, marginTop: 2 } },
+                    "Aaj tak sales: \u20B9",
+                    fmt(todaySales))),
+            answered && React.createElement("div", { style: { fontSize: 11, fontWeight: 800, padding: "5px 12px", borderRadius: 8, background: record.achieved ? "#E3FBF1" : "#FDE7EB", color: record.achieved ? COLORS.emerald : COLORS.rose } }, record.achieved ? "\u2705 Achieved" : "\u274C Missed")),
+        !answered && React.createElement("div", { style: { marginTop: 10, paddingTop: 10, borderTop: "1px solid " + COLORS.border, display: "flex", alignItems: "center", gap: 8 } },
+            React.createElement("span", { style: { fontSize: 12, color: COLORS.ink, fontWeight: 600, flex: 1 } }, "Aaj ka goal achieve kiya?"),
+            React.createElement("button", { onClick: () => respond(true), disabled: busy, style: { padding: "8px 16px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, "Yes"),
+            React.createElement("button", { onClick: () => respond(false), disabled: busy, style: { padding: "8px 16px", borderRadius: 9, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, "No"))));
+}
+function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, staffNames }) {
     const recent = invoices.slice(0, 4);
     const hasFullView = perms.isAdmin || perms.canViewAllSales;
     const achievementPct = perms.targetAmount > 0 ? Math.min(100, Math.round((totals.sales / perms.targetAmount) * 100)) : null;
@@ -901,6 +1029,8 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, onCreate, onView,
                 " of \u20B9",
                 fmt(perms.targetAmount),
                 " target"))),
+        React.createElement(AttendanceWidget, { session: session, profile: profile }),
+        React.createElement(DailyGoalWidget, { session: session, perms: perms, invoices: invoices }),
         (overdueList.length > 0 || dueSoonList.length > 0) && React.createElement("button", { onClick: onOpenDue, style: { width: "100%", textAlign: "left", background: overdueList.length > 0 ? "#FDE7EB" : "#FEF3DD", border: "1px solid " + (overdueList.length > 0 ? "#F5B8C4" : "#FBE3B0"), borderRadius: 14, padding: "13px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 } },
             React.createElement("div", { style: { fontSize: 22 } }, overdueList.length > 0 ? "\u26A0\uFE0F" : "\u23F0"),
             React.createElement("div", { style: { flex: 1 } },
@@ -915,6 +1045,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, onCreate, onView,
         React.createElement("div", { className: "home-folder-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
             React.createElement(FolderButton, { icon: "\uD83E\uDDFE", label: "Sale Invoices", color: DOC_META.sale.color, bg: DOC_META.sale.tint, onClick: () => onOpenFolder("sale") }),
             React.createElement(FolderButton, { icon: "\uD83D\uDCCB", label: "Quotations", color: DOC_META.quotation.color, bg: DOC_META.quotation.tint, onClick: onOpenQuotations }),
+            React.createElement(FolderButton, { icon: "\uD83D\uDCC4", label: "Proforma Invoice", color: DOC_META.proforma.color, bg: DOC_META.proforma.tint, onClick: () => onOpenFolder("proforma") }),
             React.createElement(FolderButton, { icon: "\uD83D\uDE9A", label: "Delivery Challan", color: DOC_META.challan.color, bg: DOC_META.challan.tint, onClick: () => onOpenFolder("challan") }),
             (perms.canViewPurchases || perms.isAdmin) && (React.createElement(FolderButton, { icon: "\uD83D\uDCE6", label: "Purchase Bills", color: DOC_META.purchase.color, bg: DOC_META.purchase.tint, onClick: () => onOpenFolder("purchase") })),
             (perms.canViewPurchases || perms.isAdmin) && (React.createElement(FolderButton, { icon: "\u21A9\uFE0F", label: "Credit Notes", color: DOC_META.credit_note.color, bg: DOC_META.credit_note.tint, onClick: () => onOpenFolder("credit_note") })),
@@ -925,7 +1056,8 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, onCreate, onView,
             React.createElement("div", { className: "home-folder-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
                 React.createElement(FolderButton, { icon: "\uD83D\uDCB8", label: "Expenses", color: "#DC2626", bg: "#FEE2E2", onClick: onOpenExpenses }),
                 React.createElement(FolderButton, { icon: "\uD83D\uDCB3", label: "Cash/Bank Book", color: "#0369A1", bg: "#E0F2FE", onClick: onOpenCashBook }),
-                perms.isAdmin && React.createElement(FolderButton, { icon: "\uD83D\uDCB0", label: "Payroll & Incentives", color: "#0D9488", bg: "#CCFBF1", onClick: onOpenPayroll })))),
+                perms.isAdmin && React.createElement(FolderButton, { icon: "\uD83D\uDCB0", label: "Payroll & Incentives", color: "#0D9488", bg: "#CCFBF1", onClick: onOpenPayroll }),
+                (perms.canConfirmPayments || perms.isAdmin) && React.createElement(FolderButton, { icon: "\uD83D\uDCCD", label: "Attendance", color: "#DB2777", bg: "#FCE7F3", onClick: onOpenAttendance })))),
         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
             React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15 } }, "Recent"),
             invoices.length > 0 && React.createElement("button", { onClick: onView, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, fontSize: 13 } }, "View all")),
@@ -942,7 +1074,7 @@ function InvoiceRow({ inv, onDelete, onClick, staffNames }) {
     const status = getStatus(inv);
     const sMeta = STATUS_META[status];
     return (React.createElement("div", { className: "card", style: { padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: onClick ? "pointer" : "default" }, onClick: onClick },
-        React.createElement("div", { style: { width: 40, height: 40, borderRadius: 12, background: meta.tint, color: meta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0 } }, ({ sale: "S", purchase: "P", quotation: "Q", challan: "DC", credit_note: "CN", debit_note: "DN", purchase_order: "PO" })[inv.docType] || "?"),
+        React.createElement("div", { style: { width: 40, height: 40, borderRadius: 12, background: meta.tint, color: meta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0 } }, ({ sale: "S", purchase: "P", quotation: "Q", proforma: "PI", challan: "DC", credit_note: "CN", debit_note: "DN", purchase_order: "PO" })[inv.docType] || "?"),
         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
             React.createElement("div", { style: { fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, inv.party || "Unnamed"),
             React.createElement("div", { style: { fontSize: 11.5, color: COLORS.muted, marginTop: 1 } },
@@ -1509,7 +1641,7 @@ function StaffAccount({ session, perms, onBack }) {
                 "Business/bank details Admin handle karta hai."),
             React.createElement("button", { onClick: () => sb.auth.signOut(), style: { width: "100%", padding: "13px", borderRadius: 14, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.rose, fontWeight: 700, fontSize: 14 } }, "Sign out"))));
 }
-function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onManageItems, onReports, onEditBusiness, onExport }) {
+function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onManageItems, onReports, onEditBusiness, onExport, onAnalytics }) {
     return (React.createElement("div", null,
         React.createElement(SubHeader, { title: "Business", onBack: onBack }),
         React.createElement("div", { style: { padding: "0 16px" } },
@@ -1535,6 +1667,11 @@ function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onMa
                     React.createElement(Icon, { size: 17 }, "\uD83D\uDCCA"),
                     " GST & P&L Reports"),
                 React.createElement(Icon, { size: 15 }, "\u2192"))),
+            (perms.canViewPurchases || perms.isAdmin) && (React.createElement("button", { onClick: onAnalytics, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #8B5CF6, #6D28D9)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(109,40,217,0.3)" } },
+                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement(Icon, { size: 17 }, "\uD83D\uDCC8"),
+                    " Analytics"),
+                React.createElement(Icon, { size: 15 }, "\u2192"))),
             (perms.canViewPurchases || perms.isAdmin) && (React.createElement("button", { onClick: onExport, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #0EA5E9, #0369A1)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(14,165,233,0.3)" } },
                 React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
                     React.createElement(Icon, { size: 17 }, "\u2B07\uFE0F"),
@@ -1546,6 +1683,83 @@ function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onMa
                     " Company & Banking Details"),
                 React.createElement(Icon, { size: 15 }, "\u2192"))),
             React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", marginTop: 6, lineHeight: 1.5 } }, "Company/bank details ab alag screen par hain taaki galti se edit na ho jaayen."))));
+}
+function Analytics({ invoices, onBack }) {
+    const sales = invoices.filter((i) => i.docType === "sale");
+    // Last 6 months trend
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({ key: monthKey(d.toISOString()), label: d.toLocaleDateString("en-IN", { month: "short" }) });
+    }
+    const monthTotals = months.map((m) => ({
+        label: m.label,
+        total: sales.filter((s) => monthKey(s.date) === m.key).reduce((sum, s) => sum + s.total, 0),
+    }));
+    const maxMonthTotal = Math.max(1, ...monthTotals.map((m) => m.total));
+    const thisMonthKey = monthKey(now.toISOString());
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthKey = monthKey(lastMonthDate.toISOString());
+    const thisMonthTotal = sales.filter((s) => monthKey(s.date) === thisMonthKey).reduce((s, i) => s + i.total, 0);
+    const lastMonthTotal = sales.filter((s) => monthKey(s.date) === lastMonthKey).reduce((s, i) => s + i.total, 0);
+    const changePct = lastMonthTotal > 0 ? Math.round(((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100) : (thisMonthTotal > 0 ? 100 : 0);
+    // Top items by revenue
+    const itemMap = {};
+    sales.forEach((inv) => {
+        (inv.items || []).forEach((it) => {
+            if (!it.name)
+                return;
+            const key = it.name.trim();
+            const amt = (Number(it.qty) || 0) * (Number(it.rate) || 0);
+            itemMap[key] = (itemMap[key] || 0) + amt;
+        });
+    });
+    const topItems = Object.entries(itemMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const maxItemTotal = Math.max(1, ...topItems.map(([, v]) => v));
+    // Top customers by revenue
+    const custMap = {};
+    sales.forEach((inv) => {
+        const key = inv.party || "Unnamed";
+        custMap[key] = (custMap[key] || 0) + inv.total;
+    });
+    const topCustomers = Object.entries(custMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const maxCustTotal = Math.max(1, ...topCustomers.map(([, v]) => v));
+    const BarRow = ({ label, value, max, color }) => (React.createElement("div", { style: { marginBottom: 12 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } },
+            React.createElement("span", { style: { fontSize: 12.5, fontWeight: 600, color: COLORS.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 180 } }, label),
+            React.createElement("span", { className: "num", style: { fontSize: 12.5, fontWeight: 700, color: COLORS.muted } },
+                "\u20B9",
+                fmt(value))),
+        React.createElement("div", { style: { height: 8, borderRadius: 4, background: "#F1ECFE", overflow: "hidden" } },
+            React.createElement("div", { style: { height: "100%", width: `${Math.max(3, (value / max) * 100)}%`, background: color, borderRadius: 4 } }))));
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Analytics", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 16 } },
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "This Month Sales"),
+                        React.createElement("div", { className: "num", style: { fontSize: 22, fontWeight: 800, color: COLORS.violet } },
+                            "\u20B9",
+                            fmt(thisMonthTotal))),
+                    React.createElement("div", { style: { textAlign: "right" } },
+                        React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "vs Last Month"),
+                        React.createElement("div", { className: "num", style: { fontSize: 16, fontWeight: 800, color: changePct >= 0 ? COLORS.emerald : COLORS.rose } },
+                            changePct >= 0 ? "+" : "",
+                            changePct,
+                            "%")))),
+            React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 16 } },
+                React.createElement("div", { style: { fontSize: 12, color: COLORS.sky, fontWeight: 800, marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 } }, "Last 6 Months \u2014 Sales Trend"),
+                React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 8, height: 120 } }, monthTotals.map((m, i) => (React.createElement("div", { key: i, style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 } },
+                    React.createElement("div", { style: { width: "100%", height: `${Math.max(4, (m.total / maxMonthTotal) * 90)}px`, background: "linear-gradient(180deg,#7C3AED,#4F46E5)", borderRadius: "4px 4px 0 0" } }),
+                    React.createElement("span", { style: { fontSize: 10, color: COLORS.muted, fontWeight: 600 } }, m.label)))))),
+            React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 16 } },
+                React.createElement("div", { style: { fontSize: 12, color: COLORS.emerald, fontWeight: 800, marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 } }, "Top 5 Selling Items"),
+                topItems.length === 0 ? (React.createElement("div", { style: { fontSize: 12.5, color: COLORS.muted, textAlign: "center", padding: "10px 0" } }, "Abhi tak koi sale nahi hui.")) : topItems.map(([name, total]) => (React.createElement(BarRow, { key: name, label: name, value: total, max: maxItemTotal, color: COLORS.emerald })))),
+            React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 16 } },
+                React.createElement("div", { style: { fontSize: 12, color: COLORS.amber, fontWeight: 800, marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 } }, "Top 5 Customers"),
+                topCustomers.length === 0 ? (React.createElement("div", { style: { fontSize: 12.5, color: COLORS.muted, textAlign: "center", padding: "10px 0" } }, "Abhi tak koi customer nahi hai.")) : topCustomers.map(([name, total]) => (React.createElement(BarRow, { key: name, label: name, value: total, max: maxCustTotal, color: COLORS.amber })))))));
 }
 function DataExport({ invoices, parties, expenses, profile, onBack }) {
     const [month, setMonth] = useState(monthKey(new Date().toISOString()));
@@ -1640,6 +1854,10 @@ function EditBusinessDetails({ profile, onBack, onSave }) {
                 React.createElement("input", { type: "number", value: form.openingBalance || 0, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { openingBalance: e.target.value })), className: "num", style: inputStyle }),
                 React.createElement("div", { style: { fontSize: 11, color: "#B4AFD6", marginTop: 6 } }, "Jab aap ye ERP use karna shuru kiye the, us waqt aapke paas (cash + bank milaकर) kitna paisa tha - ye ek baar set karein, Cash/Bank Book isी se calculate hoga.")),
             React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 14 } },
+                React.createElement("label", { style: { fontSize: 12, color: COLORS.violet, fontWeight: 800, marginBottom: 8, display: "block", textTransform: "uppercase", letterSpacing: 0.5 } }, "Office Start Time (Attendance)"),
+                React.createElement("input", { type: "time", value: form.officeStartTime || "09:30", onChange: (e) => setForm(Object.assign(Object.assign({}, form), { officeStartTime: e.target.value })), style: inputStyle }),
+                React.createElement("div", { style: { fontSize: 11, color: "#B4AFD6", marginTop: 6 } }, "Isसे 15 minute baad Check In karने par staff \"Late\" mark hoगा Attendance mein.")),
+            React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 14 } },
                 React.createElement("label", { style: { fontSize: 12, color: COLORS.amber, fontWeight: 800, marginBottom: 8, display: "block", textTransform: "uppercase", letterSpacing: 0.5 } }, "Terms & Conditions"),
                 React.createElement("textarea", { value: form.terms, onChange: set("terms"), rows: 6, style: Object.assign(Object.assign({}, inputStyle), { fontSize: 13, resize: "vertical" }) })),
             React.createElement("button", { onClick: () => { onSave(form); setSaved(true); setTimeout(() => setSaved(false), 1800); }, style: { width: "100%", padding: "15px", borderRadius: 16, border: "none", background: "linear-gradient(120deg, #4F46E5, #7C3AED)", color: "#fff", fontWeight: 700, fontFamily: "'Sora', sans-serif", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 14px rgba(124,58,237,0.35)" } }, saved ? (React.createElement(React.Fragment, null,
@@ -1653,6 +1871,93 @@ const PERM_FIELDS = [
     ["canEditBusiness", "can_edit_business", "Business Details", "Bank/GSTIN/terms edit kar sakta hai"],
     ["canViewAllSales", "can_view_all_sales", "View All Sales", "Sab staff ka Sales data dekh sakta hai"],
 ];
+function AttendanceAdmin({ onBack }) {
+    const [staffList, setStaffList] = useState([]);
+    const [records, setRecords] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [month, setMonth] = useState(monthKey(new Date().toISOString()));
+    const [expanded, setExpanded] = useState(null);
+    const [markDate, setMarkDate] = useState(todayISO());
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+    const monthOptions = [0, 1, 2].map((i) => monthKey(new Date(new Date().getFullYear(), new Date().getMonth() - i, 1).toISOString()));
+    useEffect(() => {
+        (async () => {
+            const [uRes, aRes] = await Promise.all([
+                sb.from("grasp_users").select("*").order("created_at", { ascending: true }),
+                sb.from("grasp_attendance").select("*"),
+            ]);
+            setStaffList((uRes.data || []).filter((u) => !u.is_admin));
+            setRecords(aRes.data || []);
+            setLoaded(true);
+        })();
+    }, []);
+    const monthRecords = records.filter((r) => r.date.startsWith(month));
+    const summaryFor = (email) => {
+        const recs = monthRecords.filter((r) => r.staff_email === email);
+        return {
+            present: recs.filter((r) => r.status === "present").length,
+            late: recs.filter((r) => r.status === "late").length,
+            absent: recs.filter((r) => r.status === "absent").length,
+            recs: recs.slice().sort((a, b) => b.date.localeCompare(a.date)),
+        };
+    };
+    const markAbsent = async (u) => {
+        setBusy(true);
+        setError("");
+        const existing = records.find((r) => r.staff_email === u.email && r.date === markDate);
+        const rec = Object.assign({ id: (existing && existing.id) || uid(), staff_email: u.email, staff_id: u.id, date: markDate }, existing || {}, { status: "absent", check_in_time: null, check_out_time: null });
+        const { error } = await sb.from("grasp_attendance").upsert(rec, { onConflict: "staff_email,date" });
+        if (error)
+            setError(error.message);
+        else
+            setRecords([rec, ...records.filter((r) => !(r.staff_email === u.email && r.date === markDate))]);
+        setBusy(false);
+    };
+    const fmtTime = (iso) => (iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "\u2014");
+    const mapLink = (lat, lng) => (lat && lng ? `https://www.google.com/maps?q=${lat},${lng}` : null);
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Attendance", onBack: onBack, right: React.createElement("div", { style: { position: "relative" } },
+                React.createElement("select", { value: month, onChange: (e) => setMonth(e.target.value), style: { appearance: "none", WebkitAppearance: "none", background: "#EFEDFB", border: "none", borderRadius: 9, padding: "6px 26px 6px 10px", fontSize: 12, fontWeight: 700, color: COLORS.indigo } }, monthOptions.map((m) => (React.createElement("option", { key: m, value: m }, monthLabel(m))))),
+                React.createElement(Icon, { size: 11, style: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: COLORS.indigo } }, "\u25BE")) }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026")) : staffList.length === 0 ? (React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi staff account nahi mila.")) : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, staffList.map((u) => {
+                const s = summaryFor(u.email);
+                const isOpen = expanded === u.email;
+                const headerRow = React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }, onClick: () => setExpanded(isOpen ? null : u.email) }, [
+                    React.createElement("div", { key: "left" }, [
+                        React.createElement("div", { key: "nm", style: { fontWeight: 700, fontSize: 13.5 } }, u.full_name || u.email.split("@")[0]),
+                        React.createElement("div", { key: "stats", style: { fontSize: 11, color: COLORS.muted, marginTop: 2 } }, [
+                            React.createElement("span", { key: "p", style: { color: COLORS.emerald, fontWeight: 700 } }, s.present + " Present"),
+                            " \u00B7 ",
+                            React.createElement("span", { key: "l", style: { color: COLORS.amber, fontWeight: 700 } }, s.late + " Late"),
+                            " \u00B7 ",
+                            React.createElement("span", { key: "a", style: { color: COLORS.rose, fontWeight: 700 } }, s.absent + " Absent"),
+                        ]),
+                    ]),
+                    React.createElement(Icon, { key: "chev", size: 14, style: { color: COLORS.muted } }, isOpen ? "\u25B4" : "\u25BE"),
+                ]);
+                const dayRows = s.recs.length === 0 ? React.createElement("div", { key: "empty", style: { fontSize: 12, color: COLORS.muted, textAlign: "center", padding: "8px 0" } }, "Is mahine koi record nahi hai.") : s.recs.map((r) => React.createElement("div", { key: r.date, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid " + COLORS.border } }, [
+                    React.createElement("div", { key: "l" }, [
+                        React.createElement("div", { key: "d", style: { fontSize: 12, fontWeight: 600 } }, new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })),
+                        React.createElement("div", { key: "t", style: { fontSize: 10.5, color: COLORS.muted } }, r.status !== "absent" ? `In: ${fmtTime(r.check_in_time)} \u00B7 Out: ${fmtTime(r.check_out_time)}` : "Absent"),
+                    ]),
+                    React.createElement("div", { key: "r", style: { display: "flex", alignItems: "center", gap: 6 } }, [
+                        mapLink(r.check_in_lat, r.check_in_lng) && React.createElement("a", { key: "map", href: mapLink(r.check_in_lat, r.check_in_lng), target: "_blank", rel: "noreferrer", style: { fontSize: 10.5, color: COLORS.sky, fontWeight: 700, textDecoration: "none" } }, "\uD83D\uDCCD Map"),
+                        React.createElement("span", { key: "badge", style: { fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 7, background: r.status === "present" ? "#E3FBF1" : r.status === "late" ? "#FEF3DD" : "#FDE7EB", color: r.status === "present" ? COLORS.emerald : r.status === "late" ? "#8A5A00" : COLORS.rose } }, r.status.toUpperCase()),
+                    ]),
+                ]));
+                const expandedBlock = isOpen && React.createElement("div", { key: "exp", style: { marginTop: 12, paddingTop: 12, borderTop: "1px solid " + COLORS.border } }, [
+                    React.createElement("div", { key: "markrow", style: { display: "flex", gap: 8, marginBottom: 12 } }, [
+                        React.createElement("input", { key: "date", type: "date", value: markDate, onChange: (e) => setMarkDate(e.target.value), style: { flex: 1, padding: "8px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 12.5 } }),
+                        React.createElement("button", { key: "btn", onClick: () => markAbsent(u), disabled: busy, style: { padding: "8px 14px", borderRadius: 9, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 12 } }, "Mark Absent"),
+                    ]),
+                    dayRows,
+                ]);
+                return React.createElement("div", { key: u.email, className: "card", style: { padding: "14px" } }, [headerRow, expandedBlock]);
+            })),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+}
 function Payroll({ invoices, onBack }) {
     const [users, setUsers] = useState([]);
     const [records, setRecords] = useState({});
@@ -2574,7 +2879,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
     return (React.createElement("div", null,
         React.createElement("div", { className: "no-print" },
             React.createElement(SubHeader, { title: meta.label, onBack: onBack }),
-            (inv.docType === "quotation" || inv.docType === "purchase_order" || inv.docType === "challan") && (React.createElement("div", { style: { padding: "0 16px", marginBottom: 10 } }, inv.convertedTo ? (React.createElement("div", { className: "card", style: { padding: 14, display: "flex", alignItems: "center", gap: 8, background: "#E3FBF1", border: "1px solid #C8F0DC" } },
+            (inv.docType === "quotation" || inv.docType === "purchase_order" || inv.docType === "challan" || inv.docType === "proforma") && (React.createElement("div", { style: { padding: "0 16px", marginBottom: 10 } }, inv.convertedTo ? (React.createElement("div", { className: "card", style: { padding: 14, display: "flex", alignItems: "center", gap: 8, background: "#E3FBF1", border: "1px solid #C8F0DC" } },
                 React.createElement(Icon, { size: 16 }, "\u2705"),
                 React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "#0F7A54" } },
                     "Converted to ",
