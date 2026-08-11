@@ -215,6 +215,8 @@ const STATUS_META = {
     Partial: { color: "#F59E0B", tint: "#FEF3DD" },
     Unpaid: { color: "#F43F5E", tint: "#FDE7EB" },
     Draft: { color: "#7A7690", tint: "#EFEDF9" },
+    Converted: { color: "#10B981", tint: "#E3FBF1" },
+    Pending: { color: "#F59E0B", tint: "#FEF3DD" },
 };
 const UNITS = ["NOS", "PCS", "KG", "GMS", "MTR", "LTR", "BOX", "SET", "PAIR", "DZN", "BAG", "BTL", "CTN", "ROL", "SQM", "SQF", "UNT", "OTH"];
 const STATES = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
@@ -311,8 +313,11 @@ function profToDb(p) {
     };
 }
 function getStatus(inv) {
-    if (!FINANCIAL_DOC_TYPES.includes(inv.docType))
+    if (!FINANCIAL_DOC_TYPES.includes(inv.docType)) {
+        if (inv.docType === "quotation" || inv.docType === "challan" || inv.docType === "purchase_order")
+            return inv.convertedTo ? "Converted" : "Pending";
         return "Draft";
+    }
     const paid = (Number(inv.paidAmount) || 0) + (Number(inv.tdsAmount) || 0);
     if (paid <= 0)
         return "Unpaid";
@@ -926,7 +931,7 @@ function InvoiceRow({ inv, onDelete, onClick, staffNames }) {
     const status = getStatus(inv);
     const sMeta = STATUS_META[status];
     return (React.createElement("div", { className: "card", style: { padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: onClick ? "pointer" : "default" }, onClick: onClick },
-        React.createElement("div", { style: { width: 40, height: 40, borderRadius: 12, background: meta.tint, color: meta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0 } }, ({ sale: "S", purchase: "P", quotation: "Q", challan: "DC", credit_note: "CN", debit_note: "DN" })[inv.docType] || "?"),
+        React.createElement("div", { style: { width: 40, height: 40, borderRadius: 12, background: meta.tint, color: meta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0 } }, ({ sale: "S", purchase: "P", quotation: "Q", challan: "DC", credit_note: "CN", debit_note: "DN", purchase_order: "PO" })[inv.docType] || "?"),
         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
             React.createElement("div", { style: { fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, inv.party || "Unnamed"),
             React.createElement("div", { style: { fontSize: 11.5, color: COLORS.muted, marginTop: 1 } },
@@ -2225,6 +2230,80 @@ function Reports({ invoices, expenses, profile, staffNames, onBack }) {
                         " received"))))),
             React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", lineHeight: 1.6, marginBottom: 10 } }, "Note: Quotations is report mein shamil nahi hain (wo actual transaction nahi hain). GST figures aapke har invoice/purchase mein diye gaye Place of Supply aur Business State ke hisaab se calculate hote hain."))));
 }
+function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate }) {
+    const words = amountInWords(inv.total);
+    return (React.createElement("div", { ref: printRef, className: "print-area quo-area", style: { margin: "0 16px", background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" } },
+        React.createElement("div", { className: "quo-header", style: { background: "linear-gradient(120deg, #7C3AED, #4F46E5)", padding: "22px 24px", color: "#fff" } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+                React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "center" } },
+                    React.createElement("img", { src: "logo.webp", alt: "", style: { width: 42, height: 42, objectFit: "contain", flexShrink: 0 } }),
+                    React.createElement("div", null,
+                        React.createElement("div", { className: "quo-company", style: { fontWeight: 800, fontSize: 15 } }, profile.name || "Grasp Infotech"),
+                        profile.gstin && React.createElement("div", { className: "quo-small", style: { opacity: 0.85, marginTop: 2 } },
+                            "GSTIN: ",
+                            profile.gstin))),
+                React.createElement("div", { style: { textAlign: "right" } },
+                    React.createElement("div", { className: "quo-title", style: { fontWeight: 800, letterSpacing: 2, fontSize: 20 } }, "QUOTATION"),
+                    React.createElement("div", { className: "quo-small", style: { opacity: 0.85, marginTop: 2 } }, inv.invoiceNo)))),
+        React.createElement("div", { style: { display: "flex", padding: "18px 24px 4px", gap: 24, flexWrap: "wrap" } },
+            React.createElement("div", { style: { flex: 1, minWidth: 160 } },
+                React.createElement("div", { className: "quo-label", style: { color: "#8B5CF6", fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 } }, "PREPARED FOR"),
+                React.createElement("div", { className: "quo-party", style: { fontWeight: 700, color: "#1a1a2e" } }, inv.party || "-"),
+                inv.partyAddress && React.createElement("div", { className: "quo-small", style: { color: "#666", marginTop: 2, whiteSpace: "pre-line" } }, inv.partyAddress),
+                inv.partyPhone && React.createElement("div", { className: "quo-small", style: { color: "#666", marginTop: 2 } }, inv.partyPhone)),
+            React.createElement("div", { style: { textAlign: "right" } },
+                React.createElement("div", { className: "quo-label", style: { color: "#8B5CF6", fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 } }, "DATE"),
+                React.createElement("div", { className: "quo-small", style: { color: "#333", fontWeight: 600, marginBottom: 8 } }, new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })),
+                inv.dueDate && React.createElement(React.Fragment, null,
+                    React.createElement("div", { className: "quo-label", style: { color: "#8B5CF6", fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 } }, "VALID UNTIL"),
+                    React.createElement("div", { className: "quo-small", style: { color: "#333", fontWeight: 600 } }, new Date(inv.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }))))),
+        React.createElement("div", { style: { padding: "18px 24px" } },
+            React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } },
+                React.createElement("thead", null,
+                    React.createElement("tr", { style: { borderBottom: "2px solid #EDE9FE" } },
+                        React.createElement("th", { className: "quo-th", style: { textAlign: "left", padding: "8px 4px", color: "#8B5CF6" } }, "ITEM"),
+                        React.createElement("th", { className: "quo-th", style: { textAlign: "center", padding: "8px 4px", color: "#8B5CF6" } }, "QTY"),
+                        React.createElement("th", { className: "quo-th", style: { textAlign: "right", padding: "8px 4px", color: "#8B5CF6" } }, "RATE"),
+                        React.createElement("th", { className: "quo-th", style: { textAlign: "right", padding: "8px 4px", color: "#8B5CF6" } }, "AMOUNT"))),
+                React.createElement("tbody", null, (inv.items || []).filter((it) => it.name).map((it, idx) => (React.createElement("tr", { key: idx, style: { borderBottom: "1px solid #F3F0FD" } },
+                    React.createElement("td", { className: "quo-td", style: { padding: "9px 4px", color: "#1a1a2e", fontWeight: 600 } }, it.name),
+                    React.createElement("td", { className: "quo-td num", style: { padding: "9px 4px", textAlign: "center", color: "#555" } },
+                        it.qty,
+                        " ",
+                        it.unit || "NOS"),
+                    React.createElement("td", { className: "quo-td num", style: { padding: "9px 4px", textAlign: "right", color: "#555" } },
+                        "\u20B9",
+                        fmt(it.rate)),
+                    React.createElement("td", { className: "quo-td num", style: { padding: "9px 4px", textAlign: "right", color: "#1a1a2e", fontWeight: 700 } },
+                        "\u20B9",
+                        fmt((Number(it.qty) || 0) * (Number(it.rate) || 0))))))))),
+            React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginTop: 14 } },
+                React.createElement("div", { style: { width: "58%", minWidth: 200 } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } },
+                        React.createElement("span", { className: "quo-small", style: { color: "#666" } }, "Subtotal"),
+                        React.createElement("span", { className: "quo-small num", style: { color: "#333" } },
+                            "\u20B9",
+                            fmt(inv.subtotal))),
+                    gstTotal > 0 && React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } },
+                        React.createElement("span", { className: "quo-small", style: { color: "#666" } }, isInterstate ? "IGST" : "GST (CGST+SGST)"),
+                        React.createElement("span", { className: "quo-small num", style: { color: "#333" } },
+                            "\u20B9",
+                            fmt(gstTotal))),
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "10px 0 4px", borderTop: "2px solid #EDE9FE", marginTop: 6 } },
+                        React.createElement("span", { style: { fontWeight: 800, fontSize: 15, color: "#4F46E5" } }, "Total"),
+                        React.createElement("span", { className: "num", style: { fontWeight: 800, fontSize: 17, color: "#4F46E5" } },
+                            "\u20B9",
+                            fmt(inv.total))))),
+            React.createElement("div", { className: "quo-small", style: { color: "#999", marginTop: 4, textAlign: "right", fontStyle: "italic" } }, words)),
+        (inv.notes || profile.terms) && React.createElement("div", { style: { padding: "14px 24px", background: "#FAF9FF", borderTop: "1px solid #EDE9FE" } },
+            inv.notes && React.createElement("div", { className: "quo-small", style: { color: "#444", whiteSpace: "pre-line", marginBottom: 6 } }, inv.notes),
+            profile.terms && React.createElement("div", { className: "quo-small", style: { color: "#888", fontStyle: "italic", lineHeight: 1.5 } }, compactTerms(profile.terms))),
+        React.createElement("div", { style: { padding: "16px 24px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 } },
+            React.createElement("div", { className: "quo-small", style: { color: "#8B5CF6", fontWeight: 700 } }, "Thank you for considering us! We look forward to working with you."),
+            React.createElement("div", { style: { textAlign: "center" } },
+                React.createElement("img", { src: "stamp.webp", alt: "Stamp", style: { width: 56, height: 56, objectFit: "contain", margin: "0 auto" } }),
+                React.createElement("div", { className: "quo-small", style: { color: "#999", marginTop: 2 } }, "Authorised Signatory"))));
+}
 function InvoicePreview({ inv, profile, perms, onBack, onEdit, onDelete, onUpdatePayment, onConvert }) {
     var _a;
     const meta = DOC_META[inv.docType];
@@ -2444,14 +2523,14 @@ function InvoicePreview({ inv, profile, perms, onBack, onEdit, onDelete, onUpdat
     return (React.createElement("div", null,
         React.createElement("div", { className: "no-print" },
             React.createElement(SubHeader, { title: meta.label, onBack: onBack }),
-            (inv.docType === "quotation" || inv.docType === "purchase_order") && (React.createElement("div", { style: { padding: "0 16px", marginBottom: 10 } }, inv.convertedTo ? (React.createElement("div", { className: "card", style: { padding: 14, display: "flex", alignItems: "center", gap: 8, background: "#E3FBF1", border: "1px solid #C8F0DC" } },
+            (inv.docType === "quotation" || inv.docType === "purchase_order" || inv.docType === "challan") && (React.createElement("div", { style: { padding: "0 16px", marginBottom: 10 } }, inv.convertedTo ? (React.createElement("div", { className: "card", style: { padding: 14, display: "flex", alignItems: "center", gap: 8, background: "#E3FBF1", border: "1px solid #C8F0DC" } },
                 React.createElement(Icon, { size: 16 }, "\u2705"),
                 React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "#0F7A54" } },
                     "Converted to ",
-                    inv.docType === "quotation" ? "Invoice " : "Purchase Bill ",
+                    inv.docType === "purchase_order" ? "Purchase Bill " : "Invoice ",
                     inv.convertedTo))) : (React.createElement("button", { onClick: onConvert, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 13, border: "none", background: "linear-gradient(120deg, #10B981, #0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 13.5 } },
                 React.createElement(Icon, { size: 16 }, "\uD83E\uDDFE"),
-                inv.docType === "quotation" ? " Convert to Invoice" : " Convert to Purchase Bill")))),
+                inv.docType === "purchase_order" ? " Convert to Purchase Bill" : " Convert to Invoice")))),
             React.createElement("div", { style: { padding: "0 16px", display: "flex", gap: 8, marginBottom: 10 } },
                 React.createElement("button", { onClick: onEdit, style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", borderRadius: 12, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13 } },
                     React.createElement(Icon, { size: 14 }, "\u270F\uFE0F"),
@@ -2507,6 +2586,7 @@ function InvoicePreview({ inv, profile, perms, onBack, onEdit, onDelete, onUpdat
                 "PDF ke liye \"Print / Save PDF\" dabayein, phir print dialog mein destination ko ",
                 React.createElement("b", null, "\"Save as PDF\""),
                 " par set karein \u2014 us PDF file ko phir WhatsApp/Email se seedha share kar sakte hain.")),
+        inv.docType === "quotation" ? React.createElement(QuotationPrintLayout, { inv: inv, profile: profile, printRef: printRef, gstTotal: gstTotal, isInterstate: isInterstate }) :
         React.createElement("div", { ref: printRef, className: "print-area", style: { margin: "0 16px", background: "#fff", border: "1.5px solid #333", borderRadius: 4, overflow: "hidden" } },
             React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: "9px 10px", borderBottom: "1.5px solid #333" } },
                 React.createElement("div", { className: "pv-title", style: { fontWeight: 800, color: "#1D4ED8", letterSpacing: 1.5 } }, meta.label.toUpperCase()),
