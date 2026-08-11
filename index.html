@@ -206,9 +206,10 @@ const DOC_META = {
     challan: { label: "Delivery Challan", short: "Challan", prefix: "DC", color: "#0EA5E9", tint: "#E3F3FD", copyTag: "NOT A TAX INVOICE" },
     credit_note: { label: "Credit Note", short: "Credit Note", prefix: "CN", color: "#EF4444", tint: "#FEE2E2", copyTag: "ORIGINAL" },
     debit_note: { label: "Debit Note", short: "Debit Note", prefix: "DN", color: "#DB2777", tint: "#FCE7F3", copyTag: "ORIGINAL" },
+    purchase_order: { label: "Purchase Order", short: "PO", prefix: "PO", color: "#A16207", tint: "#FEF9C3", copyTag: "NOT A TAX INVOICE" },
 };
 const FINANCIAL_DOC_TYPES = ["sale", "purchase"];
-const RESTRICTED_DOC_TYPES = ["purchase", "credit_note", "debit_note"];
+const RESTRICTED_DOC_TYPES = ["purchase", "credit_note", "debit_note", "purchase_order"];
 const STATUS_META = {
     Paid: { color: "#10B981", tint: "#E3FBF1" },
     Partial: { color: "#F59E0B", tint: "#FEF3DD" },
@@ -510,7 +511,7 @@ function BillingApp({ session, perms }) {
     const [invoices, setInvoices] = useState([]);
     const [parties, setParties] = useState([]);
     const [profile, setProfile] = useState(DEFAULT_PROFILE);
-    const [counters, setCounters] = useState({ sale: 0, purchase: 0, quotation: 0 });
+    const [counters, setCounters] = useState({ sale: 0, purchase: 0, quotation: 0, challan: 0, credit_note: 0, debit_note: 0, purchase_order: 0 });
     const [itemCatalog, setItemCatalog] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [staffNames, setStaffNames] = useState({});
@@ -541,7 +542,7 @@ function BillingApp({ session, perms }) {
                 setInvoices((invRes.data || []).map(invFromDb));
                 setParties(parRes.data || []);
                 setProfile(profFromDb(profRes.data));
-                setCounters(cntRes.data ? { sale: cntRes.data.sale, purchase: cntRes.data.purchase, quotation: cntRes.data.quotation } : { sale: 0, purchase: 0, quotation: 0 });
+                setCounters(cntRes.data ? { sale: cntRes.data.sale, purchase: cntRes.data.purchase, quotation: cntRes.data.quotation, challan: cntRes.data.challan || 0, credit_note: cntRes.data.credit_note || 0, debit_note: cntRes.data.debit_note || 0, purchase_order: cntRes.data.purchase_order || 0 } : { sale: 0, purchase: 0, quotation: 0, challan: 0, credit_note: 0, debit_note: 0, purchase_order: 0 });
                 setItemCatalog((catRes.data || []).map(catalogFromDb));
                 setExpenses((expRes.data || []).map(expenseFromDb));
                 const nameMap = {};
@@ -747,13 +748,14 @@ function BillingApp({ session, perms }) {
             setError("Delete nahi ho paya: " + (e.message || "unknown error"));
         }
     };
-    const convertToInvoice = async (quotation) => {
+    const convertToInvoice = async (quotation, targetType) => {
         try {
-            const meta = DOC_META.sale;
-            const nextNum = (counters.sale || 0) + 1;
+            const docType = targetType || "sale";
+            const meta = DOC_META[docType];
+            const nextNum = (counters[docType] || 0) + 1;
             const invoiceNo = `${meta.prefix}-${String(nextNum).padStart(4, "0")}`;
             const newInv = {
-                docType: "sale", id: uid(), invoiceNo, date: new Date().toISOString(), dueDate: quotation.dueDate,
+                docType, id: uid(), invoiceNo, date: new Date().toISOString(), dueDate: quotation.dueDate,
                 party: quotation.party, partyPhone: quotation.partyPhone, partyGstin: quotation.partyGstin,
                 partyAddress: quotation.partyAddress, shippingAddress: quotation.shippingAddress, placeOfSupply: quotation.placeOfSupply,
                 items: quotation.items, subtotal: quotation.subtotal, gst: quotation.gst, total: quotation.total,
@@ -762,7 +764,7 @@ function BillingApp({ session, perms }) {
             const { error: insErr } = await sb.from("grasp_invoices").insert(invToDb(newInv));
             if (insErr)
                 throw insErr;
-            const nextCounters = Object.assign(Object.assign({}, counters), { sale: nextNum });
+            const nextCounters = Object.assign(Object.assign({}, counters), { [docType]: nextNum });
             await sb.from("grasp_counters").upsert(Object.assign({ id: "main" }, nextCounters));
             const updatedQuotation = Object.assign(Object.assign({}, quotation), { convertedTo: invoiceNo });
             const { error: updErr } = await sb.from("grasp_invoices").update(invToDb(updatedQuotation)).eq("id", quotation.id);
@@ -811,7 +813,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), staffNames: staffNames })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.canEditBusiness || perms.canViewPurchases || perms.isAdmin) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings") })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && (perms.canEditBusiness || perms.isAdmin) ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv) })) : null,
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), staffNames: staffNames })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.canEditBusiness || perms.canViewPurchases || perms.isAdmin) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings") })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && (perms.canEditBusiness || perms.isAdmin) ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
                 error && React.createElement("div", { className: "no-print", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error)),
             view !== "preview" && React.createElement("div", { className: "no-print" },
                 React.createElement(BottomNav, { view: view, setView: setView, perms: perms }))),
@@ -837,7 +839,7 @@ function FYSelect({ fy, fyOptions, setFy }) {
             f)))),
         React.createElement(Icon, { size: 11, style: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: COLORS.indigo } }, "\u25BE")));
 }
-function Home({ totals, invoices, fy, fyOptions, setFy, perms, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, staffNames }) {
+function Home({ totals, invoices, fy, fyOptions, setFy, perms, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, staffNames }) {
     const recent = invoices.slice(0, 4);
     const hasFullView = perms.isAdmin || perms.canViewAllSales;
     const achievementPct = perms.targetAmount > 0 ? Math.min(100, Math.round((totals.sales / perms.targetAmount) * 100)) : null;
@@ -896,11 +898,12 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, onCreate, onView,
         React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 10 } }, "Documents"),
         React.createElement("div", { className: "home-folder-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
             React.createElement(FolderButton, { icon: "\uD83E\uDDFE", label: "Sale Invoices", color: DOC_META.sale.color, bg: DOC_META.sale.tint, onClick: () => onOpenFolder("sale") }),
-            React.createElement(FolderButton, { icon: "\uD83D\uDCCB", label: "Quotations", color: DOC_META.quotation.color, bg: DOC_META.quotation.tint, onClick: () => onOpenFolder("quotation") }),
+            React.createElement(FolderButton, { icon: "\uD83D\uDCCB", label: "Quotations", color: DOC_META.quotation.color, bg: DOC_META.quotation.tint, onClick: onOpenQuotations }),
             React.createElement(FolderButton, { icon: "\uD83D\uDE9A", label: "Delivery Challan", color: DOC_META.challan.color, bg: DOC_META.challan.tint, onClick: () => onOpenFolder("challan") }),
             (perms.canViewPurchases || perms.isAdmin) && (React.createElement(FolderButton, { icon: "\uD83D\uDCE6", label: "Purchase Bills", color: DOC_META.purchase.color, bg: DOC_META.purchase.tint, onClick: () => onOpenFolder("purchase") })),
             (perms.canViewPurchases || perms.isAdmin) && (React.createElement(FolderButton, { icon: "\u21A9\uFE0F", label: "Credit Notes", color: DOC_META.credit_note.color, bg: DOC_META.credit_note.tint, onClick: () => onOpenFolder("credit_note") })),
-            (perms.canViewPurchases || perms.isAdmin) && (React.createElement(FolderButton, { icon: "\u21AA\uFE0F", label: "Debit Notes", color: DOC_META.debit_note.color, bg: DOC_META.debit_note.tint, onClick: () => onOpenFolder("debit_note") }))),
+            (perms.canViewPurchases || perms.isAdmin) && (React.createElement(FolderButton, { icon: "\u21AA\uFE0F", label: "Debit Notes", color: DOC_META.debit_note.color, bg: DOC_META.debit_note.tint, onClick: () => onOpenFolder("debit_note") })),
+            (perms.canViewPurchases || perms.isAdmin) && (React.createElement(FolderButton, { icon: "\uD83D\uDCDD", label: "Purchase Orders", color: DOC_META.purchase_order.color, bg: DOC_META.purchase_order.tint, onClick: () => onOpenFolder("purchase_order") }))),
         (perms.canViewPurchases || perms.isAdmin) && (React.createElement(React.Fragment, null,
             React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 10 } }, "Business Tools"),
             React.createElement("div", { className: "home-folder-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
@@ -952,7 +955,7 @@ function SubHeader({ title, onBack, right }) {
         React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 17, flex: 1 } }, title),
         right));
 }
-function CreateInvoice({ parties, profile, existing, perms, itemCatalog, itemCostMap, session, onBack, onSave }) {
+function CreateInvoice({ parties, invoices, profile, existing, perms, itemCatalog, itemCostMap, session, onBack, onSave }) {
     var _a, _b;
     const isEdit = !!existing;
     const availableDocTypes = perms.canViewPurchases ? Object.entries(DOC_META) : Object.entries(DOC_META).filter(([key]) => !RESTRICTED_DOC_TYPES.includes(key));
@@ -1001,6 +1004,11 @@ function CreateInvoice({ parties, profile, existing, perms, itemCatalog, itemCos
     const rawTotal = subtotal + gstAmount;
     const roundOff = Math.round(rawTotal) - rawTotal;
     const total = Math.round(rawTotal);
+    const selectedPartyObj = docType === "sale" ? parties.find((p) => p.name.trim().toLowerCase() === party.trim().toLowerCase()) : null;
+    const creditLimit = selectedPartyObj ? Number(selectedPartyObj.credit_limit) || 0 : 0;
+    const existingBalance = (selectedPartyObj && invoices) ? invoices.filter((i) => i.docType === "sale" && i.id !== (existing && existing.id) && i.party.trim().toLowerCase() === party.trim().toLowerCase()).reduce((s, i) => s + Math.max(0, i.total - (Number(i.paidAmount) || 0)), 0) : 0;
+    const projectedBalance = existingBalance + total;
+    const overCreditLimit = docType === "sale" && creditLimit > 0 && projectedBalance > creditLimit;
     const updateItem = (id, field, val) => setItems(items.map((it) => (it.id === id ? Object.assign(Object.assign({}, it), { [field]: val }) : it)));
     const addItem = () => setItems([...items, { id: uid(), name: "", hsn: "", qty: 1, unit: "NOS", rate: 0, gst: 18 }]);
     const removeItem = (id) => setItems(items.length > 1 ? items.filter((it) => it.id !== id) : items);
@@ -1037,6 +1045,18 @@ function CreateInvoice({ parties, profile, existing, perms, itemCatalog, itemCos
         React.createElement(SubHeader, { title: isEdit ? "Edit Document" : "New Document", onBack: onBack }),
         React.createElement("div", { style: { padding: "0 16px" } },
             React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 } }, availableDocTypes.map(([key, meta]) => (React.createElement("button", { key: key, onClick: () => setDocType(key), style: { flex: "1 1 30%", minWidth: 90, padding: "9px 4px", borderRadius: 11, border: docType === key ? "none" : "1px solid " + COLORS.border, background: docType === key ? meta.color : "#fff", color: docType === key ? "#fff" : COLORS.ink, fontWeight: 700, fontSize: 12 } }, meta.short)))),
+            overCreditLimit && React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 14, background: "#FDE7EB", border: "1px solid #F5B8C4" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 8 } },
+                    React.createElement(Icon, { size: 16 }, "\u26A0\uFE0F"),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 12.5, fontWeight: 800, color: COLORS.rose } }, "Credit Limit se zyada ja raha hai!"),
+                        React.createElement("div", { style: { fontSize: 11, color: COLORS.rose, marginTop: 2 } },
+                            party,
+                            " ki credit limit \u20B9",
+                            fmt(creditLimit),
+                            " hai, is invoice ke baad total outstanding \u20B9",
+                            fmt(projectedBalance),
+                            " ho jaएga.")))),
             canAssignStaff && staffList.length > 0 && React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 14 } },
                 React.createElement("label", { style: { fontSize: 11.5, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Assign performance credit to"),
                 React.createElement("select", { value: assignedStaff, onChange: (e) => setAssignedStaff(e.target.value), style: inputStyle },
@@ -1250,9 +1270,10 @@ function Parties({ parties, invoices, onAdd, onRemove, onOpen, onBack }) {
     const [gstin, setGstin] = useState("");
     const [address, setAddress] = useState("");
     const [state, setState] = useState("");
+    const [creditLimit, setCreditLimit] = useState("");
     const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 14 };
     const addParty = () => { if (!name.trim())
-        return; onAdd({ id: uid(), name: name.trim(), phone: phone.trim(), gstin: gstin.trim(), address: address.trim(), state: state.trim() }); setName(""); setPhone(""); setGstin(""); setAddress(""); setState(""); };
+        return; onAdd({ id: uid(), name: name.trim(), phone: phone.trim(), gstin: gstin.trim(), address: address.trim(), state: state.trim(), credit_limit: Number(creditLimit) || 0 }); setName(""); setPhone(""); setGstin(""); setAddress(""); setState(""); setCreditLimit(""); };
     const balanceFor = (p) => {
         const matches = invoices.filter((i) => FINANCIAL_DOC_TYPES.includes(i.docType) && i.party.trim().toLowerCase() === p.name.trim().toLowerCase());
         return matches.reduce((s, i) => s + Math.max(0, i.total - (Number(i.paidAmount) || 0)) * (i.docType === "purchase" ? -1 : 1), 0);
@@ -1266,8 +1287,9 @@ function Parties({ parties, invoices, onAdd, onRemove, onOpen, onBack }) {
                 React.createElement("input", { value: phone, onChange: (e) => setPhone(e.target.value), placeholder: "Phone (optional)", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 8 }) }),
                 React.createElement("input", { value: gstin, onChange: (e) => setGstin(e.target.value), placeholder: "GSTIN (optional)", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 8 }) }),
                 React.createElement("textarea", { value: address, onChange: (e) => setAddress(e.target.value), placeholder: "Address (optional)", rows: 2, style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 8, resize: "vertical" }) }),
-                React.createElement("input", { list: "party-states-list", value: state, onChange: (e) => setState(e.target.value), placeholder: "State (optional)", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 12 }) }),
+                React.createElement("input", { list: "party-states-list", value: state, onChange: (e) => setState(e.target.value), placeholder: "State (optional)", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 8 }) }),
                 React.createElement("datalist", { id: "party-states-list" }, STATES.map((s) => (React.createElement("option", { key: s, value: s })))),
+                React.createElement("input", { type: "number", min: "0", value: creditLimit, onChange: (e) => setCreditLimit(e.target.value), placeholder: "Credit Limit \u20B9 (optional)", className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 12 }) }),
                 React.createElement("button", { onClick: addParty, disabled: !name.trim(), style: { width: "100%", padding: "11px", borderRadius: 11, border: "none", background: name.trim() ? COLORS.indigo : "#D6D2EE", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Add")),
             parties.length === 0 ? (React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi party add nahi hui.")) : (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, parties.map((p) => {
                 const bal = balanceFor(p);
@@ -1387,6 +1409,66 @@ function DuePayments({ invoices, onBack, onOpenInvoice }) {
                     upcoming.length,
                     ")"),
                 upcoming.map((inv) => React.createElement(Row, { key: inv.id, inv: inv }))))));
+}
+function QuotationTracker({ invoices, onBack, onOpenInvoice, onConvert }) {
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+    const quotes = invoices.filter((i) => i.docType === "quotation").map((i) => {
+        const qd = new Date(i.date); qd.setHours(0, 0, 0, 0);
+        const ageDays = Math.round((today0 - qd) / 86400000);
+        return Object.assign({}, i, { ageDays });
+    }).sort((a, b) => b.ageDays - a.ageDays);
+    const pending = quotes.filter((q) => !q.convertedTo);
+    const converted = quotes.filter((q) => q.convertedTo);
+    const staleThreshold = 7;
+    const stale = pending.filter((q) => q.ageDays > staleThreshold);
+    const fresh = pending.filter((q) => q.ageDays <= staleThreshold);
+    const Row = ({ q }) => (React.createElement("div", { className: "card", style: { padding: "12px 14px", marginBottom: 10, cursor: "pointer" }, onClick: () => onOpenInvoice(q.id) },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontWeight: 700, fontSize: 13.5 } }, q.party || "Unnamed"),
+                React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, marginTop: 2 } },
+                    q.invoiceNo,
+                    " \u00B7 ",
+                    new Date(q.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }))),
+            React.createElement("div", { style: { textAlign: "right" } },
+                React.createElement("div", { className: "num", style: { fontSize: 14, fontWeight: 800 } },
+                    "\u20B9",
+                    fmt(q.total)),
+                q.convertedTo ? React.createElement("div", { style: { fontSize: 10.5, fontWeight: 700, color: COLORS.emerald, marginTop: 1 } }, "\u2713 Converted") : React.createElement("div", { style: { fontSize: 10.5, fontWeight: 700, color: q.ageDays > staleThreshold ? COLORS.rose : COLORS.muted, marginTop: 1 } }, `${q.ageDays} din purаना`)))));
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Quotation Follow-up", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 16, display: "flex", gap: 16 } },
+                React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "Pending"),
+                    React.createElement("div", { className: "num", style: { fontSize: 20, fontWeight: 800 } }, pending.length)),
+                React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "Follow-up Chahiye"),
+                    React.createElement("div", { className: "num", style: { fontSize: 20, fontWeight: 800, color: COLORS.rose } }, stale.length)),
+                React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "Converted"),
+                    React.createElement("div", { className: "num", style: { fontSize: 20, fontWeight: 800, color: COLORS.emerald } }, converted.length))),
+            quotes.length === 0 && React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi quotation nahi hai."),
+            stale.length > 0 && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { fontSize: 12, color: COLORS.rose, fontWeight: 800, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 } },
+                    "\u26A0\uFE0F Follow-up Chahiye (",
+                    staleThreshold,
+                    "+ din purаане, ",
+                    stale.length,
+                    ")"),
+                stale.map((q) => React.createElement(Row, { key: q.id, q: q }))),
+            fresh.length > 0 && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 800, marginBottom: 8, marginTop: 6, textTransform: "uppercase", letterSpacing: 0.5 } },
+                    "Recent Pending (",
+                    fresh.length,
+                    ")"),
+                fresh.map((q) => React.createElement(Row, { key: q.id, q: q }))),
+            converted.length > 0 && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { fontSize: 12, color: COLORS.emerald, fontWeight: 800, marginBottom: 8, marginTop: 6, textTransform: "uppercase", letterSpacing: 0.5 } },
+                    "Converted to Invoice (",
+                    converted.length,
+                    ")"),
+                converted.map((q) => React.createElement(Row, { key: q.id, q: q }))))));
 }
 function StaffAccount({ session, perms, onBack }) {
     return (React.createElement("div", null,
@@ -2362,13 +2444,14 @@ function InvoicePreview({ inv, profile, perms, onBack, onEdit, onDelete, onUpdat
     return (React.createElement("div", null,
         React.createElement("div", { className: "no-print" },
             React.createElement(SubHeader, { title: meta.label, onBack: onBack }),
-            inv.docType === "quotation" && (React.createElement("div", { style: { padding: "0 16px", marginBottom: 10 } }, inv.convertedTo ? (React.createElement("div", { className: "card", style: { padding: 14, display: "flex", alignItems: "center", gap: 8, background: "#E3FBF1", border: "1px solid #C8F0DC" } },
+            (inv.docType === "quotation" || inv.docType === "purchase_order") && (React.createElement("div", { style: { padding: "0 16px", marginBottom: 10 } }, inv.convertedTo ? (React.createElement("div", { className: "card", style: { padding: 14, display: "flex", alignItems: "center", gap: 8, background: "#E3FBF1", border: "1px solid #C8F0DC" } },
                 React.createElement(Icon, { size: 16 }, "\u2705"),
                 React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "#0F7A54" } },
-                    "Converted to Invoice ",
+                    "Converted to ",
+                    inv.docType === "quotation" ? "Invoice " : "Purchase Bill ",
                     inv.convertedTo))) : (React.createElement("button", { onClick: onConvert, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 13, border: "none", background: "linear-gradient(120deg, #10B981, #0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 13.5 } },
                 React.createElement(Icon, { size: 16 }, "\uD83E\uDDFE"),
-                " Convert to Invoice")))),
+                inv.docType === "quotation" ? " Convert to Invoice" : " Convert to Purchase Bill")))),
             React.createElement("div", { style: { padding: "0 16px", display: "flex", gap: 8, marginBottom: 10 } },
                 React.createElement("button", { onClick: onEdit, style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", borderRadius: 12, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13 } },
                     React.createElement(Icon, { size: 14 }, "\u270F\uFE0F"),
