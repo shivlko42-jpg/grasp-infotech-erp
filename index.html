@@ -2834,6 +2834,15 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         const imgData = canvas.toDataURL("image/jpeg", 0.95);
         const { jsPDF } = window.jspdf;
         const pageWidthPt = 595.28; // A4 width in points
+        if (inv.docType === "quotation") {
+            const pageHeightPt = 841.89; // full A4 height in points
+            const pdf = new jsPDF({ unit: "pt", format: [pageWidthPt, pageHeightPt] });
+            const imgHeightPt = (canvas.height / canvas.width) * pageWidthPt;
+            const drawHeight = Math.min(imgHeightPt, pageHeightPt);
+            const drawWidth = drawHeight === imgHeightPt ? pageWidthPt : (canvas.width / canvas.height) * pageHeightPt;
+            pdf.addImage(imgData, "JPEG", 0, 0, drawWidth, drawHeight);
+            return pdf.output("blob");
+        }
         const pageHeightPt = (canvas.height / canvas.width) * pageWidthPt;
         const pdf = new jsPDF({ unit: "pt", format: [pageWidthPt, pageHeightPt] });
         pdf.addImage(imgData, "JPEG", 0, 0, pageWidthPt, pageHeightPt);
