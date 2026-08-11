@@ -2559,16 +2559,16 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
     const preparedByName = (staffNames && inv.createdBy && staffNames[inv.createdBy]) || (inv.createdBy ? inv.createdBy.split("@")[0] : "");
     const preparedByPhone = (staffPhones && inv.createdBy && staffPhones[inv.createdBy]) || "";
     const headerEl = React.createElement("div", { key: "hdr", className: "quo-header", style: { background: "#fff", padding: "20px 24px 16px", borderBottom: "2px solid #EDE9FE", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, [
-        React.createElement("div", { key: "left", style: { display: "flex", gap: 12, alignItems: "flex-start" } }, [
+        React.createElement("div", { key: "left", style: { display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0, marginRight: 10 } }, [
             React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 44, height: 44, objectFit: "contain", flexShrink: 0 } }),
-            React.createElement("div", { key: "cwrap" }, [
+            React.createElement("div", { key: "cwrap", style: { minWidth: 0, flex: 1 } }, [
                 React.createElement("div", { key: "cname", className: "quo-company", style: { fontWeight: 800, fontSize: 17, color: "#4F46E5" } }, profile.name || "Grasp Infotech"),
                 profile.gstin && React.createElement("div", { key: "cgst", className: "quo-small", style: { color: "#7C3AED", marginTop: 4, fontSize: 11 } }, "GSTIN: " + profile.gstin),
-                profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 260 } }, profile.address),
+                profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, profile.address),
                 profile.phone && React.createElement("div", { key: "cphone", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 11 } }, "Mobile: " + profile.phone),
             ]),
         ]),
-        React.createElement("div", { key: "right", style: { textAlign: "right" } }, [
+        React.createElement("div", { key: "right", style: { textAlign: "right", flexShrink: 0 } }, [
             React.createElement("div", { key: "ttl", className: "quo-title", style: { fontWeight: 800, letterSpacing: 2, fontSize: 20, color: "#7C3AED" } }, "QUOTATION"),
             React.createElement("div", { key: "num", className: "quo-small", style: { color: "#8B5CF6", marginTop: 3 } }, inv.invoiceNo),
             preparedByName && React.createElement("div", { key: "pbname", className: "quo-small", style: { color: "#999", marginTop: 6, fontSize: 9.5 } }, "Prepared by: " + preparedByName),
