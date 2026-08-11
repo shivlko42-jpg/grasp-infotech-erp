@@ -520,6 +520,7 @@ function BillingApp({ session, perms }) {
     const [itemCatalog, setItemCatalog] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [staffNames, setStaffNames] = useState({});
+    const [staffPhones, setStaffPhones] = useState({});
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState("");
     const [previewId, setPreviewId] = useState(null);
@@ -538,7 +539,7 @@ function BillingApp({ session, perms }) {
                     sb.from("grasp_counters").select("*").eq("id", "main").maybeSingle(),
                     sb.from("grasp_item_costs").select("*"),
                     sb.from("grasp_expenses").select("*").order("date", { ascending: false }),
-                    sb.from("grasp_users").select("email, full_name"),
+                    sb.from("grasp_users").select("email, full_name, phone"),
                 ]);
                 if (invRes.error)
                     throw invRes.error;
@@ -551,8 +552,11 @@ function BillingApp({ session, perms }) {
                 setItemCatalog((catRes.data || []).map(catalogFromDb));
                 setExpenses((expRes.data || []).map(expenseFromDb));
                 const nameMap = {};
+                const phoneMap = {};
                 (usrRes.data || []).forEach((u) => { if (u.full_name)
-                    nameMap[u.email] = u.full_name; });
+                    nameMap[u.email] = u.full_name; if (u.phone)
+                    phoneMap[u.email] = u.phone; });
+                setStaffPhones(phoneMap);
                 setStaffNames(nameMap);
             }
             catch (e) {
@@ -825,7 +829,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), staffNames: staffNames })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.canEditBusiness || perms.canViewPurchases || perms.isAdmin) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings") })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && (perms.canEditBusiness || perms.isAdmin) ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), staffNames: staffNames })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.canEditBusiness || perms.canViewPurchases || perms.isAdmin) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings") })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && (perms.canEditBusiness || perms.isAdmin) ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
                 error && React.createElement("div", { className: "no-print", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error)),
             view !== "preview" && React.createElement("div", { className: "no-print" },
                 React.createElement(BottomNav, { view: view, setView: setView, perms: perms }))),
@@ -1764,6 +1768,7 @@ function AdminPanel({ session, onBack }) {
         const d = drafts[u.id];
         const payload = {
             designation: d.designation,
+            phone: (d.phone || "").trim(),
             can_view_purchases: !!d.can_view_purchases,
             can_confirm_payments: !!d.can_confirm_payments,
             can_edit_business: !!d.can_edit_business,
@@ -1800,6 +1805,8 @@ function AdminPanel({ session, onBack }) {
                     expanded && !u.is_admin && (React.createElement("div", { style: { marginTop: 14, paddingTop: 14, borderTop: "1px solid " + COLORS.border } },
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Designation"),
                         React.createElement("select", { value: d.designation, onChange: (e) => setDraft(u.id, "designation", e.target.value), style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }, DESIGNATIONS.map((opt) => (React.createElement("option", { key: opt, value: opt }, opt)))),
+                        React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Mobile Number"),
+                        React.createElement("input", { type: "tel", value: d.phone || "", onChange: (e) => setDraft(u.id, "phone", e.target.value), placeholder: "e.g. 9876543210", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }),
                         PERM_FIELDS.map(([key, dbKey, label, hint]) => (React.createElement("label", { key: key, style: { display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 10, cursor: "pointer" } },
                             React.createElement("input", { type: "checkbox", checked: !!d[dbKey], onChange: (e) => setDraft(u.id, dbKey, e.target.checked), style: { marginTop: 3 } }),
                             React.createElement("div", null,
@@ -2237,22 +2244,26 @@ function Reports({ invoices, expenses, profile, staffNames, onBack }) {
                         " received"))))),
             React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", lineHeight: 1.6, marginBottom: 10 } }, "Note: Quotations is report mein shamil nahi hain (wo actual transaction nahi hain). GST figures aapke har invoice/purchase mein diye gaye Place of Supply aur Business State ke hisaab se calculate hote hain."))));
 }
-function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, staffNames }) {
+function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, staffNames, staffPhones }) {
     const words = amountInWords(inv.total);
     const items = (inv.items || []).filter((it) => it.name);
+    const preparedByName = (staffNames && inv.createdBy && staffNames[inv.createdBy]) || (inv.createdBy ? inv.createdBy.split("@")[0] : "");
+    const preparedByPhone = (staffPhones && inv.createdBy && staffPhones[inv.createdBy]) || "";
     const headerEl = React.createElement("div", { key: "hdr", className: "quo-header", style: { background: "#fff", padding: "20px 24px 16px", borderBottom: "2px solid #EDE9FE", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, [
         React.createElement("div", { key: "left", style: { display: "flex", gap: 12, alignItems: "flex-start" } }, [
             React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 44, height: 44, objectFit: "contain", flexShrink: 0 } }),
             React.createElement("div", { key: "cwrap" }, [
-                React.createElement("div", { key: "cname", className: "quo-company", style: { fontWeight: 800, fontSize: 15, color: "#4F46E5" } }, profile.name || "Grasp Infotech"),
-                profile.gstin && React.createElement("div", { key: "cgst", className: "quo-small", style: { color: "#7C3AED", marginTop: 3, fontSize: 10.5 } }, "GSTIN: " + profile.gstin),
-                profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 10.5 } }, profile.address),
-                profile.phone && React.createElement("div", { key: "cphone", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 10.5 } }, "Mobile: " + profile.phone),
+                React.createElement("div", { key: "cname", className: "quo-company", style: { fontWeight: 800, fontSize: 17, color: "#4F46E5" } }, profile.name || "Grasp Infotech"),
+                profile.gstin && React.createElement("div", { key: "cgst", className: "quo-small", style: { color: "#7C3AED", marginTop: 4, fontSize: 11 } }, "GSTIN: " + profile.gstin),
+                profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 260 } }, profile.address),
+                profile.phone && React.createElement("div", { key: "cphone", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 11 } }, "Mobile: " + profile.phone),
             ]),
         ]),
         React.createElement("div", { key: "right", style: { textAlign: "right" } }, [
             React.createElement("div", { key: "ttl", className: "quo-title", style: { fontWeight: 800, letterSpacing: 2, fontSize: 20, color: "#7C3AED" } }, "QUOTATION"),
             React.createElement("div", { key: "num", className: "quo-small", style: { color: "#8B5CF6", marginTop: 3 } }, inv.invoiceNo),
+            preparedByName && React.createElement("div", { key: "pbname", className: "quo-small", style: { color: "#999", marginTop: 6, fontSize: 9.5 } }, "Prepared by: " + preparedByName),
+            preparedByPhone && React.createElement("div", { key: "pbphone", className: "quo-small", style: { color: "#999", fontSize: 9.5 } }, preparedByPhone),
         ]),
     ]);
     const partyRowEl = React.createElement("div", { key: "party-row", style: { display: "flex", padding: "18px 24px 4px", gap: 24, flexWrap: "wrap" } }, [
@@ -2320,13 +2331,15 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
             React.createElement("div", { key: "forco", className: "quo-small", style: { color: "#333", fontWeight: 700, marginBottom: 4 } }, "For " + (profile.name || "Grasp Infotech")),
             React.createElement("img", { key: "stamp", src: "stamp.webp", alt: "Stamp", style: { width: 56, height: 56, objectFit: "contain", margin: "0 auto" } }),
             React.createElement("div", { key: "auth", className: "quo-small", style: { color: "#999", marginTop: 2 } }, "Authorised Signatory"),
+            React.createElement("div", { key: "sigco", className: "quo-small", style: { color: "#333", fontWeight: 700, marginTop: 4 } }, profile.name || "Grasp Infotech"),
+            profile.phone && React.createElement("div", { key: "sigphone", className: "quo-small", style: { color: "#666", marginTop: 1 } }, profile.phone),
         ]),
     ]);
     return React.createElement("div", { ref: printRef, className: "print-area quo-area", style: { margin: "0 16px", background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" } }, [
         headerEl, partyRowEl, itemsBlockEl, termsEl, footerEl,
     ]);
 }
-function InvoicePreview({ inv, profile, perms, staffNames, onBack, onEdit, onDelete, onUpdatePayment, onConvert }) {
+function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, onEdit, onDelete, onUpdatePayment, onConvert }) {
     var _a;
     const meta = DOC_META[inv.docType];
     const [copyState, setCopyState] = useState("idle");
@@ -2608,7 +2621,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, onBack, onEdit, onDel
                 "PDF ke liye \"Print / Save PDF\" dabayein, phir print dialog mein destination ko ",
                 React.createElement("b", null, "\"Save as PDF\""),
                 " par set karein \u2014 us PDF file ko phir WhatsApp/Email se seedha share kar sakte hain.")),
-        inv.docType === "quotation" ? React.createElement(QuotationPrintLayout, { inv: inv, profile: profile, printRef: printRef, gstTotal: gstTotal, isInterstate: isInterstate, staffNames: staffNames }) :
+        inv.docType === "quotation" ? React.createElement(QuotationPrintLayout, { inv: inv, profile: profile, printRef: printRef, gstTotal: gstTotal, isInterstate: isInterstate, staffNames: staffNames, staffPhones: staffPhones }) :
         React.createElement("div", { ref: printRef, className: "print-area", style: { margin: "0 16px", background: "#fff", border: "1.5px solid #333", borderRadius: 4, overflow: "hidden" } },
             React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: "9px 10px", borderBottom: "1.5px solid #333" } },
                 React.createElement("div", { className: "pv-title", style: { fontWeight: 800, color: "#1D4ED8", letterSpacing: 1.5 } }, meta.label.toUpperCase()),
