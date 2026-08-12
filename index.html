@@ -2877,13 +2877,20 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         }
         catch (e) { }
         const captureWidth = 780; // fixed, print-quality width regardless of phone screen size — ensures full-width, consistent PDF output
+        const widenShell = (clonedDoc) => {
+            const shell = clonedDoc.querySelector(".app-shell");
+            if (shell) {
+                shell.style.maxWidth = captureWidth + "px";
+                shell.style.width = captureWidth + "px";
+            }
+        };
         try {
-            return await window.html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth });
+            return await window.html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth, onclone: widenShell });
         }
         catch (e) {
             // likely a tainted canvas from the external UPI QR image — retry without it
             return await window.html2canvas(node, {
-                scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth,
+                scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth, onclone: widenShell,
                 ignoreElements: (el) => el.tagName === "IMG" && el.src && el.src.indexOf("qrserver.com") !== -1,
             });
         }
@@ -3322,14 +3329,14 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                                     "%)")),
                             React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee" } }, fmt(taxable + taxAmt))));
                     }),
-                    ...Array.from({ length: Math.max(0, 7 - visibleItems.length) }).map((_, i) => (React.createElement("tr", { key: `filler-${i}` },
-                        React.createElement("td", { className: "pv-cell", style: { height: 22 } }, "\u00A0"),
-                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
-                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
-                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
-                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
-                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
-                        React.createElement("td", { className: "pv-cell" }, "\u00A0")))),
+                    Math.max(0, 7 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 7 - visibleItems.length) * 23 } }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell" }, "\u00A0")),
                 ])),
             React.createElement("div", { className: "pv-total-items", style: { padding: "5px 10px", color: "#333", borderBottom: "1px solid #333" } },
                 "Total Items / Qty : ",
