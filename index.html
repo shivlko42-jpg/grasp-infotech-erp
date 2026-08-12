@@ -2633,25 +2633,26 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
             inv.dueDate && React.createElement("div", { key: "d2", className: "quo-small", style: { color: "#333", fontWeight: 600 } }, new Date(inv.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })),
         ]),
     ]);
-    const colStyles = { sr: { width: 26, flexShrink: 0 }, item: { flex: 1, marginRight: 8 }, qty: { width: 55, flexShrink: 0, textAlign: "center", marginRight: 6 }, rate: { width: 90, flexShrink: 0, textAlign: "right", marginRight: 10 }, amt: { width: 100, flexShrink: 0, textAlign: "right" } };
-    const tableHeaderRow = React.createElement("div", { key: "thead", style: { display: "flex", borderBottom: "2px solid #EDE9FE", padding: "0 4px 8px" } }, [
-        React.createElement("div", { key: "h0", className: "quo-th", style: Object.assign({ color: "#8B5CF6" }, colStyles.sr) }, "#"),
-        React.createElement("div", { key: "h1", className: "quo-th", style: Object.assign({ color: "#8B5CF6" }, colStyles.item) }, "ITEM"),
-        React.createElement("div", { key: "h2", className: "quo-th", style: Object.assign({ color: "#8B5CF6" }, colStyles.qty) }, "QTY"),
-        React.createElement("div", { key: "h3", className: "quo-th", style: Object.assign({ color: "#8B5CF6" }, colStyles.rate) }, "RATE"),
-        React.createElement("div", { key: "h4", className: "quo-th", style: Object.assign({ color: "#8B5CF6" }, colStyles.amt) }, "AMOUNT"),
-    ]);
-    const tableBodyRows = items.map((it, idx) => React.createElement("div", { key: idx, style: { display: "flex", borderBottom: "1px solid #F3F0FD", padding: "9px 4px" } }, [
-        React.createElement("div", { key: "sr", className: "quo-td num", style: Object.assign({ color: "#999" }, colStyles.sr) }, idx + 1),
-        React.createElement("div", { key: "n", className: "quo-td", style: Object.assign({ color: "#1a1a2e", fontWeight: 600, paddingRight: 8 }, colStyles.item) }, [
-            React.createElement("div", { key: "nm" }, it.name),
-            it.description && React.createElement("div", { key: "desc", className: "quo-small", style: { color: "#555", fontWeight: 700, marginTop: 3, fontSize: 9.5, whiteSpace: "pre-wrap", lineHeight: 1.4 } }, it.description),
-        ]),
-        React.createElement("div", { key: "q", className: "quo-td num", style: Object.assign({ color: "#555" }, colStyles.qty) }, `${it.qty} ${it.unit || "NOS"}`),
-        React.createElement("div", { key: "r", className: "quo-td num", style: Object.assign({ color: "#555" }, colStyles.rate) }, "\u20B9" + fmt(it.rate)),
-        React.createElement("div", { key: "a", className: "quo-td num", style: Object.assign({ color: "#1a1a2e", fontWeight: 700 }, colStyles.amt) }, "\u20B9" + fmt((Number(it.qty) || 0) * (Number(it.rate) || 0))),
-    ]));
-    const tableEl = React.createElement("div", { key: "tbl", style: { width: "100%" } }, [tableHeaderRow, ...tableBodyRows]);
+    const tableEl = React.createElement("table", { key: "tbl", style: { width: "100%", borderCollapse: "collapse" } },
+        React.createElement("thead", null,
+            React.createElement("tr", null, [
+                React.createElement("th", { key: "h0", style: { textAlign: "left", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "#"),
+                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "ITEM"),
+                React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "QTY"),
+                React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "RATE"),
+                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "AMOUNT"),
+            ])),
+        React.createElement("tbody", null, items.map((it, idx) => React.createElement("tr", { key: idx },
+            React.createElement("td", { style: { color: "#999", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", fontSize: 11 } }, idx + 1),
+            React.createElement("td", { style: { verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#1a1a2e", fontWeight: 600, fontSize: 11.5 } },
+                React.createElement("div", null, it.name),
+                it.description && React.createElement("div", { style: { color: "#555", fontWeight: 700, marginTop: 3, fontSize: 9.5, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", maxWidth: 200, lineHeight: 1.4 } }, it.description)),
+            React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#555", fontSize: 11 } },
+                it.qty,
+                " ",
+                React.createElement("span", { style: { fontSize: "0.85em", color: "#888" } }, it.unit || "NOS")),
+            React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#555", fontSize: 11 } }, "\u20B9" + fmt(it.rate)),
+            React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#1a1a2e", fontWeight: 700, fontSize: 11 } }, "\u20B9" + fmt((Number(it.qty) || 0) * (Number(it.rate) || 0)))))));
     const totalsEl = React.createElement("div", { key: "totals", style: { display: "flex", justifyContent: "flex-end", marginTop: 14 } },
         React.createElement("div", { style: { width: "58%", minWidth: 200 } }, [
             React.createElement("div", { key: "sub", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
