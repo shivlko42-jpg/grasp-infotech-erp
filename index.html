@@ -2867,27 +2867,198 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             });
         }
     };
+    const generateQuotationPdfNative = () => {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: "pt", format: "a4" });
+        const pageW = 595.28;
+        const mX = 42;
+        const rightX = pageW - mX;
+        let y = 50;
+        const R = (n) => "Rs. " + fmt(n);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(15);
+        pdf.setTextColor(79, 70, 229);
+        pdf.text(profile.name || "Grasp Infotech", mX, y);
+        pdf.setFontSize(18);
+        pdf.setTextColor(124, 58, 237);
+        pdf.text("QUOTATION", rightX, y, { align: "right" });
+        y += 15;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+        pdf.setTextColor(124, 58, 237);
+        if (profile.gstin) {
+            pdf.text("GSTIN: " + profile.gstin, mX, y);
+        }
+        pdf.setTextColor(139, 92, 246);
+        pdf.text(inv.invoiceNo, rightX, y, { align: "right" });
+        y += 12;
+        if (profile.address) {
+            pdf.setTextColor(124, 58, 237);
+            pdf.text(profile.address, mX, y);
+            y += 12;
+        }
+        if (profile.phone) {
+            pdf.text("Mobile: " + profile.phone, mX, y);
+            y += 12;
+        }
+        y += 8;
+        pdf.setDrawColor(237, 233, 254);
+        pdf.setLineWidth(1.2);
+        pdf.line(mX, y, rightX, y);
+        y += 24;
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(9);
+        pdf.setTextColor(139, 92, 246);
+        pdf.text("PREPARED FOR", mX, y);
+        pdf.text("DATE", rightX, y, { align: "right" });
+        y += 15;
+        pdf.setFontSize(11);
+        pdf.setTextColor(26, 26, 46);
+        pdf.text(inv.party || "-", mX, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
+        pdf.setTextColor(51, 51, 51);
+        pdf.text(new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), rightX, y, { align: "right" });
+        y += 14;
+        let leftY = y;
+        if (inv.partyAddress) {
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(102, 102, 102);
+            const lines = pdf.splitTextToSize(inv.partyAddress, 260);
+            lines.forEach((line) => { pdf.text(line, mX, leftY); leftY += 11; });
+        }
+        if (inv.partyPhone) {
+            pdf.text(inv.partyPhone, mX, leftY);
+            leftY += 11;
+        }
+        y = Math.max(leftY, y) + 16;
+        const col = { sr: mX, item: mX + 26, qty: rightX - 190, rate: rightX - 95, amt: rightX };
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(9);
+        pdf.setTextColor(139, 92, 246);
+        pdf.text("#", col.sr, y);
+        pdf.text("ITEM", col.item, y);
+        pdf.text("QTY", col.qty, y, { align: "right" });
+        pdf.text("RATE", col.rate, y, { align: "right" });
+        pdf.text("AMOUNT", col.amt, y, { align: "right" });
+        y += 6;
+        pdf.setDrawColor(237, 233, 254);
+        pdf.setLineWidth(1.2);
+        pdf.line(mX, y, rightX, y);
+        y += 16;
+        const itemColWidth = col.qty - col.item - 20;
+        (inv.items || []).filter((it) => it.name).forEach((it, idx) => {
+            const rowStartY = y;
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(10.5);
+            pdf.setTextColor(153, 153, 153);
+            pdf.text(String(idx + 1), col.sr, y);
+            pdf.setTextColor(26, 26, 46);
+            const nameLines = pdf.splitTextToSize(it.name, itemColWidth);
+            nameLines.forEach((line, i) => pdf.text(line, col.item, y + i * 13));
+            let localY = y + nameLines.length * 13;
+            if (it.description) {
+                pdf.setFont("helvetica", "bold");
+                pdf.setFontSize(8.5);
+                pdf.setTextColor(85, 85, 85);
+                const descLines = pdf.splitTextToSize(it.description, itemColWidth);
+                descLines.forEach((line, i) => pdf.text(line, col.item, localY + 3 + i * 10));
+                localY += 3 + descLines.length * 10;
+            }
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(10);
+            pdf.setTextColor(85, 85, 85);
+            pdf.text(`${it.qty} ${it.unit || "NOS"}`, col.qty, rowStartY, { align: "right" });
+            pdf.text(R(it.rate), col.rate, rowStartY, { align: "right" });
+            pdf.setFont("helvetica", "bold");
+            pdf.setTextColor(26, 26, 46);
+            pdf.text(R((Number(it.qty) || 0) * (Number(it.rate) || 0)), col.amt, rowStartY, { align: "right" });
+            y = Math.max(localY, rowStartY + 14) + 10;
+            pdf.setDrawColor(243, 240, 253);
+            pdf.setLineWidth(0.75);
+            pdf.line(mX, y - 6, rightX, y - 6);
+        });
+        y += 6;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
+        pdf.setTextColor(102, 102, 102);
+        pdf.text("Subtotal", col.rate, y, { align: "right" });
+        pdf.setTextColor(51, 51, 51);
+        pdf.text(R(inv.subtotal), col.amt, y, { align: "right" });
+        y += 15;
+        if (gstTotal > 0) {
+            pdf.setTextColor(102, 102, 102);
+            pdf.text(isInterstate ? "IGST" : "GST (CGST+SGST)", col.rate, y, { align: "right" });
+            pdf.setTextColor(51, 51, 51);
+            pdf.text(R(gstTotal), col.amt, y, { align: "right" });
+            y += 15;
+        }
+        pdf.setDrawColor(237, 233, 254);
+        pdf.setLineWidth(1.2);
+        pdf.line(col.rate - 60, y, rightX, y);
+        y += 16;
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(12.5);
+        pdf.setTextColor(79, 70, 229);
+        pdf.text("Total", col.rate, y, { align: "right" });
+        pdf.text(R(inv.total), col.amt, y, { align: "right" });
+        y += 14;
+        pdf.setFont("helvetica", "italic");
+        pdf.setFontSize(9);
+        pdf.setTextColor(153, 153, 153);
+        pdf.text(amountInWords(inv.total), rightX, y, { align: "right" });
+        y += 24;
+        pdf.setDrawColor(237, 233, 254);
+        pdf.setLineWidth(1);
+        pdf.line(mX, y, rightX, y);
+        y += 20;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9.5);
+        pdf.setTextColor(85, 85, 85);
+        pdf.text("Delivery Terms: Within 7-10 working days from order confirmation, subject to stock availability.", mX, y, { maxWidth: rightX - mX });
+        y += 24;
+        pdf.text("Payment Terms: 50% advance with order confirmation, balance before delivery.", mX, y, { maxWidth: rightX - mX });
+        y += 34;
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10.5);
+        pdf.setTextColor(139, 92, 246);
+        pdf.text("Thank you for considering us! We look forward to working with you.", mX, y, { maxWidth: 260 });
+        pdf.setTextColor(51, 51, 51);
+        pdf.text("For " + (profile.name || "Grasp Infotech"), rightX, y, { align: "right" });
+        y += 30;
+        const preparedByName = (staffNames && inv.createdBy && staffNames[inv.createdBy]) || (inv.createdBy ? inv.createdBy.split("@")[0] : "");
+        const preparedByPhone = (staffPhones && inv.createdBy && staffPhones[inv.createdBy]) || "";
+        if (preparedByName) {
+            pdf.text(preparedByName, rightX, y, { align: "right" });
+            y += 12;
+        }
+        if (preparedByPhone) {
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(102, 102, 102);
+            pdf.text(preparedByPhone, rightX, y, { align: "right" });
+            y += 12;
+        }
+        pdf.setFontSize(9);
+        pdf.setTextColor(153, 153, 153);
+        pdf.text("Authorised Signatory", rightX, y, { align: "right" });
+        return pdf.output("blob");
+    };
     const generatePdfBlob = async () => {
+        if (inv.docType === "quotation") {
+            return generateQuotationPdfNative();
+        }
         const canvas = await captureInvoiceCanvas();
         const imgData = canvas.toDataURL("image/jpeg", 0.95);
         const { jsPDF } = window.jspdf;
         const pageWidthPt = 595.28; // A4 width in points
-        if (inv.docType === "quotation") {
-            const pageHeightPt = 841.89; // full A4 height in points
-            const pdf = new jsPDF({ unit: "pt", format: [pageWidthPt, pageHeightPt] });
-            const imgHeightPt = (canvas.height / canvas.width) * pageWidthPt;
-            const drawHeight = Math.min(imgHeightPt, pageHeightPt);
-            const drawWidth = drawHeight === imgHeightPt ? pageWidthPt : (canvas.width / canvas.height) * pageHeightPt;
-            pdf.addImage(imgData, "JPEG", 0, 0, drawWidth, drawHeight);
-            return pdf.output("blob");
-        }
         const pageHeightPt = (canvas.height / canvas.width) * pageWidthPt;
         const pdf = new jsPDF({ unit: "pt", format: [pageWidthPt, pageHeightPt] });
         pdf.addImage(imgData, "JPEG", 0, 0, pageWidthPt, pageHeightPt);
         return pdf.output("blob");
     };
     const handleSharePdf = async () => {
-        if (!window.html2canvas || !window.jspdf) {
+        const needsHtml2Canvas = inv.docType !== "quotation";
+        if ((needsHtml2Canvas && !window.html2canvas) || !window.jspdf) {
             // libraries failed to load (e.g. no internet) — fall back to text share
             await handleShare();
             return;
