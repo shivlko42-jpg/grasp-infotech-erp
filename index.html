@@ -2876,13 +2876,14 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                 await document.fonts.ready;
         }
         catch (e) { }
+        const captureWidth = 780; // fixed, print-quality width regardless of phone screen size — ensures full-width, consistent PDF output
         try {
-            return await window.html2canvas(node, { scale: 3, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000 });
+            return await window.html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth });
         }
         catch (e) {
             // likely a tainted canvas from the external UPI QR image — retry without it
             return await window.html2canvas(node, {
-                scale: 3, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000,
+                scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth,
                 ignoreElements: (el) => el.tagName === "IMG" && el.src && el.src.indexOf("qrserver.com") !== -1,
             });
         }
@@ -3296,30 +3297,40 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                         React.createElement("th", { className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Qty"),
                         React.createElement("th", { className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Tax"),
                         React.createElement("th", { className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333" } }, "Amount"))),
-                React.createElement("tbody", null, visibleItems.map((it, i) => {
-                    const itemGross = (Number(it.qty) || 0) * (Number(it.rate) || 0);
-                    const taxable = itemGross * (1 - discountRatio);
-                    const itGst = Number(it.gst) || 0;
-                    const taxAmt = (taxable * itGst) / 100;
-                    return (React.createElement("tr", { key: it.id },
-                        React.createElement("td", { className: "pv-td pv-cell", style: { color: "#333", verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee" } }, i + 1),
-                        React.createElement("td", { className: "pv-td pv-cell", style: { verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee", fontWeight: 600 } },
-                            React.createElement("div", null, it.name),
-                            it.description && React.createElement("div", { className: "pv-td-sub", style: { color: "#555", fontWeight: 700, marginTop: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", maxWidth: 220, lineHeight: 1.4 } }, it.description)),
-                        React.createElement("td", { className: "num pv-td-sub pv-cell", style: { verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee", color: "#333" } }, it.hsn || "—"),
-                        React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee" } }, fmt(it.rate)),
-                        React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee" } },
-                            it.qty,
-                            " ",
-                            React.createElement("span", { style: { fontSize: "0.85em", color: "#666" } }, it.unit || "NOS")),
-                        React.createElement("td", { className: "num pv-tax-cell pv-cell", style: { textAlign: "right", verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee", color: "#333" } },
-                            fmt(taxAmt),
-                            React.createElement("div", { className: "pv-tax-pct" },
-                                "(",
-                                itGst,
-                                "%)")),
-                        React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee" } }, fmt(taxable + taxAmt))));
-                }))),
+                React.createElement("tbody", null, [
+                    ...visibleItems.map((it, i) => {
+                        const itemGross = (Number(it.qty) || 0) * (Number(it.rate) || 0);
+                        const taxable = itemGross * (1 - discountRatio);
+                        const itGst = Number(it.gst) || 0;
+                        const taxAmt = (taxable * itGst) / 100;
+                        return (React.createElement("tr", { key: it.id },
+                            React.createElement("td", { className: "pv-td pv-cell", style: { color: "#333", verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee" } }, i + 1),
+                            React.createElement("td", { className: "pv-td pv-cell", style: { verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee", fontWeight: 600 } },
+                                React.createElement("div", null, it.name),
+                                it.description && React.createElement("div", { className: "pv-td-sub", style: { color: "#555", fontWeight: 700, marginTop: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", maxWidth: 220, lineHeight: 1.4 } }, it.description)),
+                            React.createElement("td", { className: "num pv-td-sub pv-cell", style: { verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee", color: "#333" } }, it.hsn || "—"),
+                            React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee" } }, fmt(it.rate)),
+                            React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee" } },
+                                it.qty,
+                                " ",
+                                React.createElement("span", { style: { fontSize: "0.85em", color: "#666" } }, it.unit || "NOS")),
+                            React.createElement("td", { className: "num pv-tax-cell pv-cell", style: { textAlign: "right", verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee", color: "#333" } },
+                                fmt(taxAmt),
+                                React.createElement("div", { className: "pv-tax-pct" },
+                                    "(",
+                                    itGst,
+                                    "%)")),
+                            React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee" } }, fmt(taxable + taxAmt))));
+                    }),
+                    ...Array.from({ length: Math.max(0, 7 - visibleItems.length) }).map((_, i) => (React.createElement("tr", { key: `filler-${i}` },
+                        React.createElement("td", { className: "pv-cell", style: { height: 22 } }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell" }, "\u00A0"),
+                        React.createElement("td", { className: "pv-cell" }, "\u00A0")))),
+                ])),
             React.createElement("div", { className: "pv-total-items", style: { padding: "5px 10px", color: "#333", borderBottom: "1px solid #333" } },
                 "Total Items / Qty : ",
                 visibleItems.length,
