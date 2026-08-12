@@ -194,6 +194,26 @@ function downloadCSV(filename, headers, rows) {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
+function loadImageAsPngDataUrl(src) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                resolve({ dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height });
+            }
+            catch (e) {
+                resolve(null);
+            }
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+    });
+}
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const COLORS = {
     ink: "#1E1B3A", muted: "#7A7690", bgSoft: "#F5F4FB", border: "#ECEAFB",
@@ -2867,7 +2887,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             });
         }
     };
-    const generateQuotationPdfNative = () => {
+    const generateQuotationPdfNative = async () => {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ unit: "pt", format: "a4" });
         const pageW = 595.28;
@@ -2875,10 +2895,19 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         const rightX = pageW - mX;
         let y = 50;
         const R = (n) => "Rs. " + fmt(n);
+        const logoImg = await loadImageAsPngDataUrl("logo.webp");
+        const textX = logoImg ? mX + 40 : mX;
+        if (logoImg) {
+            const logoSize = 32;
+            try {
+                pdf.addImage(logoImg.dataUrl, "PNG", mX, y - 24, logoSize, logoSize);
+            }
+            catch (e) { }
+        }
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(15);
         pdf.setTextColor(79, 70, 229);
-        pdf.text(profile.name || "Grasp Infotech", mX, y);
+        pdf.text(profile.name || "Grasp Infotech", textX, y);
         pdf.setFontSize(18);
         pdf.setTextColor(124, 58, 237);
         pdf.text("QUOTATION", rightX, y, { align: "right" });
@@ -2887,18 +2916,18 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         pdf.setFontSize(9);
         pdf.setTextColor(124, 58, 237);
         if (profile.gstin) {
-            pdf.text("GSTIN: " + profile.gstin, mX, y);
+            pdf.text("GSTIN: " + profile.gstin, textX, y);
         }
         pdf.setTextColor(139, 92, 246);
         pdf.text(inv.invoiceNo, rightX, y, { align: "right" });
         y += 12;
         if (profile.address) {
             pdf.setTextColor(124, 58, 237);
-            pdf.text(profile.address, mX, y);
+            pdf.text(profile.address, textX, y);
             y += 12;
         }
         if (profile.phone) {
-            pdf.text("Mobile: " + profile.phone, mX, y);
+            pdf.text("Mobile: " + profile.phone, textX, y);
             y += 12;
         }
         y += 8;
@@ -3025,9 +3054,24 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         pdf.text("Thank you for considering us! We look forward to working with you.", mX, y, { maxWidth: 260 });
         pdf.setTextColor(51, 51, 51);
         pdf.text("For " + (profile.name || "Grasp Infotech"), rightX, y, { align: "right" });
-        y += 30;
+        y += 10;
+        const stampImg = await loadImageAsPngDataUrl("stamp.webp");
+        if (stampImg) {
+            const stampSize = 46;
+            try {
+                pdf.addImage(stampImg.dataUrl, "PNG", rightX - stampSize, y, stampSize, stampSize);
+            }
+            catch (e) { }
+            y += stampSize + 6;
+        }
+        else {
+            y += 24;
+        }
         const preparedByName = (staffNames && inv.createdBy && staffNames[inv.createdBy]) || (inv.createdBy ? inv.createdBy.split("@")[0] : "");
         const preparedByPhone = (staffPhones && inv.createdBy && staffPhones[inv.createdBy]) || "";
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10.5);
+        pdf.setTextColor(51, 51, 51);
         if (preparedByName) {
             pdf.text(preparedByName, rightX, y, { align: "right" });
             y += 12;
@@ -3045,7 +3089,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
     };
     const generatePdfBlob = async () => {
         if (inv.docType === "quotation") {
-            return generateQuotationPdfNative();
+            return await generateQuotationPdfNative();
         }
         const canvas = await captureInvoiceCanvas();
         const imgData = canvas.toDataURL("image/jpeg", 0.95);
