@@ -3106,16 +3106,9 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         const pdf = new jsPDF({ unit: "pt", format: [pageWidthPt, pageHeightPt] });
         const naturalHeightPt = (canvas.height / canvas.width) * pageWidthPt;
         if (naturalHeightPt <= pageHeightPt) {
-            // fits within one page at full width — draw top-aligned, then extend the card's border down to the page bottom (Tally-style full-page box)
+            // fits within one page at full width — draw top-aligned; the 15-row item table already gives enough real content to reach near the page bottom
             const imgData = canvas.toDataURL("image/jpeg", 0.95);
             pdf.addImage(imgData, "JPEG", 0, 0, pageWidthPt, naturalHeightPt);
-            if (naturalHeightPt < pageHeightPt - 2) {
-                pdf.setDrawColor(51, 51, 51);
-                pdf.setLineWidth(1.5);
-                pdf.line(0.75, naturalHeightPt, 0.75, pageHeightPt - 0.75);
-                pdf.line(pageWidthPt - 0.75, naturalHeightPt, pageWidthPt - 0.75, pageHeightPt - 0.75);
-                pdf.line(0.75, pageHeightPt - 0.75, pageWidthPt - 0.75, pageHeightPt - 0.75);
-            }
         }
         else if (allowMultiPage) {
             // content taller than one page, user confirmed multi-page — split at natural readable scale (Tally-style), never shrink text
@@ -3158,8 +3151,8 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         }
         const itemCount = (inv.items || []).filter((it) => it.name).length;
         let allowMultiPage = false;
-        if (itemCount > 10) {
-            allowMultiPage = window.confirm(`Is bill mein ${itemCount} items hain (10 se zyada). Kya isse readable rakhne ke liye 2 (ya zyada) pages mein banaya jaye?\n\n"OK" = Multi-page (bada, saaf)\n"Cancel" = 1 hi page (thoda chhota ho jayega)`);
+        if (itemCount > 15) {
+            allowMultiPage = window.confirm(`Is bill mein ${itemCount} items hain (15 se zyada). Kya isse readable rakhne ke liye 2 (ya zyada) pages mein banaya jaye?\n\n"OK" = Multi-page (bada, saaf)\n"Cancel" = 1 hi page (thoda chhota ho jayega)`);
         }
         setPdfBusy(true);
         try {
@@ -3364,8 +3357,8 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                                     "%)")),
                             React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee" } }, fmt(taxable + taxAmt))));
                     }),
-                    Math.max(0, 10 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
-                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 10 - visibleItems.length) * 23 } }, "\u00A0"),
+                    Math.max(0, 15 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 15 - visibleItems.length) * 23 } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
