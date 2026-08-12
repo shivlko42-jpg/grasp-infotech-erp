@@ -2640,7 +2640,7 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
                 React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "ITEM"),
                 React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "QTY"),
                 React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "RATE"),
-                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "AMOUNT"),
+                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 8px 8px 4px", borderBottom: "2px solid #EDE9FE" } }, "AMOUNT"),
             ])),
         React.createElement("tbody", null, items.map((it, idx) => React.createElement("tr", { key: idx },
             React.createElement("td", { style: { color: "#999", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", fontSize: 11 } }, idx + 1),
@@ -2652,7 +2652,7 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
                 " ",
                 React.createElement("span", { style: { fontSize: "0.85em", color: "#888" } }, it.unit || "NOS")),
             React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#555", fontSize: 11 } }, "\u20B9" + fmt(it.rate)),
-            React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#1a1a2e", fontWeight: 700, fontSize: 11 } }, "\u20B9" + fmt((Number(it.qty) || 0) * (Number(it.rate) || 0)))))));
+            React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 8px 9px 4px", borderBottom: "1px solid #F3F0FD", color: "#1a1a2e", fontWeight: 700, fontSize: 11 } }, "\u20B9" + fmt((Number(it.qty) || 0) * (Number(it.rate) || 0)))))));
     const totalsEl = React.createElement("div", { key: "totals", style: { display: "flex", justifyContent: "flex-end", marginTop: 14 } },
         React.createElement("div", { style: { width: "58%", minWidth: 200 } }, [
             React.createElement("div", { key: "sub", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
@@ -2668,7 +2668,7 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
                 React.createElement("span", { key: "v", className: "num", style: { fontWeight: 800, fontSize: 17, color: "#4F46E5" } }, "\u20B9" + fmt(inv.total)),
             ]),
         ]));
-    const itemsBlockEl = React.createElement("div", { key: "items-block", style: { padding: "18px 24px" } }, [
+    const itemsBlockEl = React.createElement("div", { key: "items-block", style: { padding: "18px 26px 18px 24px" } }, [
         tableEl,
         totalsEl,
         React.createElement("div", { key: "words", className: "quo-small", style: { color: "#999", marginTop: 4, textAlign: "right", fontStyle: "italic" } }, words),
