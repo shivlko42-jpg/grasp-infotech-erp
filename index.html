@@ -3095,12 +3095,11 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         pdf.text("Authorised Signatory", rightX, y, { align: "right" });
         return pdf.output("blob");
     };
-    const generatePdfBlob = async () => {
+    const generatePdfBlob = async (allowMultiPage) => {
         if (inv.docType === "quotation") {
             return await generateQuotationPdfNative();
         }
         const canvas = await captureInvoiceCanvas();
-        const imgData = canvas.toDataURL("image/jpeg", 0.95);
         const { jsPDF } = window.jspdf;
         const pageWidthPt = 595.28; // A4 width in points
         const pageHeightPt = 841.89; // full A4 height in points
@@ -3108,10 +3107,34 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         const naturalHeightPt = (canvas.height / canvas.width) * pageWidthPt;
         if (naturalHeightPt <= pageHeightPt) {
             // fits within one page at full width — draw top-aligned, rest of page stays blank (professional look)
+            const imgData = canvas.toDataURL("image/jpeg", 0.95);
             pdf.addImage(imgData, "JPEG", 0, 0, pageWidthPt, naturalHeightPt);
         }
+        else if (allowMultiPage) {
+            // content taller than one page, user confirmed multi-page — split at natural readable scale (Tally-style), never shrink text
+            const pxPerPt = canvas.width / pageWidthPt;
+            const pageHeightPx = Math.round(pageHeightPt * pxPerPt);
+            const totalPages = Math.ceil(canvas.height / pageHeightPx);
+            for (let p = 0; p < totalPages; p++) {
+                const sliceHeightPx = Math.min(pageHeightPx, canvas.height - p * pageHeightPx);
+                const sliceCanvas = document.createElement("canvas");
+                sliceCanvas.width = canvas.width;
+                sliceCanvas.height = sliceHeightPx;
+                const ctx = sliceCanvas.getContext("2d");
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+                ctx.drawImage(canvas, 0, p * pageHeightPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+                const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.95);
+                const sliceHeightPt = sliceHeightPx / pxPerPt;
+                if (p > 0) {
+                    pdf.addPage([pageWidthPt, pageHeightPt]);
+                }
+                pdf.addImage(sliceData, "JPEG", 0, 0, pageWidthPt, sliceHeightPt);
+            }
+        }
         else {
-            // content taller than one page — scale down to fit fully on a single page, centered horizontally
+            // content taller than one page, single page requested — scale down to fit fully on a single page, centered horizontally
+            const imgData = canvas.toDataURL("image/jpeg", 0.95);
             const scale = pageHeightPt / naturalHeightPt;
             const drawWidth = pageWidthPt * scale;
             const offsetX = (pageWidthPt - drawWidth) / 2;
@@ -3126,9 +3149,14 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             await handleShare();
             return;
         }
+        const itemCount = (inv.items || []).filter((it) => it.name).length;
+        let allowMultiPage = false;
+        if (itemCount > 10) {
+            allowMultiPage = window.confirm(`Is bill mein ${itemCount} items hain (10 se zyada). Kya isse readable rakhne ke liye 2 (ya zyada) pages mein banaya jaye?\n\n"OK" = Multi-page (bada, saaf)\n"Cancel" = 1 hi page (thoda chhota ho jayega)`);
+        }
         setPdfBusy(true);
         try {
-            const blob = await generatePdfBlob();
+            const blob = await generatePdfBlob(allowMultiPage);
             const fileName = `${inv.invoiceNo || meta.label}.pdf`;
             const file = new File([blob], fileName, { type: "application/pdf" });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -3329,8 +3357,8 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                                     "%)")),
                             React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee" } }, fmt(taxable + taxAmt))));
                     }),
-                    Math.max(0, 7 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
-                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 7 - visibleItems.length) * 23 } }, "\u00A0"),
+                    Math.max(0, 10 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 10 - visibleItems.length) * 23 } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
