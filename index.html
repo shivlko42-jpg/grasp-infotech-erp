@@ -3092,37 +3092,22 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             return await generateQuotationPdfNative();
         }
         const canvas = await captureInvoiceCanvas();
+        const imgData = canvas.toDataURL("image/jpeg", 0.95);
         const { jsPDF } = window.jspdf;
         const pageWidthPt = 595.28; // A4 width in points
         const pageHeightPt = 841.89; // full A4 height in points
         const pdf = new jsPDF({ unit: "pt", format: [pageWidthPt, pageHeightPt] });
         const naturalHeightPt = (canvas.height / canvas.width) * pageWidthPt;
         if (naturalHeightPt <= pageHeightPt) {
-            // fits within one page at full, natural readable width — top-aligned, rest of page stays blank (professional look)
-            const imgData = canvas.toDataURL("image/jpeg", 0.95);
+            // fits within one page at full width — draw top-aligned, rest of page stays blank (professional look)
             pdf.addImage(imgData, "JPEG", 0, 0, pageWidthPt, naturalHeightPt);
         }
         else {
-            // content taller than one page (e.g. many items) — split across multiple A4 pages at natural scale so text stays readable, never shrink
-            const pxPerPt = canvas.width / pageWidthPt;
-            const pageHeightPx = Math.round(pageHeightPt * pxPerPt);
-            const totalPages = Math.ceil(canvas.height / pageHeightPx);
-            for (let p = 0; p < totalPages; p++) {
-                const sliceHeightPx = Math.min(pageHeightPx, canvas.height - p * pageHeightPx);
-                const sliceCanvas = document.createElement("canvas");
-                sliceCanvas.width = canvas.width;
-                sliceCanvas.height = sliceHeightPx;
-                const ctx = sliceCanvas.getContext("2d");
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-                ctx.drawImage(canvas, 0, p * pageHeightPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
-                const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.95);
-                const sliceHeightPt = sliceHeightPx / pxPerPt;
-                if (p > 0) {
-                    pdf.addPage([pageWidthPt, pageHeightPt]);
-                }
-                pdf.addImage(sliceData, "JPEG", 0, 0, pageWidthPt, sliceHeightPt);
-            }
+            // content taller than one page — scale down to fit fully on a single page, centered horizontally
+            const scale = pageHeightPt / naturalHeightPt;
+            const drawWidth = pageWidthPt * scale;
+            const offsetX = (pageWidthPt - drawWidth) / 2;
+            pdf.addImage(imgData, "JPEG", offsetX, 0, drawWidth, pageHeightPt);
         }
         return pdf.output("blob");
     };
