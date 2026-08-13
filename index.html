@@ -214,6 +214,49 @@ function loadImageAsPngDataUrl(src) {
         img.src = src;
     });
 }
+function trimCanvasRightEdge(canvas) {
+    // Some capture-width quirks can leave a thin unintended blank strip on the right edge of the canvas
+    // (invoice card ends slightly before the canvas's own right edge). This finds the real right boundary
+    // of the actual drawn content and crops the extra blank margin so the PDF fills edge-to-edge.
+    try {
+        const w = canvas.width, h = canvas.height;
+        const maxScan = Math.min(200, w - 1);
+        if (maxScan <= 0)
+            return canvas;
+        const stripX = w - maxScan;
+        const ctx = canvas.getContext("2d");
+        const strip = ctx.getImageData(stripX, 0, maxScan, h).data;
+        let rightmostNonWhiteCol = -1;
+        const rowStep = h > 1200 ? 3 : 1; // sample every few rows on tall canvases for speed, still thorough enough
+        for (let row = 0; row < h; row += rowStep) {
+            for (let col = maxScan - 1; col >= 0; col--) {
+                const idx = (row * maxScan + col) * 4;
+                if (strip[idx] < 248 || strip[idx + 1] < 248 || strip[idx + 2] < 248) {
+                    if (col > rightmostNonWhiteCol)
+                        rightmostNonWhiteCol = col;
+                    break;
+                }
+            }
+        }
+        if (rightmostNonWhiteCol === -1)
+            return canvas; // nothing found (unusual) — play it safe, don't trim
+        const buffer = 6; // keep a small safety margin so we never cut into the border itself
+        const newWidth = Math.min(w, stripX + rightmostNonWhiteCol + 1 + buffer);
+        if (newWidth >= w - 3)
+            return canvas; // negligible difference, not worth trimming
+        const trimmed = document.createElement("canvas");
+        trimmed.width = newWidth;
+        trimmed.height = h;
+        const tctx = trimmed.getContext("2d");
+        tctx.fillStyle = "#ffffff";
+        tctx.fillRect(0, 0, newWidth, h);
+        tctx.drawImage(canvas, 0, 0);
+        return trimmed;
+    }
+    catch (e) {
+        return canvas;
+    }
+}
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const COLORS = {
     ink: "#1E1B3A", muted: "#7A7690", bgSoft: "#F5F4FB", border: "#ECEAFB",
@@ -2885,14 +2928,16 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             }
         };
         try {
-            return await window.html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth, onclone: widenShell });
+            const canvas = await window.html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth, onclone: widenShell });
+            return trimCanvasRightEdge(canvas);
         }
         catch (e) {
             // likely a tainted canvas from the external UPI QR image — retry without it
-            return await window.html2canvas(node, {
+            const canvas = await window.html2canvas(node, {
                 scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth, onclone: widenShell,
                 ignoreElements: (el) => el.tagName === "IMG" && el.src && el.src.indexOf("qrserver.com") !== -1,
             });
+            return trimCanvasRightEdge(canvas);
         }
     };
     const generateQuotationPdfNative = async () => {
