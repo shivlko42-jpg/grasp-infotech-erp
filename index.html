@@ -373,7 +373,7 @@ function profToDb(p) {
     return {
         id: "main", name: p.name, address: p.address, state: p.state, gstin: p.gstin, pan: p.pan, phone: p.phone,
         email: p.email, bank_name: p.bankName, account_number: p.accountNumber, ifsc: p.ifsc, branch: p.branch,
-        upi_id: p.upiId, opening_balance: p.openingBalance || 0, office_start_time: p.officeStartTime || "09:30", terms: p.terms,
+        upi_id: p.upiId, opening_balance: Number(p.openingBalance) || 0, office_start_time: p.officeStartTime || "09:30", terms: p.terms,
     };
 }
 function getStatus(inv) {
@@ -1055,6 +1055,11 @@ function DailyGoalWidget({ session, perms, invoices }) {
     }
     const dailyGoal = Math.round(monthlyTarget / Math.max(1, workingDays));
     const todaySales = invoices.filter((i) => i.docType === "sale" && (i.date || "").slice(0, 10) === today).reduce((s, i) => s + i.total, 0);
+    const monthStart = new Date(y, m, 1);
+    const monthSalesTotal = invoices.filter((i) => i.docType === "sale" && i.createdBy === session.user.email && new Date(i.date) >= monthStart && new Date(i.date) <= now).reduce((s, i) => s + i.total, 0);
+    const monthProgressPct = monthlyTarget > 0 ? Math.min(100, Math.round((monthSalesTotal / monthlyTarget) * 100)) : 0;
+    const monthRemaining = Math.max(0, monthlyTarget - monthSalesTotal);
+    const daysLeftInMonth = daysInMonth - now.getDate() + 1;
     const respond = async (yes) => {
         setBusy(true);
         const rec = { id: (record && record.id) || uid(), staff_email: session.user.email, staff_id: session.user.id, date: today, goal_amount: dailyGoal, achieved: yes, actual_sales: todaySales };
@@ -1078,7 +1083,28 @@ function DailyGoalWidget({ session, perms, invoices }) {
         !answered && React.createElement("div", { style: { marginTop: 10, paddingTop: 10, borderTop: "1px solid " + COLORS.border, display: "flex", alignItems: "center", gap: 8 } },
             React.createElement("span", { style: { fontSize: 12, color: COLORS.ink, fontWeight: 600, flex: 1 } }, "Aaj ka goal achieve kiya?"),
             React.createElement("button", { onClick: () => respond(true), disabled: busy, style: { padding: "8px 16px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, "Yes"),
-            React.createElement("button", { onClick: () => respond(false), disabled: busy, style: { padding: "8px 16px", borderRadius: 9, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, "No"))));
+            React.createElement("button", { onClick: () => respond(false), disabled: busy, style: { padding: "8px 16px", borderRadius: 9, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, "No")),
+        React.createElement("div", { style: { marginTop: 10, paddingTop: 10, borderTop: "1px solid " + COLORS.border } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
+                React.createElement("span", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "Is Mahine ka Goal (roz ka average nahi, poora mahina)"),
+                React.createElement("span", { style: { fontSize: 10.5, color: COLORS.muted, fontWeight: 600 } },
+                    daysLeftInMonth,
+                    " din baaki")),
+            React.createElement("div", { style: { height: 8, borderRadius: 4, background: "#F1ECFE", overflow: "hidden", marginBottom: 6 } },
+                React.createElement("div", { style: { height: "100%", width: `${Math.max(3, monthProgressPct)}%`, background: monthProgressPct >= 100 ? COLORS.emerald : "linear-gradient(90deg,#7C3AED,#4F46E5)", borderRadius: 4 } })),
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 11.5 } },
+                React.createElement("span", { className: "num", style: { fontWeight: 700, color: COLORS.ink } },
+                    "\u20B9",
+                    fmt(monthSalesTotal),
+                    " / \u20B9",
+                    fmt(monthlyTarget)),
+                React.createElement("span", { className: "num", style: { fontWeight: 700, color: monthProgressPct >= 100 ? COLORS.emerald : COLORS.violet } },
+                    monthProgressPct,
+                    "%")),
+            monthRemaining > 0 && React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted, marginTop: 3 } },
+                "\u20B9",
+                fmt(monthRemaining),
+                " aur chahiye is mahine ke target ke liye"))));
 }
 function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, staffNames }) {
     const recent = invoices.slice(0, 4);
@@ -2132,7 +2158,7 @@ function EditBusinessDetails({ profile, onBack, onSave }) {
                 React.createElement("div", { style: { fontSize: 11, color: "#B4AFD6" } }, "UPI ID dene par invoice par payment QR code apne aap ban jayega.")),
             React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 14 } },
                 React.createElement("label", { style: { fontSize: 12, color: COLORS.sky, fontWeight: 800, marginBottom: 8, display: "block", textTransform: "uppercase", letterSpacing: 0.5 } }, "Cash/Bank Book Opening Balance"),
-                React.createElement("input", { type: "number", value: form.openingBalance || 0, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { openingBalance: e.target.value })), className: "num", style: inputStyle }),
+                React.createElement("input", { type: "number", value: form.openingBalance, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { openingBalance: e.target.value })), className: "num", style: inputStyle }),
                 React.createElement("div", { style: { fontSize: 11, color: "#B4AFD6", marginTop: 6 } }, "Jab aap ye ERP use karna shuru kiye the, us waqt aapke paas (cash + bank milaकर) kitna paisa tha - ye ek baar set karein, Cash/Bank Book isी se calculate hoga.")),
             React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 14 } },
                 React.createElement("label", { style: { fontSize: 12, color: COLORS.violet, fontWeight: 800, marginBottom: 8, display: "block", textTransform: "uppercase", letterSpacing: 0.5 } }, "Office Start Time (Attendance)"),
@@ -2471,10 +2497,10 @@ function AdminPanel({ session, onBack }) {
                         React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 12 } },
                             React.createElement("div", { style: { flex: 1 } },
                                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Monthly Salary (\u20B9)"),
-                                React.createElement("input", { type: "number", min: "0", value: d.monthly_salary || 0, onChange: (e) => setDraft(u.id, "monthly_salary", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } })),
+                                React.createElement("input", { type: "number", min: "0", value: d.monthly_salary, onChange: (e) => setDraft(u.id, "monthly_salary", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } })),
                             React.createElement("div", { style: { flex: 1 } },
                                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Incentive % (on sales)"),
-                                React.createElement("input", { type: "number", min: "0", value: d.incentive_rate || 0, onChange: (e) => setDraft(u.id, "incentive_rate", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } }))),
+                                React.createElement("input", { type: "number", min: "0", value: d.incentive_rate, onChange: (e) => setDraft(u.id, "incentive_rate", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } }))),
                         React.createElement("button", { onClick: () => savePerms(u), disabled: busyId === u.id, style: { width: "100%", padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, busyId === u.id ? "Saving…" : "Save Access")))));
             }))),
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error),
@@ -2514,7 +2540,7 @@ function ManageItems({ itemCatalog, onSave, onDelete, onBack }) {
                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Unit"),
                 React.createElement("select", { value: form.unit || "NOS", onChange: (e) => setForm(Object.assign(Object.assign({}, form), { unit: e.target.value })), style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 10 }) }, UNITS.map((u) => (React.createElement("option", { key: u, value: u }, u)))),
                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Current Stock (Available Qty)"),
-                React.createElement("input", { type: "number", value: form.stock || 0, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { stock: e.target.value })), className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 4 }) }),
+                React.createElement("input", { type: "number", value: form.stock, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { stock: e.target.value })), className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 4 }) }),
                 React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", marginBottom: 10 } }, "Purchase Bill save karne par ye apne aap badhta hai, Sale invoice par apne aap ghatta hai. Yahan sirf shuruaati/manual correction ke liye badlein."),
                 React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } },
                     React.createElement("div", { style: { flex: 1 } },
