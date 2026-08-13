@@ -545,7 +545,7 @@ function Root() {
     return React.createElement(BillingApp, { session: session, perms: perms });
 }
 function AuthScreen() {
-    const [mode, setMode] = useState("signin"); // signin | signup
+    const [mode, setMode] = useState("signin"); // signin | signup | forgot
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -562,6 +562,12 @@ function AuthScreen() {
                 const { error } = await sb.auth.signInWithPassword({ email, password });
                 if (error)
                     throw error;
+            }
+            else if (mode === "forgot") {
+                const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+                if (error)
+                    throw error;
+                setInfo("Agar ye email registered hai, to password reset link bhej diya gaya hai. Apna inbox (aur spam folder) check karein.");
             }
             else {
                 const { error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name.trim() } } });
@@ -583,17 +589,19 @@ function AuthScreen() {
                 React.createElement(Logo, { size: 40 }),
                 React.createElement("div", null,
                     React.createElement("div", { style: { fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 16 } }, "Grasp Infotech"),
-                    React.createElement("div", { style: { fontSize: 11.5, color: COLORS.muted } }, "Staff Login"))),
+                    React.createElement("div", { style: { fontSize: 11.5, color: COLORS.muted } }, mode === "forgot" ? "Password Reset" : "Staff Login"))),
             mode === "signup" && React.createElement("input", { type: "text", placeholder: "Aapka poora naam", value: name, onChange: (e) => setName(e.target.value), style: inputStyle }),
             React.createElement("input", { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), style: inputStyle }),
-            React.createElement("input", { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), style: inputStyle }),
+            mode !== "forgot" && React.createElement("input", { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), style: inputStyle }),
+            mode === "signin" && React.createElement("div", { style: { textAlign: "right", marginTop: -4, marginBottom: 10 } },
+                React.createElement("button", { onClick: () => { setMode("forgot"); setError(""); setInfo(""); }, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, fontSize: 12, padding: 0 } }, "Password bhool gaye?")),
             error && React.createElement("div", { style: { background: "#FDE7EB", color: COLORS.rose, padding: "8px 10px", borderRadius: 8, fontSize: 12.5, marginBottom: 10 } }, error),
             info && React.createElement("div", { style: { background: "#E3FBF1", color: "#0F7A54", padding: "8px 10px", borderRadius: 8, fontSize: 12.5, marginBottom: 10 } }, info),
-            React.createElement("button", { onClick: submit, disabled: busy || !email || !password || (mode === "signup" && !name.trim()), style: {
+            React.createElement("button", { onClick: submit, disabled: busy || !email || (mode !== "forgot" && !password) || (mode === "signup" && !name.trim()), style: {
                     width: "100%", padding: "13px", borderRadius: 12, border: "none",
-                    background: busy || !email || !password || (mode === "signup" && !name.trim()) ? "#D6D2EE" : "linear-gradient(120deg,#4F46E5,#7C3AED)",
+                    background: busy || !email || (mode !== "forgot" && !password) || (mode === "signup" && !name.trim()) ? "#D6D2EE" : "linear-gradient(120deg,#4F46E5,#7C3AED)",
                     color: "#fff", fontWeight: 700, fontSize: 14.5, marginBottom: 10,
-                } }, busy ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"),
+                } }, busy ? "Please wait\u2026" : mode === "signin" ? "Sign In" : mode === "forgot" ? "Reset Link Bhejein" : "Create Account"),
             React.createElement("div", { style: { textAlign: "center", fontSize: 12.5, color: COLORS.muted } }, mode === "signin" ? (React.createElement(React.Fragment, null,
                 "Naye staff member hain? ",
                 React.createElement("button", { onClick: () => { setMode("signup"); setError(""); setInfo(""); }, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, padding: 0 } }, "Account banayein"))) : (React.createElement(React.Fragment, null,
