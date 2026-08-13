@@ -535,7 +535,7 @@ function Root() {
                 React.createElement("div", { style: { fontSize: 30, marginBottom: 10 } }, "\uD83D\uDD12"),
                 React.createElement("div", { style: { fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 16, marginBottom: 8 } }, "Ye account deactivate ho chuka hai"),
                 React.createElement("div", { style: { fontSize: 13.5, color: COLORS.muted, lineHeight: 1.6, marginBottom: 16 } }, "Kripya apne Admin se sampark karein."),
-                React.createElement("button", { onClick: () => { setInactiveBlock(false); setSession(null); }, style: { padding: "10px 20px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, "Wapas Login Par Jaayein"))));
+                React.createElement("button", { onClick: () => { setInactiveBlock(false); setSession(null); }, style: { padding: "10px 20px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, "Back to Login"))));
     }
     if (session === undefined) {
         return React.createElement("div", { style: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.muted } }, "Loading\u2026");
@@ -594,19 +594,19 @@ function AuthScreen() {
             React.createElement("input", { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), style: inputStyle }),
             mode !== "forgot" && React.createElement("input", { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), style: inputStyle }),
             mode === "signin" && React.createElement("div", { style: { textAlign: "right", marginTop: -4, marginBottom: 10 } },
-                React.createElement("button", { onClick: () => { setMode("forgot"); setError(""); setInfo(""); }, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, fontSize: 12, padding: 0 } }, "Password bhool gaye?")),
+                React.createElement("button", { onClick: () => { setMode("forgot"); setError(""); setInfo(""); }, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, fontSize: 12, padding: 0 } }, "Forgot Password?")),
             error && React.createElement("div", { style: { background: "#FDE7EB", color: COLORS.rose, padding: "8px 10px", borderRadius: 8, fontSize: 12.5, marginBottom: 10 } }, error),
             info && React.createElement("div", { style: { background: "#E3FBF1", color: "#0F7A54", padding: "8px 10px", borderRadius: 8, fontSize: 12.5, marginBottom: 10 } }, info),
             React.createElement("button", { onClick: submit, disabled: busy || !email || (mode !== "forgot" && !password) || (mode === "signup" && !name.trim()), style: {
                     width: "100%", padding: "13px", borderRadius: 12, border: "none",
                     background: busy || !email || (mode !== "forgot" && !password) || (mode === "signup" && !name.trim()) ? "#D6D2EE" : "linear-gradient(120deg,#4F46E5,#7C3AED)",
                     color: "#fff", fontWeight: 700, fontSize: 14.5, marginBottom: 10,
-                } }, busy ? "Please wait\u2026" : mode === "signin" ? "Sign In" : mode === "forgot" ? "Reset Link Bhejein" : "Create Account"),
+                } }, busy ? "Please wait\u2026" : mode === "signin" ? "Sign In" : mode === "forgot" ? "Send Reset Link" : "Create Account"),
             React.createElement("div", { style: { textAlign: "center", fontSize: 12.5, color: COLORS.muted } }, mode === "signin" ? (React.createElement(React.Fragment, null,
                 "Naye staff member hain? ",
-                React.createElement("button", { onClick: () => { setMode("signup"); setError(""); setInfo(""); }, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, padding: 0 } }, "Account banayein"))) : (React.createElement(React.Fragment, null,
+                React.createElement("button", { onClick: () => { setMode("signup"); setError(""); setInfo(""); }, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, padding: 0 } }, "Create Account"))) : (React.createElement(React.Fragment, null,
                 "Pehle se account hai? ",
-                React.createElement("button", { onClick: () => { setMode("signin"); setError(""); setInfo(""); }, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, padding: 0 } }, "Sign in karein")))))));
+                React.createElement("button", { onClick: () => { setMode("signin"); setError(""); setInfo(""); }, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, padding: 0 } }, "Sign In")))))));
 }
 // ============================ MAIN APP ============================
 function BillingApp({ session, perms }) {
@@ -1154,9 +1154,11 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                 React.createElement(FolderButton, { icon: "\uD83D\uDCB8", label: "Expenses", color: "#DC2626", bg: "#FEE2E2", onClick: onOpenExpenses }),
                 React.createElement(FolderButton, { icon: "\uD83D\uDCB3", label: "Cash/Bank Book", color: "#0369A1", bg: "#E0F2FE", onClick: onOpenCashBook }),
                 perms.isAdmin && React.createElement(FolderButton, { icon: "\uD83D\uDCB0", label: "Payroll & Incentives", color: "#0D9488", bg: "#CCFBF1", onClick: onOpenPayroll }),
-                (perms.canConfirmPayments || perms.isAdmin) && React.createElement(FolderButton, { icon: "\uD83D\uDCCD", label: "Attendance", color: "#DB2777", bg: "#FCE7F3", onClick: onOpenAttendance }),
-                React.createElement(FolderButton, { icon: "\uD83D\uDCD6", label: "Staff Guidelines", color: "#7C3AED", bg: "#F1ECFE", onClick: onOpenGuidelines }),
-                React.createElement(FolderButton, { icon: "\uD83D\uDCE2", label: "Notices", color: "#EA580C", bg: "#FFEDD5", onClick: onOpenNotices })))),
+                (perms.canConfirmPayments || perms.isAdmin) && React.createElement(FolderButton, { icon: "\uD83D\uDCCD", label: "Attendance", color: "#DB2777", bg: "#FCE7F3", onClick: onOpenAttendance })))),
+        React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 10 } }, "Company"),
+        React.createElement("div", { className: "home-folder-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
+            React.createElement(FolderButton, { icon: "\uD83D\uDCD6", label: "Staff Guidelines", color: "#7C3AED", bg: "#F1ECFE", onClick: onOpenGuidelines }),
+            React.createElement(FolderButton, { icon: "\uD83D\uDCE2", label: "Notices", color: "#EA580C", bg: "#FFEDD5", onClick: onOpenNotices })),
         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
             React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15 } }, "Recent"),
             invoices.length > 0 && React.createElement("button", { onClick: onView, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, fontSize: 13 } }, "View all")),
@@ -1796,8 +1798,8 @@ function Guidelines({ session, perms, onBack }) {
                 content ? (React.createElement("div", { className: "card", style: { padding: 16, whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: 13.5, color: COLORS.ink } }, content)) : (React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Abhi tak koi guideline nahi likhi gayi hai.")),
                 content && (isConfirmed ? React.createElement("div", { className: "card", style: { padding: 14, marginTop: 12, background: "#E3FBF1", border: "1px solid #C8F0DC", display: "flex", alignItems: "center", gap: 8 } },
                     React.createElement(Icon, { size: 16 }, "\u2705"),
-                    React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#0F7A54" } }, "Aapne padh liya hai aur confirm kar diya hai")) : React.createElement("button", { onClick: confirmRead, disabled: busy, style: { width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#10B981,#0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "\u2026" : "\u2713 Maine Padh Liya, Samajh Liya")),
-                perms.isAdmin && React.createElement("button", { onClick: () => setEditing(true), style: { width: "100%", marginTop: 12, padding: "11px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5 } }, content ? "Edit Guidelines" : "Guidelines Likhein"),
+                    React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#0F7A54" } }, "Aapne padh liya hai aur confirm kar diya hai")) : React.createElement("button", { onClick: confirmRead, disabled: busy, style: { width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#10B981,#0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "\u2026" : "\u2713 I Have Read & Understood")),
+                perms.isAdmin && React.createElement("button", { onClick: () => setEditing(true), style: { width: "100%", marginTop: 12, padding: "11px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5 } }, content ? "Edit Guidelines" : "Write Guidelines"),
                 perms.isAdmin && staffList.length > 0 && React.createElement("div", { style: { marginTop: 20 } },
                     React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 700, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 } }, "Kisne Confirm Kiya"),
                     staffList.map((u) => {
@@ -1877,12 +1879,12 @@ function Notices({ session, perms, onBack }) {
     return (React.createElement("div", null,
         React.createElement(SubHeader, { title: "Notices", onBack: onBack }),
         React.createElement("div", { style: { padding: "0 16px" } },
-            perms.isAdmin && !showForm && React.createElement("button", { onClick: () => setShowForm(true), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, "+ Naya Notice Likhein"),
+            perms.isAdmin && !showForm && React.createElement("button", { onClick: () => setShowForm(true), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, "+ New Notice"),
             perms.isAdmin && showForm && React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 14 } },
                 React.createElement("input", { value: title, onChange: (e) => setTitle(e.target.value), placeholder: "Title", style: { width: "100%", padding: "9px 11px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13.5, marginBottom: 8 } }),
                 React.createElement("textarea", { value: message, onChange: (e) => setMessage(e.target.value), placeholder: "Message", rows: 4, style: { width: "100%", padding: "9px 11px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13.5, marginBottom: 10, resize: "vertical", fontFamily: "inherit" } }),
                 React.createElement("div", { style: { display: "flex", gap: 8 } },
-                    React.createElement("button", { onClick: addNotice, disabled: busy || !title.trim() || !message.trim(), style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, busy ? "Bhej rahe\u2026" : "Bhejein"),
+                    React.createElement("button", { onClick: addNotice, disabled: busy || !title.trim() || !message.trim(), style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, busy ? "Sending\u2026" : "Send"),
                     React.createElement("button", { onClick: () => { setShowForm(false); setTitle(""); setMessage(""); }, style: { padding: "10px 16px", borderRadius: 10, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13 } }, "Cancel"))),
             !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026")) : notices.length === 0 ? (React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Abhi tak koi notice nahi hai.")) : notices.map((n) => React.createElement("div", { key: n.id, className: "card", style: { padding: 14, marginBottom: 10 } }, [
                 React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 } }, [
@@ -1895,7 +1897,7 @@ function Notices({ session, perms, onBack }) {
                 React.createElement("div", { key: "msg", style: { fontSize: 13, color: "#444", whiteSpace: "pre-wrap", lineHeight: 1.6 } }, n.message),
                 React.createElement("div", { key: "meta", style: { fontSize: 10.5, color: COLORS.muted, marginTop: 8 } }, new Date(n.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) + " \u00B7 " + n.created_by),
                 React.createElement("div", { key: "confirm", style: { marginTop: 10, paddingTop: 10, borderTop: "1px solid " + COLORS.border, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } }, [
-                    myReads[n.id] ? React.createElement("span", { key: "done", style: { fontSize: 11.5, fontWeight: 700, color: COLORS.emerald, display: "flex", alignItems: "center", gap: 5 } }, [React.createElement(Icon, { key: "ic", size: 13 }, "\u2705"), "Maine Dekh Liya"]) : React.createElement("button", { key: "btn", onClick: () => confirmRead(n.id), disabled: busy, style: { padding: "7px 14px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\u2713 Maine Dekh Liya"),
+                    myReads[n.id] ? React.createElement("span", { key: "done", style: { fontSize: 11.5, fontWeight: 700, color: COLORS.emerald, display: "flex", alignItems: "center", gap: 5 } }, [React.createElement(Icon, { key: "ic", size: 13 }, "\u2705"), "Seen"]) : React.createElement("button", { key: "btn", onClick: () => confirmRead(n.id), disabled: busy, style: { padding: "7px 14px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\u2713 Mark as Seen"),
                     perms.isAdmin && staffCount > 0 && React.createElement("span", { key: "cnt", style: { fontSize: 10.5, fontWeight: 700, color: COLORS.muted } }, `${readCounts[n.id] || 0}/${staffCount} confirmed`),
                 ]),
             ])),
@@ -2375,6 +2377,20 @@ function AdminPanel({ session, onBack }) {
         const newDocPerms = Object.assign({}, current.doc_permissions || {}, { [docType]: level });
         setDrafts(Object.assign(Object.assign({}, drafts), { [u.id]: Object.assign(Object.assign({}, current), { doc_permissions: newDocPerms }) }));
     };
+    const toggleActive = async (u) => {
+        const current = drafts[u.id] || u;
+        const newVal = !(current.is_active !== false);
+        setBusyId(u.id);
+        setError("");
+        const { error } = await sb.from("grasp_users").update({ is_active: newVal }).eq("id", u.id);
+        if (error)
+            setError(error.message);
+        else {
+            setUsers(users.map((x) => (x.id === u.id ? Object.assign(Object.assign({}, x), { is_active: newVal }) : x)));
+            setDrafts(Object.assign(Object.assign({}, drafts), { [u.id]: Object.assign(Object.assign({}, current), { is_active: newVal }) }));
+        }
+        setBusyId(null);
+    };
     const savePerms = async (u) => {
         setBusyId(u.id);
         setError("");
@@ -2424,8 +2440,8 @@ function AdminPanel({ session, onBack }) {
                             React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Naam (job chhodne par yahan naye employee ka naam daal dein)"),
                             React.createElement("input", { value: d.full_name || "", onChange: (e) => setDraft(u.id, "full_name", e.target.value), placeholder: "Staff ka naam", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 8 } }),
                             React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", marginBottom: 10 } }, "Naam badalne se purane sab bills mein bhi naya naam automatically dikhega \u2014 isse account naye employee ko allot ho jata hai."),
-                            React.createElement("button", { onClick: () => setDraft(u.id, "is_active", !(d.is_active !== false)), style: { width: "100%", padding: "9px", borderRadius: 9, border: "none", background: d.is_active === false ? COLORS.emerald : COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, d.is_active === false ? "Account Activate Karein" : "Account Deactivate Karein (job chhod di ho to)"),
-                            React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", marginTop: 6 } }, "Deactivate karne par wo staff login nahi kar payega, lekin sab purana data/bills surakshit rahenge.")),
+                            React.createElement("button", { onClick: () => toggleActive(u), disabled: busyId === u.id, style: { width: "100%", padding: "9px", borderRadius: 9, border: "none", background: d.is_active === false ? COLORS.emerald : COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, busyId === u.id ? "Saving\u2026" : d.is_active === false ? "Account Activate Karein (turant save hoga)" : "Account Deactivate Karein (turant save hoga)"),
+                            React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", marginTop: 6 } }, "Ye button dabate hi turant save ho jata hai \u2014 alag se 'Save Access' dabane ki zaroorat nahi. Deactivate karne par wo staff login nahi kar payega, lekin sab purana data/bills surakshit rahenge.")),
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Designation"),
                         React.createElement("select", { value: d.designation, onChange: (e) => handleDesignationChange(u, e.target.value), style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }, DESIGNATIONS.map((opt) => (React.createElement("option", { key: opt, value: opt }, opt)))),
                         d.designation === "Manager" && React.createElement("div", { style: { fontSize: 10.5, color: COLORS.emerald, marginTop: -8, marginBottom: 12, fontWeight: 600 } }, "\u2713 Manager ko View All Sales, Purchase Bills, aur Confirm Payments automatically de diya gaya hai \u2014 neeche check karके confirm kar lein."),
