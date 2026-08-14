@@ -4676,6 +4676,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
       .pv-terms-label { font-size: 9pt; }
       .pv-terms-text { font-size: 8pt; }
       .pv-cell { padding: 5pt 6pt; }
+      .pv-sales-table .pv-cell { padding: 4pt 4pt; }
       .pv-section { padding: 6pt 8pt; }
     `;
         const win = window.open("", "_blank");
@@ -4684,12 +4685,13 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             return;
         }
         win.document.open();
+        const baseCss = (document.querySelector("style") && document.querySelector("style").innerHTML) || "";
         win.document.write(`<!DOCTYPE html><html><head><title>${meta.label} ${inv.invoiceNo}</title>` +
             `<base href="${window.location.href}">` +
             `<meta name="viewport" content="width=device-width, initial-scale=1.0">` +
             `<link rel="preconnect" href="https://fonts.googleapis.com">` +
             `<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">` +
-            `<style>${printCss}</style></head><body>${node.outerHTML}</body></html>`);
+            `<style>${baseCss}</style><style>${printCss}</style></head><body>${node.outerHTML}</body></html>`);
         win.document.close();
         let printed = false;
         const doPrint = () => { if (printed) return; printed = true; win.focus(); win.print(); };
@@ -5224,8 +5226,8 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                             React.createElement("td", { key: "total", className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee", whiteSpace: "nowrap" } }, fmt(taxable + taxAmt)),
                         ]);
                     }),
-                    Math.max(0, 15 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
-                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 15 - visibleItems.length) * 22 } }, "\u00A0"),
+                    Math.max(0, 8 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 8 - visibleItems.length) * 26 } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
@@ -5267,8 +5269,8 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                                     "%)")),
                             React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee" } }, fmt(taxable + taxAmt))));
                     }),
-                    Math.max(0, 15 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
-                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 15 - visibleItems.length) * 23 } }, "\u00A0"),
+                    Math.max(0, 8 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 8 - visibleItems.length) * 26 } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
