@@ -1068,8 +1068,18 @@ function DailyGoalWidget({ session, perms, invoices }) {
             setLoaded(true);
         });
     }, []);
-    if (!hasTarget || !loaded)
+    if (!hasTarget)
         return null;
+    if (!loaded)
+        return React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16, minHeight: 205 } },
+            React.createElement("div", { style: { height: 11, width: "55%", borderRadius: 4, background: "#F1ECFE" } }),
+            React.createElement("div", { style: { height: 17, width: "35%", borderRadius: 4, background: "#F1ECFE", marginTop: 8 } }),
+            React.createElement("div", { style: { height: 8, width: "70%", borderRadius: 4, background: "#F1ECFE", marginTop: 8 } }),
+            React.createElement("div", { style: { height: 1, background: COLORS.border, marginTop: 14, marginBottom: 12 } }),
+            React.createElement("div", { style: { height: 30, borderRadius: 9, background: "#F1ECFE" } }),
+            React.createElement("div", { style: { height: 1, background: COLORS.border, marginTop: 14, marginBottom: 12 } }),
+            React.createElement("div", { style: { height: 11, width: "60%", borderRadius: 4, background: "#F1ECFE" } }),
+            React.createElement("div", { style: { height: 8, borderRadius: 4, background: "#F1ECFE", marginTop: 10 } }));
     const now = new Date();
     const monthlyTarget = Number(perms.targetAmount) / 12;
     const y = now.getFullYear(), m = now.getMonth();
@@ -5191,7 +5201,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                     React.createElement("tr", null, [
                         React.createElement("th", { key: "sn", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "#"),
                         React.createElement("th", { key: "desc", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Product / Description"),
-                        React.createElement("th", { key: "hsn", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "HSN/SAC"),
+                        React.createElement("th", { key: "hsn", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "HSN/SAC"),
                         React.createElement("th", { key: "rate", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Rate"),
                         React.createElement("th", { key: "qty", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Qty"),
                         React.createElement("th", { key: "tax", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Tax"),
@@ -5211,7 +5221,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                             React.createElement("td", { key: "desc", className: "pv-td pv-cell", style: Object.assign({ fontWeight: 600 }, cellStyle) },
                                 React.createElement("div", null, it.name),
                                 it.description && React.createElement("div", { className: "pv-td-sub", style: { color: "#555", fontWeight: 700, marginTop: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", lineHeight: 1.4 } }, it.description)),
-                            React.createElement("td", { key: "hsn", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ color: "#333" }, cellStyle), nowrapNum) }, it.hsn || "\u2014"),
+                            React.createElement("td", { key: "hsn", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ color: "#333", textAlign: "right" }, cellStyle), nowrapNum) }, it.hsn || "\u2014"),
                             React.createElement("td", { key: "rate", className: "num pv-td pv-cell", style: Object.assign(Object.assign({ textAlign: "right" }, cellStyle), nowrapNum) }, fmt(it.rate)),
                             React.createElement("td", { key: "qty", className: "num pv-td pv-cell", style: Object.assign(Object.assign({ textAlign: "right" }, cellStyle), nowrapNum) },
                                 it.qty,
