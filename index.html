@@ -115,6 +115,7 @@
   .pv-terms-label { font-size: 9.5px; }
   .pv-terms-text { font-size: 8.5px; }
   .pv-cell { padding: 6px 5px; }
+  .pv-sales-table .pv-cell { padding: 6px 3px; }
   .pv-section { padding: 10px; }
 
   @media print {
@@ -156,6 +157,7 @@
     .pv-terms-label { font-size: 9pt; }
     .pv-terms-text { font-size: 8pt; }
     .pv-cell { padding: 5pt 6pt; }
+    .pv-sales-table .pv-cell { padding: 5pt 3pt; }
     .pv-section { padding: 6pt 8pt; }
   }
 </style>
@@ -489,6 +491,19 @@ function canDoc(perms, docType, level) {
         return lvl === "read" || lvl === "full";
     return lvl === "full";
 }
+async function logAudit(session, action, entityType, entityId, oldValue, newValue) {
+    try {
+        if (!sb || !session)
+            return;
+        await sb.from("grasp_audit_log").insert({
+            id: uid(), actor_email: session.user.email, actor_id: session.user.id,
+            action, entity_type: entityType, entity_id: entityId,
+            old_value: oldValue === undefined ? null : oldValue,
+            new_value: newValue === undefined ? null : newValue,
+        });
+    }
+    catch (e) { }
+}
 function Root() {
     const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
     const [perms, setPerms] = useState(DEFAULT_PERMS);
@@ -627,6 +642,7 @@ function BillingApp({ session, perms }) {
     const [folderFilter, setFolderFilter] = useState("all");
     const [confirmDeleteId, setConfirmDeleteId] = useState(null);
     const [selectedParty, setSelectedParty] = useState(null);
+    const [docsStaffTarget, setDocsStaffTarget] = useState(null);
     useEffect(() => {
         (async () => {
             try {
@@ -735,6 +751,7 @@ function BillingApp({ session, perms }) {
         }
     };
     const saveItem = async (item) => {
+        const existingItem = itemCatalog.find((c) => c.key === item.key);
         const { error } = await sb.from("grasp_item_costs").upsert(catalogToDb(item));
         if (error) {
             setError("Item save nahi hua: " + error.message);
@@ -749,6 +766,7 @@ function BillingApp({ session, perms }) {
                 next.push(item);
             return next;
         });
+        logAudit(session, existingItem ? "item_edit" : "item_create", "item", item.name, existingItem ? { sellingRate: existingItem.sellingRate, gst: existingItem.gst, stock: existingItem.stock } : null, { sellingRate: item.sellingRate, gst: item.gst, stock: item.stock });
         return true;
     };
     const deleteItem = async (key) => {
@@ -807,6 +825,8 @@ function BillingApp({ session, perms }) {
                 if (data.docType === "purchase")
                     updateItemCostsFromPurchase(data);
                 updateStockForInvoice(data, oldInv);
+                if (oldInv)
+                    logAudit(session, "invoice_edit", data.docType, data.invoiceNo, { total: oldInv.total, party: oldInv.party, paidAmount: oldInv.paidAmount }, { total: data.total, party: data.party, paidAmount: data.paidAmount });
             }
             else {
                 const meta = DOC_META[data.docType];
@@ -835,6 +855,7 @@ function BillingApp({ session, perms }) {
                 if (full.docType === "purchase")
                     updateItemCostsFromPurchase(full);
                 updateStockForInvoice(full, null);
+                logAudit(session, "invoice_create", full.docType, full.invoiceNo, null, { total: full.total, party: full.party });
             }
             setEditingInv(null);
             setView("preview");
@@ -853,6 +874,8 @@ function BillingApp({ session, perms }) {
             setConfirmDeleteId(null);
             if (oldInv)
                 updateStockForInvoice(null, oldInv);
+            if (oldInv)
+                logAudit(session, "invoice_delete", oldInv.docType, oldInv.invoiceNo, { total: oldInv.total, party: oldInv.party }, null);
             if (previewId === id) {
                 setPreviewId(null);
                 setView("invoices");
@@ -899,11 +922,14 @@ function BillingApp({ session, perms }) {
                 const { error } = await sb.from("grasp_parties").insert(added);
                 if (error)
                     throw error;
+                logAudit(session, "party_create", "party", added.name, null, { name: added.name, phone: added.phone });
             }
             if (removedId) {
+                const removedParty = parties.find((p) => p.id === removedId);
                 const { error } = await sb.from("grasp_parties").delete().eq("id", removedId);
                 if (error)
                     throw error;
+                logAudit(session, "party_delete", "party", removedParty ? removedParty.name : removedId, removedParty ? { name: removedParty.name } : null, null);
             }
             setParties(next);
         }
@@ -927,7 +953,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), staffNames: staffNames })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings") })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, staffNames: staffNames })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (o) => { setEditingInv({ docType: "sale", party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "managementdash" && perms.isAdmin ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
                 error && React.createElement("div", { className: "no-print", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error)),
             view !== "preview" && React.createElement("div", { className: "no-print" },
                 React.createElement(BottomNav, { view: view, setView: setView, perms: perms }))),
@@ -1106,7 +1132,7 @@ function DailyGoalWidget({ session, perms, invoices }) {
                 fmt(monthRemaining),
                 " aur chahiye is mahine ke target ke liye"))));
 }
-function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, staffNames }) {
+function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenGemTenders, onOpenServiceTickets, onOpenMyDocuments, staffNames }) {
     const recent = invoices.slice(0, 4);
     const hasFullView = perms.isAdmin || perms.canViewAllSales;
     const achievementPct = perms.targetAmount > 0 ? Math.min(100, Math.round((totals.sales / perms.targetAmount) * 100)) : null;
@@ -1161,9 +1187,12 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                     overdueList.length > 0 ? `${overdueList.length} payment${overdueList.length > 1 ? "s" : ""} overdue!` : `${dueSoonList.length} payment${dueSoonList.length > 1 ? "s" : ""} due soon`),
                 React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, marginTop: 1 } }, "Tap to see details and follow up")),
             React.createElement(Icon, { size: 15, style: { color: COLORS.muted } }, "\u2192")),
-        React.createElement("button", { onClick: onCreate, style: { width: "100%", background: "linear-gradient(120deg, #4F46E5, #7C3AED)", color: "#fff", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Sora', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 20, boxShadow: "0 4px 14px rgba(124,58,237,0.35)" } },
+        React.createElement("button", { onClick: onCreate, style: { width: "100%", background: "linear-gradient(120deg, #4F46E5, #7C3AED)", color: "#fff", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Sora', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, boxShadow: "0 4px 14px rgba(124,58,237,0.35)" } },
             React.createElement(Icon, { size: 17 }, "\u2795"),
             " New Document"),
+        React.createElement("button", { onClick: onOpenLeads, style: { width: "100%", background: "linear-gradient(120deg, #F59E0B, #EA580C)", color: "#fff", border: "none", borderRadius: 16, padding: "14px", fontSize: 14, fontWeight: 700, fontFamily: "'Sora', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 20, boxShadow: "0 4px 14px rgba(245,158,11,0.3)" } },
+            React.createElement(Icon, { size: 16 }, "\uD83C\uDFAF"),
+            " Leads & Follow-up"),
         React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 10 } }, "Documents"),
         React.createElement("div", { className: "home-folder-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
             canDoc(perms, "sale", "read") && React.createElement(FolderButton, { icon: "\uD83E\uDDFE", label: "Sale Invoices", color: DOC_META.sale.color, bg: DOC_META.sale.tint, onClick: () => onOpenFolder("sale") }),
@@ -1184,7 +1213,13 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
         React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 10 } }, "Company"),
         React.createElement("div", { className: "home-folder-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
             React.createElement(FolderButton, { icon: "\uD83D\uDCD6", label: "Staff Guidelines", color: "#7C3AED", bg: "#F1ECFE", onClick: onOpenGuidelines }),
-            React.createElement(FolderButton, { icon: "\uD83D\uDCE2", label: "Notices", color: "#EA580C", bg: "#FFEDD5", onClick: onOpenNotices })),
+            React.createElement(FolderButton, { icon: "\uD83D\uDCE2", label: "Notices", color: "#EA580C", bg: "#FFEDD5", onClick: onOpenNotices }),
+            React.createElement(FolderButton, { icon: "\uD83C\uDFC6", label: "My Performance", color: "#7C3AED", bg: "#F1ECFE", onClick: onOpenMyPerformance }),
+            perms.isAdmin && React.createElement(FolderButton, { icon: "\uD83D\uDCCA", label: "Management Dashboard", color: "#0369A1", bg: "#E0F2FE", onClick: onOpenManagementDashboard }),
+            React.createElement(FolderButton, { icon: "\uD83D\uDED2", label: "E-commerce Orders", color: "#F59E0B", bg: "#FEF3DD", onClick: onOpenEcomOrders }),
+            React.createElement(FolderButton, { icon: "\uD83C\uDFDB\uFE0F", label: "GeM Tenders", color: "#0369A1", bg: "#E0F2FE", onClick: onOpenGemTenders }),
+            React.createElement(FolderButton, { icon: "\uD83D\uDD27", label: "Service Tickets", color: "#0891B2", bg: "#CFFAFE", onClick: onOpenServiceTickets }),
+            React.createElement(FolderButton, { icon: "\uD83D\uDCC1", label: "My Documents", color: "#7C3AED", bg: "#F1ECFE", onClick: onOpenMyDocuments })),
         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
             React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15 } }, "Recent"),
             invoices.length > 0 && React.createElement("button", { onClick: onView, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, fontSize: 13 } }, "View all")),
@@ -1948,7 +1983,7 @@ function StaffAccount({ session, perms, onBack }) {
                 "Business/bank details Admin handle karta hai."),
             React.createElement("button", { onClick: () => sb.auth.signOut(), style: { width: "100%", padding: "13px", borderRadius: 14, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.rose, fontWeight: 700, fontSize: 14 } }, "Sign out"))));
 }
-function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onManageItems, onReports, onEditBusiness, onExport, onAnalytics }) {
+function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onManageItems, onReports, onEditBusiness, onExport, onAnalytics, onIncentives, onAuditLog, onAppraisal, onKpi, onMgmtReports }) {
     return (React.createElement("div", null,
         React.createElement(SubHeader, { title: "Business", onBack: onBack }),
         React.createElement("div", { style: { padding: "0 16px" } },
@@ -1963,6 +1998,31 @@ function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onMa
                 React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
                     React.createElement(Icon, { size: 17 }, "\uD83D\uDC65"),
                     " Manage Staff"),
+                React.createElement(Icon, { size: 15 }, "\u2192"))),
+            perms.isAdmin && (React.createElement("button", { onClick: onIncentives, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #F59E0B, #EA580C)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(245,158,11,0.3)" } },
+                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement(Icon, { size: 17 }, "\uD83C\uDF81"),
+                    " Incentive Management"),
+                React.createElement(Icon, { size: 15 }, "\u2192"))),
+            perms.isAdmin && (React.createElement("button", { onClick: onAuditLog, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #475569, #1E293B)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(30,41,59,0.3)" } },
+                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement(Icon, { size: 17 }, "\uD83D\uDCDC"),
+                    " Audit Trail"),
+                React.createElement(Icon, { size: 15 }, "\u2192"))),
+            perms.isAdmin && (React.createElement("button", { onClick: onAppraisal, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #7C3AED, #4F46E5)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(79,70,229,0.3)" } },
+                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement(Icon, { size: 17 }, "\uD83D\uDCC8"),
+                    " Annual Appraisal"),
+                React.createElement(Icon, { size: 15 }, "\u2192"))),
+            perms.isAdmin && (React.createElement("button", { onClick: onKpi, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #EC4899, #DB2777)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(219,39,119,0.3)" } },
+                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement(Icon, { size: 17 }, "\uD83C\uDFAF"),
+                    " KPI Scoring"),
+                React.createElement(Icon, { size: 15 }, "\u2192"))),
+            perms.isAdmin && (React.createElement("button", { onClick: onMgmtReports, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #0891B2, #0369A1)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(3,105,161,0.3)" } },
+                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement(Icon, { size: 17 }, "\uD83D\uDCCB"),
+                    " Management Reports"),
                 React.createElement(Icon, { size: 15 }, "\u2192"))),
             (perms.canViewPurchases || perms.isAdmin) && (React.createElement("button", { onClick: onManageItems, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #10B981, #0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(16,185,129,0.3)" } },
                 React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
@@ -1990,6 +2050,1429 @@ function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onMa
                     " Company & Banking Details"),
                 React.createElement(Icon, { size: 15 }, "\u2192"))),
             React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", marginTop: 6, lineHeight: 1.5 } }, "Company/bank details ab alag screen par hain taaki galti se edit na ho jaayen."))));
+}
+const AUDIT_ACTION_LABELS = {
+    invoice_create: "Document Banaya", invoice_edit: "Document Edit Kiya", invoice_delete: "Document Delete Kiya",
+    staff_activated: "Staff Activate Kiya", staff_deactivated: "Staff Deactivate Kiya",
+    salary_target_changed: "Salary/Target Badla", permissions_changed: "Permissions Badle",
+    item_create: "Item Banaya", item_edit: "Item Edit Kiya",
+    party_create: "Party Banayi", party_delete: "Party Delete Ki",
+    auto_appraisal: "Automatic Appraisal (Salary/Target)",
+};
+const AUDIT_ENTITY_FILTERS = [
+    ["all", "Sabhi"], ["sale", "Sale Invoice"], ["quotation", "Quotation"], ["proforma", "Proforma"],
+    ["purchase", "Purchase"], ["staff", "Staff"], ["item", "Item"], ["party", "Party"],
+];
+function incrementPctFor(ratingLabel) {
+    const map = { Excellent: 12, "Very Good": 8, Good: 5, Satisfactory: 2, "Needs Improvement": 1, Poor: 0 };
+    return map[ratingLabel] || 0;
+}
+const KPI_DEFINITIONS = {
+    "E-commerce Sales Executive": [
+        ["sales_achievement", "Sales Target Achievement", 40, "auto"],
+        ["order_conversion", "Order Conversion", 15, "manual"],
+        ["collection", "Collection/Payment", 15, "manual"],
+        ["followup", "Follow-up", 10, "manual"],
+        ["return_control", "Return/Cancellation Control", 10, "manual"],
+        ["attendance", "Attendance & Discipline", 10, "auto"],
+    ],
+    "GeM Sales Executive": [
+        ["sales_achievement", "Sales Target Achievement", 35, "auto"],
+        ["tender_performance", "Tender/Bid Performance", 15, "manual"],
+        ["order_conversion", "Order Conversion", 15, "manual"],
+        ["collection", "Payment Collection", 15, "manual"],
+        ["followup", "Buyer Follow-up", 10, "manual"],
+        ["attendance", "Reporting & Discipline", 10, "auto"],
+    ],
+    "Service Executive / Technician": [
+        ["calls_completed", "Service Calls Completed", 25, "auto"],
+        ["ontime", "On-time Service", 20, "auto"],
+        ["first_time_resolution", "First-time Resolution", 20, "auto"],
+        ["csat", "Customer Satisfaction", 15, "auto"],
+        ["complaints_control", "Pending Complaints Control", 10, "manual"],
+        ["attendance", "Attendance & Discipline", 10, "auto"],
+    ],
+    "Office Boy / Support Staff": [
+        ["attendance", "Attendance", 25, "auto"],
+        ["punctuality", "Punctuality", 20, "manual"],
+        ["task_completion", "Assigned Task Completion", 25, "manual"],
+        ["office_support", "Office Support/Responsibility", 15, "manual"],
+        ["discipline", "Discipline & Behaviour", 15, "manual"],
+    ],
+    Accountant: [
+        ["accuracy", "Accounting Accuracy", 25, "manual"],
+        ["collection_followup", "Receivable/Collection Follow-up", 15, "manual"],
+        ["gst_compliance", "GST/Tax Compliance", 20, "manual"],
+        ["reconciliation", "Bank/Cash Reconciliation", 15, "manual"],
+        ["reporting", "Reporting", 15, "manual"],
+        ["attendance", "Attendance & Discipline", 10, "auto"],
+    ],
+    "HR / Admin Executive": [
+        ["attendance_mgmt", "Attendance/Leave Management", 20, "manual"],
+        ["payroll_accuracy", "Payroll Accuracy", 20, "manual"],
+        ["employee_records", "Employee Records", 15, "manual"],
+        ["recruitment", "Recruitment/Joining Support", 15, "manual"],
+        ["task_completion", "HR Task Completion", 15, "manual"],
+        ["discipline", "Discipline & Reporting", 15, "manual"],
+    ],
+    DEFAULT: [
+        ["sales_achievement", "Sales/Work Achievement", 70, "auto"],
+        ["attendance", "Attendance", 30, "auto"],
+    ],
+};
+function kpiFactorsFor(designation) {
+    return KPI_DEFINITIONS[designation] || KPI_DEFINITIONS.DEFAULT;
+}
+const REPORT_LIST = [
+    ["employee_performance", "Employee Performance Report"],
+    ["target_vs_achievement", "Target vs Achievement Report"],
+    ["employee_sales", "Employee-wise Sales Report"],
+    ["department_sales", "Department-wise Sales Report"],
+    ["incentive", "Incentive Report (Is Mahine)"],
+    ["salary", "Salary Report"],
+    ["appraisal_history", "Annual Appraisal / Salary History"],
+    ["ecom_performance", "E-commerce Performance Report"],
+    ["gem_performance", "GeM Performance Report"],
+    ["collection", "Collection Report"],
+    ["profitability", "Profitability Report"],
+    ["receivable_aging", "Receivable Aging Report"],
+];
+function ManagementReports({ invoices, expenses, onBack }) {
+    const [selected, setSelected] = useState(null);
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const loadReport = async (key) => {
+        setSelected(key);
+        setLoading(true);
+        setData(null);
+        try {
+            if (key === "employee_performance" || key === "target_vs_achievement") {
+                const { data: staffData } = await sb.from("grasp_users").select("*");
+                const staff = (staffData || []).filter((u) => !u.is_admin && u.is_active !== false);
+                const rows = staff.map((u) => {
+                    const target = Number(u.target_amount) || 0;
+                    const achieved = invoices.filter((i) => i.docType === "sale" && i.createdBy === u.email).reduce((s, i) => s + i.total, 0);
+                    const pct = target > 0 ? Math.round((achieved / target) * 100) : 0;
+                    return { Naam: u.full_name || u.email.split("@")[0], Target: fmt(target), Achieved: fmt(achieved), "%": pct + "%", Rating: ratingFor(Math.min(100, pct)).label };
+                });
+                setData(rows);
+            }
+            else if (key === "employee_sales") {
+                const map = {};
+                invoices.filter((i) => i.docType === "sale").forEach((i) => { map[i.createdBy] = (map[i.createdBy] || 0) + i.total; });
+                setData(Object.entries(map).map(([email, total]) => ({ Staff: (email || "").split("@")[0], "Total Sales": fmt(total) })).sort((a, b) => Number(b["Total Sales"].replace(/,/g, "")) - Number(a["Total Sales"].replace(/,/g, ""))));
+            }
+            else if (key === "department_sales") {
+                const { data: staffData } = await sb.from("grasp_users").select("*");
+                const deptMap = {};
+                (staffData || []).forEach((u) => { deptMap[u.email] = u.department || "Unassigned"; });
+                const salesMap = {};
+                invoices.filter((i) => i.docType === "sale").forEach((i) => {
+                    const dept = deptMap[i.createdBy] || "Unassigned";
+                    salesMap[dept] = (salesMap[dept] || 0) + i.total;
+                });
+                setData(Object.entries(salesMap).map(([dept, total]) => ({ Department: dept, "Total Sales": fmt(total) })));
+            }
+            else if (key === "incentive") {
+                const now = new Date();
+                const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                const { data: incData } = await sb.from("grasp_incentives").select("*").eq("period", period);
+                setData((incData || []).map((r) => ({ Staff: (r.staff_email || "").split("@")[0], Achieved: fmt(r.achieved_amount), "Incentive Earned": fmt(r.incentive_earned), Status: r.status })));
+            }
+            else if (key === "salary") {
+                const { data: staffData } = await sb.from("grasp_users").select("*");
+                setData((staffData || []).filter((u) => !u.is_admin).map((u) => ({ Naam: u.full_name || u.email.split("@")[0], Designation: u.designation, "Salary \u20B9": fmt(Number(u.monthly_salary) || 0) })));
+            }
+            else if (key === "appraisal_history") {
+                const { data: histData } = await sb.from("grasp_staff_history").select("*").order("recorded_at", { ascending: false }).limit(100);
+                setData((histData || []).map((r) => ({ Staff: (r.staff_email || "").split("@")[0], FY: r.fy, "Salary \u20B9": fmt(r.salary), "Target \u20B9": fmt(r.target_amount), Date: new Date(r.recorded_at).toLocaleDateString("en-IN") })));
+            }
+            else if (key === "ecom_performance") {
+                const { data: ecomData } = await sb.from("grasp_ecom_orders").select("*");
+                setData((ecomData || []).map((o) => ({ Marketplace: o.marketplace, "Order ID": o.order_id, Status: statusMetaFrom(ECOM_STATUSES, o.status).label, "Selling \u20B9": fmt(o.selling_price) })));
+            }
+            else if (key === "gem_performance") {
+                const { data: gemData } = await sb.from("grasp_gem_tenders").select("*");
+                setData((gemData || []).map((t) => ({ "Tender ID": t.tender_id, Status: statusMetaFrom(GEM_STATUSES, t.status).label, "Tender Value \u20B9": fmt(t.tender_value) })));
+            }
+            else if (key === "collection") {
+                setData(invoices.filter((i) => i.docType === "sale" && Number(i.paidAmount) > 0).map((i) => ({ Party: i.party, "Total \u20B9": fmt(i.total), "Paid \u20B9": fmt(Number(i.paidAmount) || 0), Date: new Date(i.date).toLocaleDateString("en-IN") })));
+            }
+            else if (key === "profitability") {
+                const sales = invoices.filter((i) => i.docType === "sale").reduce((s, i) => s + i.total, 0);
+                const purchase = invoices.filter((i) => i.docType === "purchase").reduce((s, i) => s + i.total, 0);
+                const totalExpenses = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+                setData([
+                    { Label: "Total Sales", "\u20B9": fmt(sales) },
+                    { Label: "Total Purchase", "\u20B9": fmt(purchase) },
+                    { Label: "Total Expenses", "\u20B9": fmt(totalExpenses) },
+                    { Label: "Net Profit", "\u20B9": fmt(sales - purchase - totalExpenses) },
+                ]);
+            }
+            else if (key === "receivable_aging") {
+                const now = new Date();
+                setData(invoices.filter((i) => i.docType === "sale" && Math.max(0, i.total - (Number(i.paidAmount) || 0)) > 0).map((i) => {
+                    const days = Math.floor((now - new Date(i.date)) / (1000 * 60 * 60 * 24));
+                    const bucket = days <= 30 ? "0-30 din" : days <= 60 ? "31-60 din" : days <= 90 ? "61-90 din" : "90+ din";
+                    return { Party: i.party, "Outstanding \u20B9": fmt(i.total - (Number(i.paidAmount) || 0)), Bucket: bucket };
+                }));
+            }
+        }
+        catch (e) {
+            setData([]);
+        }
+        setLoading(false);
+    };
+    const exportCsv = () => {
+        if (!data || data.length === 0)
+            return;
+        const headers = Object.keys(data[0]);
+        downloadCSV((REPORT_LIST.find(([k]) => k === selected) || [, "report"])[1] + ".csv", headers, data.map((row) => headers.map((h) => row[h])));
+    };
+    if (selected) {
+        const label = (REPORT_LIST.find(([k]) => k === selected) || [, selected])[1];
+        let bodyEl;
+        if (loading) {
+            bodyEl = React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026");
+        }
+        else if (!data || data.length === 0) {
+            bodyEl = React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Is report ke liye data nahi mila.");
+        }
+        else {
+            const rowEls = data.map((row, idx) => {
+                const fieldEls = Object.entries(row).map(([k, v]) => React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 3 } }, [
+                    React.createElement("span", { key: "k", style: { color: COLORS.muted } }, k),
+                    React.createElement("span", { key: "v", className: "num", style: { fontWeight: 700 } }, String(v)),
+                ]));
+                return React.createElement("div", { key: idx, className: "card", style: { padding: 12, marginBottom: 8 } }, fieldEls);
+            });
+            bodyEl = React.createElement("div", null, [
+                React.createElement("button", { key: "exp", onClick: exportCsv, style: { width: "100%", padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5, marginBottom: 14 } }, "\u2B07\uFE0F CSV Export Karein"),
+                React.createElement("div", { key: "rows" }, rowEls),
+            ]);
+        }
+        return React.createElement("div", null, [
+            React.createElement(SubHeader, { key: "hdr", title: label, onBack: () => setSelected(null) }),
+            React.createElement("div", { key: "body", style: { padding: "0 16px" } }, bodyEl),
+        ]);
+    }
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Management Reports", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } }, REPORT_LIST.map(([key, label]) => React.createElement("button", { key: key, onClick: () => loadReport(key), style: { width: "100%", textAlign: "left", padding: "14px 16px", borderRadius: 12, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" } },
+            label,
+            React.createElement(Icon, { size: 15, style: { color: COLORS.muted } }, "\u2192"))))));
+}
+function KPIScoring({ session, invoices, onBack }) {
+    const [staffList, setStaffList] = useState([]);
+    const [attendanceMap, setAttendanceMap] = useState({});
+    const [serviceMap, setServiceMap] = useState({});
+    const [scores, setScores] = useState({});
+    const [loaded, setLoaded] = useState(false);
+    const [selected, setSelected] = useState(null);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+    const now = new Date();
+    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthStartStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    useEffect(() => {
+        (async () => {
+            const [uRes, sRes, tRes] = await Promise.all([
+                sb.from("grasp_users").select("*"),
+                sb.from("grasp_kpi_scores").select("*").eq("period", period),
+                sb.from("grasp_service_tickets").select("*").gte("created_at", monthStartStr),
+            ]);
+            const staff = (uRes.data || []).filter((u) => !u.is_admin && u.is_active !== false);
+            setStaffList(staff);
+            const scoreMap = {};
+            (sRes.data || []).forEach((s) => { scoreMap[s.staff_email] = s; });
+            setScores(scoreMap);
+            const svcByStaff = {};
+            (tRes.data || []).forEach((t) => {
+                const email = t.assigned_email;
+                if (!email)
+                    return;
+                if (!svcByStaff[email])
+                    svcByStaff[email] = { total: 0, resolved: 0, onTime: 0, firstTime: 0, csatSum: 0, csatCount: 0 };
+                svcByStaff[email].total++;
+                if (t.status === "resolved" || t.status === "closed") {
+                    svcByStaff[email].resolved++;
+                    if (t.on_time)
+                        svcByStaff[email].onTime++;
+                    if (t.first_time_resolved)
+                        svcByStaff[email].firstTime++;
+                    if (t.csat_rating) {
+                        svcByStaff[email].csatSum += Number(t.csat_rating);
+                        svcByStaff[email].csatCount++;
+                    }
+                }
+            });
+            const svcPct = {};
+            Object.entries(svcByStaff).forEach(([email, s]) => {
+                svcPct[email] = {
+                    calls_completed: s.total > 0 ? Math.round((s.resolved / s.total) * 100) : 0,
+                    ontime: s.resolved > 0 ? Math.round((s.onTime / s.resolved) * 100) : 0,
+                    first_time_resolution: s.resolved > 0 ? Math.round((s.firstTime / s.resolved) * 100) : 0,
+                    csat: s.csatCount > 0 ? Math.round((s.csatSum / s.csatCount / 5) * 100) : 0,
+                };
+            });
+            setServiceMap(svcPct);
+            const attRes = await Promise.all(staff.map((u) => sb.from("grasp_attendance").select("status").eq("staff_email", u.email).gte("date", monthStartStr)));
+            const aMap = {};
+            staff.forEach((u, idx) => {
+                const rows = (attRes[idx] && attRes[idx].data) || [];
+                const present = rows.filter((r) => r.status !== "absent").length;
+                aMap[u.email] = rows.length > 0 ? Math.round((present / rows.length) * 100) : 100;
+            });
+            setAttendanceMap(aMap);
+            setLoaded(true);
+        })();
+    }, []);
+    const autoValueFor = (u, factorKey) => {
+        if (factorKey === "attendance" || factorKey === "attendance_mgmt")
+            return attendanceMap[u.email] != null ? attendanceMap[u.email] : 100;
+        if (factorKey === "sales_achievement") {
+            const target = (Number(u.target_amount) || 0) / 12;
+            const achieved = invoices.filter((i) => i.docType === "sale" && i.createdBy === u.email && new Date(i.date) >= monthStart && new Date(i.date) <= now).reduce((s, i) => s + i.total, 0);
+            return target > 0 ? Math.min(100, Math.round((achieved / target) * 100)) : 0;
+        }
+        if (["calls_completed", "ontime", "first_time_resolution", "csat"].includes(factorKey)) {
+            const s = serviceMap[u.email];
+            return s ? s[factorKey] : 0;
+        }
+        return 0;
+    };
+    const getFactorValue = (u, factorKey, factorType) => {
+        const rec = scores[u.email];
+        if (factorType === "auto")
+            return autoValueFor(u, factorKey);
+        return (rec && rec.factor_scores && rec.factor_scores[factorKey] != null) ? rec.factor_scores[factorKey] : 50;
+    };
+    const computeTotal = (u) => {
+        const factors = kpiFactorsFor(u.designation);
+        return Math.round(factors.reduce((sum, [key, , weight, type]) => sum + (getFactorValue(u, key, type) * weight) / 100, 0));
+    };
+    const setManualScore = (email, factorKey, value) => {
+        setScores((prev) => {
+            const existing = prev[email] || { factor_scores: {} };
+            return Object.assign(Object.assign({}, prev), { [email]: Object.assign(Object.assign({}, existing), { factor_scores: Object.assign(Object.assign({}, existing.factor_scores), { [factorKey]: Number(value) || 0 }) }) });
+        });
+    };
+    const saveScore = async (u) => {
+        setBusy(true);
+        setError("");
+        const total = computeTotal(u);
+        const rec = scores[u.email] || {};
+        const payload = { id: rec.id || uid(), staff_email: u.email, staff_id: u.id, period, factor_scores: rec.factor_scores || {}, total_score: total, scored_by: session.user.email, updated_at: new Date().toISOString() };
+        const { error } = await sb.from("grasp_kpi_scores").upsert(payload, { onConflict: "staff_email,period" });
+        if (!error) {
+            setScores((prev) => Object.assign(Object.assign({}, prev), { [u.email]: payload }));
+            setSelected(null);
+        }
+        else
+            setError(error.message);
+        setBusy(false);
+    };
+    const inputStyle = { width: 70, padding: "6px 8px", borderRadius: 7, border: "1px solid " + COLORS.border, fontSize: 12.5, textAlign: "right" };
+    if (selected) {
+        const u = selected;
+        const factors = kpiFactorsFor(u.designation);
+        return (React.createElement("div", null,
+            React.createElement(SubHeader, { title: (u.full_name || u.email.split("@")[0]) + " \u2014 KPI", onBack: () => setSelected(null) }),
+            React.createElement("div", { style: { padding: "0 16px" } },
+                React.createElement("div", { className: "card", style: { padding: 12, marginBottom: 14, fontSize: 11, color: COLORS.muted } },
+                    "Role: ",
+                    u.designation,
+                    ". Hare wale factors automatic hain, baki manually 0-100 mein score karein."),
+                factors.map(([key, label, weight, type]) => React.createElement("div", { key: key, className: "card", style: { padding: 12, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 12.5, fontWeight: 700 } }, label),
+                        React.createElement("div", { style: { fontSize: 10, color: type === "auto" ? COLORS.emerald : COLORS.muted, fontWeight: 600 } }, weight + "% weight \u00B7 " + (type === "auto" ? "Automatic" : "Manual")),
+                    ),
+                    type === "auto" ? React.createElement("div", { className: "num", style: { fontSize: 15, fontWeight: 800, color: COLORS.emerald } }, getFactorValue(u, key, type) + "%") : React.createElement("input", { type: "number", min: "0", max: "100", value: getFactorValue(u, key, type), onChange: (e) => setManualScore(u.email, key, e.target.value), className: "num", style: inputStyle }))),
+                React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 14, textAlign: "center", background: "linear-gradient(120deg,#4F46E5,#7C3AED)" } },
+                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.85)", fontWeight: 700 } }, "TOTAL WEIGHTED SCORE"),
+                    React.createElement("div", { style: { fontSize: 26, fontWeight: 800, color: "#fff" } }, computeTotal(u) + "%")),
+                React.createElement("button", { onClick: () => saveScore(u), disabled: busy, style: { width: "100%", padding: "12px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Save Score"),
+                error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+    }
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "KPI Scoring (Is Mahine)", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : staffList.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi active staff nahi hai.") : staffList.map((u) => {
+                const total = computeTotal(u);
+                const rating = ratingFor(total);
+                return React.createElement("div", { key: u.email, className: "card", style: { padding: 13, marginBottom: 9, cursor: "pointer" }, onClick: () => setSelected(u) },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontWeight: 700, fontSize: 13.5 } }, u.full_name || u.email.split("@")[0]),
+                            React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted } }, u.designation)),
+                        React.createElement("div", { style: { textAlign: "right" } },
+                            React.createElement("div", { className: "num", style: { fontSize: 16, fontWeight: 800, color: rating.color } }, total + "%"),
+                            React.createElement("div", { style: { fontSize: 9.5, fontWeight: 700, color: rating.color } }, rating.label))));
+            }))));
+}
+function AnnualAppraisal({ session, invoices, onBack }) {
+    const [staffList, setStaffList] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [proposals, setProposals] = useState({});
+    const [applying, setApplying] = useState(null);
+    const [applied, setApplied] = useState({});
+    const [error, setError] = useState("");
+    useEffect(() => {
+        sb.from("grasp_users").select("*").then(({ data }) => {
+            const staff = (data || []).filter((u) => !u.is_admin && u.is_active !== false && Number(u.target_amount) > 0);
+            setStaffList(staff);
+            const props = {};
+            staff.forEach((u) => {
+                const target = Number(u.target_amount) || 0;
+                const achieved = invoices.filter((i) => i.docType === "sale" && i.createdBy === u.email).reduce((s, i) => s + i.total, 0);
+                const pct = target > 0 ? Math.round((achieved / target) * 100) : 0;
+                const rating = ratingFor(Math.min(100, pct));
+                const incPct = incrementPctFor(rating.label);
+                const oldSalary = Number(u.monthly_salary) || 0;
+                const newSalary = Math.round(oldSalary * (1 + incPct / 100));
+                const newTarget = Math.round(target * (1 + incPct / 100));
+                props[u.email] = { achieved, pct, rating: rating.label, ratingColor: rating.color, incPct, newSalary, newTarget, oldSalary, oldTarget: target };
+            });
+            setProposals(props);
+            setLoaded(true);
+        });
+    }, []);
+    const updateProposal = (email, field, val) => {
+        setProposals((prev) => Object.assign(Object.assign({}, prev), { [email]: Object.assign(Object.assign({}, prev[email]), { [field]: Number(val) || 0 }) }));
+    };
+    const applyOne = async (u) => {
+        const p = proposals[u.email];
+        setApplying(u.email);
+        setError("");
+        const { error } = await sb.from("grasp_users").update({ monthly_salary: p.newSalary, target_amount: p.newTarget }).eq("id", u.id);
+        if (!error) {
+            await sb.from("grasp_staff_history").insert({ id: uid(), staff_email: u.email, staff_id: u.id, fy: getFY(todayISO()), salary: p.newSalary, target_amount: p.newTarget, designation: u.designation, recorded_by: session.user.email });
+            logAudit(session, "auto_appraisal", "staff", u.email, { salary: p.oldSalary, target: p.oldTarget }, { salary: p.newSalary, target: p.newTarget, rating: p.rating });
+            setApplied((prev) => Object.assign(Object.assign({}, prev), { [u.email]: true }));
+        }
+        else
+            setError(error.message);
+        setApplying(null);
+    };
+    const inputStyle = { width: "100%", padding: "7px 9px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 12.5 };
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Annual Appraisal", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("div", { className: "card", style: { padding: 12, marginBottom: 14, fontSize: 11.5, color: COLORS.muted } }, "Poori FY ki Sale performance dekh kar automatic increment suggest hota hai. Numbers edit karke apna override bhi de sakte hain, phir Apply Karein dabayein."),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : staffList.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi staff ka Target set nahi hai.") : staffList.map((u) => {
+                const p = proposals[u.email];
+                if (!p)
+                    return null;
+                const isApplied = applied[u.email];
+                return React.createElement("div", { key: u.email, className: "card", style: { padding: 14, marginBottom: 10 } }, [
+                    React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", marginBottom: 6 } }, [
+                        React.createElement("span", { key: "n", style: { fontSize: 13.5, fontWeight: 700 } }, u.full_name || u.email.split("@")[0]),
+                        React.createElement("span", { key: "r", style: { fontSize: 10, fontWeight: 800, color: "#fff", background: p.ratingColor, padding: "2px 9px", borderRadius: 7 } }, p.rating + " (" + p.pct + "%)"),
+                    ]),
+                    React.createElement("div", { key: "sug", className: "num", style: { fontSize: 11, color: COLORS.muted, marginBottom: 10 } },
+                        "Suggested Increment: ",
+                        p.incPct,
+                        "%"),
+                    React.createElement("div", { key: "fields", style: { display: "flex", gap: 10, marginBottom: 10 } }, [
+                        React.createElement("div", { key: "sal", style: { flex: 1 } },
+                            React.createElement("label", { style: { fontSize: 10, color: COLORS.muted, fontWeight: 700, marginBottom: 3, display: "block" } }, "Naya Salary \u20B9 (Pehle: " + fmt(p.oldSalary) + ")"),
+                            React.createElement("input", { type: "number", value: p.newSalary, disabled: isApplied, onChange: (e) => updateProposal(u.email, "newSalary", e.target.value), className: "num", style: inputStyle })),
+                        React.createElement("div", { key: "tgt", style: { flex: 1 } },
+                            React.createElement("label", { style: { fontSize: 10, color: COLORS.muted, fontWeight: 700, marginBottom: 3, display: "block" } }, "Naya Target \u20B9 (Pehle: " + fmt(p.oldTarget) + ")"),
+                            React.createElement("input", { type: "number", value: p.newTarget, disabled: isApplied, onChange: (e) => updateProposal(u.email, "newTarget", e.target.value), className: "num", style: inputStyle })),
+                    ]),
+                    isApplied ? React.createElement("div", { key: "done", style: { textAlign: "center", padding: "9px", color: COLORS.emerald, fontWeight: 700, fontSize: 12.5 } }, "\u2705 Apply Ho Gaya") : React.createElement("button", { key: "btn", onClick: () => applyOne(u), disabled: applying === u.email, style: { width: "100%", padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, applying === u.email ? "Applying\u2026" : "Apply Karein"),
+                ]);
+            }),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+}
+function AuditLog({ onBack }) {
+    const [logs, setLogs] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [filter, setFilter] = useState("all");
+    useEffect(() => {
+        sb.from("grasp_audit_log").select("*").order("created_at", { ascending: false }).limit(300).then(({ data }) => {
+            setLogs(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const filteredLogs = filter === "all" ? logs : logs.filter((l) => l.entity_type === filter);
+    const filterBtn = (key, label) => React.createElement("button", { key: key, onClick: () => setFilter(key), style: { padding: "7px 12px", borderRadius: 9, border: "none", background: filter === key ? COLORS.indigo : "#F1ECFE", color: filter === key ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" } }, label);
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Audit Trail", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", marginBottom: 14, paddingBottom: 4 } }, AUDIT_ENTITY_FILTERS.map(([k, l]) => filterBtn(k, l))),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : filteredLogs.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi record nahi mila.") : filteredLogs.map((l) => React.createElement("div", { key: l.id, className: "card", style: { padding: 12, marginBottom: 8 } }, [
+                React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, [
+                    React.createElement("span", { key: "a", style: { fontSize: 12.5, fontWeight: 700 } }, AUDIT_ACTION_LABELS[l.action] || l.action),
+                    React.createElement("span", { key: "t", style: { fontSize: 10, color: COLORS.muted } }, new Date(l.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })),
+                ]),
+                React.createElement("div", { key: "who", style: { fontSize: 11.5, color: "#555", marginBottom: 4 } },
+                    (l.actor_email || "").split("@")[0],
+                    " \u2192 ",
+                    l.entity_type,
+                    " (",
+                    l.entity_id,
+                    ")"),
+                (l.old_value || l.new_value) && React.createElement("div", { key: "diff", style: { fontSize: 10.5, color: COLORS.muted, background: "#FAF9FF", padding: "6px 8px", borderRadius: 7, fontFamily: "monospace" } }, [
+                    l.old_value && React.createElement("div", { key: "old" }, "Pehle: " + JSON.stringify(l.old_value)),
+                    l.new_value && React.createElement("div", { key: "new" }, "Baad: " + JSON.stringify(l.new_value)),
+                ]),
+            ])))));
+}
+function ManagementDashboard({ invoices, expenses, profile, onBack }) {
+    const [staffList, setStaffList] = useState([]);
+    const [todayAttendance, setTodayAttendance] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    useEffect(() => {
+        (async () => {
+            const today = todayISO();
+            const [uRes, aRes] = await Promise.all([
+                sb.from("grasp_users").select("*"),
+                sb.from("grasp_attendance").select("*").eq("date", today),
+            ]);
+            setStaffList((uRes.data || []).filter((u) => !u.is_admin && u.is_active !== false));
+            setTodayAttendance(aRes.data || []);
+            setLoaded(true);
+        })();
+    }, []);
+    const today = todayISO();
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    const monthStart = new Date(y, m, 1);
+    const isToday = (d) => (d || "").slice(0, 10) === today;
+    const isThisMonth = (d) => d && new Date(d) >= monthStart && new Date(d) <= now;
+    const todaySales = invoices.filter((i) => i.docType === "sale" && isToday(i.date)).reduce((s, i) => s + i.total, 0);
+    const todayPurchase = invoices.filter((i) => i.docType === "purchase" && isToday(i.date)).reduce((s, i) => s + i.total, 0);
+    const todayExpenses = expenses.filter((e) => isToday(e.date)).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const outstanding = invoices.filter((i) => i.docType === "sale").reduce((s, i) => s + Math.max(0, i.total - (Number(i.paidAmount) || 0)), 0);
+    const monthSales = invoices.filter((i) => i.docType === "sale" && isThisMonth(i.date)).reduce((s, i) => s + i.total, 0);
+    const monthPurchase = invoices.filter((i) => i.docType === "purchase" && isThisMonth(i.date)).reduce((s, i) => s + i.total, 0);
+    const grossProfit = monthSales - monthPurchase;
+    const empSales = {};
+    invoices.filter((i) => i.docType === "sale" && isThisMonth(i.date)).forEach((i) => {
+        empSales[i.createdBy] = (empSales[i.createdBy] || 0) + i.total;
+    });
+    const perfList = staffList.map((u) => {
+        const monthlyTarget = (Number(u.target_amount) || 0) / 12;
+        const achieved = empSales[u.email] || 0;
+        const pct = monthlyTarget > 0 ? Math.round((achieved / monthlyTarget) * 100) : 0;
+        return { email: u.email, name: u.full_name || u.email.split("@")[0], monthlyTarget, achieved, pct };
+    }).sort((a, b) => b.pct - a.pct);
+    const bestPerformer = perfList.length > 0 ? perfList[0] : null;
+    const belowTargetCount = perfList.filter((p) => p.monthlyTarget > 0 && p.pct < 100).length;
+    const presentEmails = new Set(todayAttendance.filter((a) => a.status !== "absent").map((a) => a.staff_email));
+    const presentCount = staffList.filter((u) => presentEmails.has(u.email)).length;
+    const absentCount = staffList.length - presentCount;
+    const heroStat = (icon, label, value, gradient) => React.createElement("div", { key: label, style: { background: gradient, borderRadius: 16, padding: "16px 14px", color: "#fff", boxShadow: "0 6px 16px rgba(0,0,0,0.12)" } },
+        React.createElement("div", { style: { fontSize: 20, marginBottom: 8 } }, icon),
+        React.createElement("div", { style: { fontSize: 10.5, opacity: 0.9, fontWeight: 700, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.3 } }, label),
+        React.createElement("div", { className: "num", style: { fontSize: 17, fontWeight: 800 } }, value));
+    const statCard = (icon, label, value, color, bg, sub) => React.createElement("div", { key: label, className: "card", style: { padding: 14, border: "none", background: bg, position: "relative", overflow: "hidden" } },
+        React.createElement("div", { style: { fontSize: 18, marginBottom: 6 } }, icon),
+        React.createElement("div", { style: { fontSize: 10, color: color, fontWeight: 800, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.3, opacity: 0.85 } }, label),
+        React.createElement("div", { className: "num", style: { fontSize: 16.5, fontWeight: 800, color: COLORS.ink } }, value),
+        sub && React.createElement("div", { style: { fontSize: 9.5, color: COLORS.muted, marginTop: 2 } }, sub));
+    const sectionHeader = (icon, title) => React.createElement("div", { key: title, style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12, marginTop: 22 } }, [
+        React.createElement("span", { key: "i", style: { fontSize: 15 } }, icon),
+        React.createElement("span", { key: "t", style: { fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 13.5, color: COLORS.ink, textTransform: "uppercase", letterSpacing: 0.5 } }, title),
+    ]);
+    const maxEmpSales = Math.max(1, ...perfList.map((p) => p.achieved));
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Management Dashboard", onBack: onBack }),
+        !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : React.createElement("div", { style: { padding: "0 16px 20px" } }, [
+            React.createElement("div", { key: "hero", style: { background: "linear-gradient(135deg,#4F46E5,#7C3AED 60%,#DB2777)", borderRadius: 20, padding: "18px 16px", marginBottom: 20, boxShadow: "0 10px 24px rgba(124,58,237,0.3)" } }, [
+                React.createElement("div", { key: "l", style: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: 700, marginBottom: 4 } }, new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })),
+                React.createElement("div", { key: "t", style: { color: "#fff", fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 18, marginBottom: 14 } }, (profile && profile.name) || "Business Overview"),
+                React.createElement("div", { key: "g", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
+                    heroStat("\uD83D\uDCB0", "Today Sales", "\u20B9" + fmt(todaySales), "rgba(255,255,255,0.15)"),
+                    heroStat("\uD83D\uDCC8", "This Month", "\u20B9" + fmt(monthSales), "rgba(255,255,255,0.15)"),
+                ]),
+            ]),
+            sectionHeader("\u2600\uFE0F", "Today"),
+            React.createElement("div", { key: "g1", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
+                statCard("\uD83D\uDCB0", "Sales", "\u20B9" + fmt(todaySales), COLORS.emerald, "#E3FBF1"),
+                statCard("\uD83D\uDCE6", "Purchase", "\u20B9" + fmt(todayPurchase), COLORS.rose, "#FDE7EB"),
+                statCard("\uD83E\uDDFE", "Expenses", "\u20B9" + fmt(todayExpenses), COLORS.amber, "#FEF3DD"),
+                statCard("\u23F3", "Outstanding", "\u20B9" + fmt(outstanding), COLORS.violet, "#F1ECFE"),
+            ]),
+            sectionHeader("\uD83D\uDCCA", "This Month"),
+            React.createElement("div", { key: "g2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
+                statCard("\uD83D\uDCB5", "Total Sales", "\u20B9" + fmt(monthSales), COLORS.emerald, "#E3FBF1"),
+                statCard("\uD83D\uDED2", "Total Purchase", "\u20B9" + fmt(monthPurchase), COLORS.rose, "#FDE7EB"),
+                statCard(grossProfit >= 0 ? "\uD83D\uDCC8" : "\uD83D\uDCC9", "Gross Profit", "\u20B9" + fmt(grossProfit), grossProfit >= 0 ? COLORS.emerald : COLORS.rose, grossProfit >= 0 ? "#E3FBF1" : "#FDE7EB"),
+                statCard("\u26A0\uFE0F", "Below Target", belowTargetCount, COLORS.amber, "#FEF3DD"),
+            ]),
+            sectionHeader("\uD83D\uDC65", "HR"),
+            React.createElement("div", { key: "g3", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
+                statCard("\uD83D\uDC64", "Total Staff", staffList.length, COLORS.ink, "#F1F5F9"),
+                statCard("\u2705", "Present Today", presentCount, COLORS.emerald, "#E3FBF1", `${absentCount} absent`),
+                bestPerformer && statCard("\uD83C\uDFC6", "Best Performer", bestPerformer.name, COLORS.violet, "#F1ECFE", `${bestPerformer.pct}% of target`),
+            ]),
+            perfList.length > 0 && React.createElement(React.Fragment, { key: "perf" }, [
+                sectionHeader("\uD83D\uDCC9", "Employee-wise Sales (Is Mahine)"),
+                React.createElement("div", { key: "chart", className: "card", style: { padding: 16 } }, perfList.map((p) => React.createElement("div", { key: p.email, style: { marginBottom: 14 } }, [
+                    React.createElement("div", { key: "row1", style: { display: "flex", justifyContent: "space-between", marginBottom: 5 } }, [
+                        React.createElement("span", { key: "n", style: { fontSize: 12.5, fontWeight: 700 } }, p.name),
+                        React.createElement("span", { key: "pct", className: "num", style: { fontSize: 11.5, fontWeight: 800, color: p.pct >= 100 ? COLORS.emerald : p.pct >= 60 ? COLORS.amber : COLORS.rose } }, p.monthlyTarget > 0 ? p.pct + "%" : "\u2014"),
+                    ]),
+                    React.createElement("div", { key: "bar", style: { height: 10, borderRadius: 5, background: "#F1ECFE", overflow: "hidden", marginBottom: 4 } },
+                        React.createElement("div", { style: { height: "100%", width: `${Math.max(3, Math.round((p.achieved / maxEmpSales) * 100))}%`, background: p.pct >= 100 ? "linear-gradient(90deg,#10B981,#059669)" : "linear-gradient(90deg,#7C3AED,#4F46E5)", borderRadius: 5 } })),
+                    React.createElement("div", { key: "row2", className: "num", style: { fontSize: 10.5, color: COLORS.muted } }, "\u20B9" + fmt(p.achieved) + (p.monthlyTarget > 0 ? " / \u20B9" + fmt(p.monthlyTarget) : "")),
+                ]))),
+            ]),
+        ])));
+}
+const LEAD_STATUSES = [
+    ["new", "New Lead", "#94A3B8"],
+    ["contacted", "Contacted", "#0EA5E9"],
+    ["followup", "Follow-up", "#F59E0B"],
+    ["quotation", "Quotation Sent", "#7C3AED"],
+    ["negotiation", "Negotiation", "#EA580C"],
+    ["won", "Won", "#10B981"],
+    ["lost", "Lost", "#EF4444"],
+];
+const LEAD_SOURCES = ["Website", "Referral", "Cold Call", "Social Media", "Walk-in", "E-commerce", "GeM", "Other"];
+const LEAD_TYPES = ["Direct", "E-commerce", "GeM"];
+function leadStatusMeta(status) {
+    const found = LEAD_STATUSES.find((s) => s[0] === status);
+    return found ? { label: found[1], color: found[2] } : { label: status, color: COLORS.muted };
+}
+function AddLeadForm({ onSave, onCancel }) {
+    const [customerName, setCustomerName] = useState("");
+    const [mobile, setMobile] = useState("");
+    const [source, setSource] = useState("Website");
+    const [product, setProduct] = useState("");
+    const [estimatedValue, setEstimatedValue] = useState("");
+    const [leadType, setLeadType] = useState("Direct");
+    const [followupDate, setFollowupDate] = useState(todayISO());
+    const [notes, setNotes] = useState("");
+    const [busy, setBusy] = useState(false);
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 14, marginBottom: 10 };
+    const save = async () => {
+        if (!customerName.trim())
+            return;
+        setBusy(true);
+        await onSave({
+            date: new Date().toISOString(), customer_name: customerName.trim(), mobile: mobile.trim(),
+            source, product: product.trim(), estimated_value: Number(estimatedValue) || 0,
+            lead_type: leadType, status: "new", next_followup_date: followupDate || null, notes: notes.trim(),
+        });
+        setBusy(false);
+    };
+    return (React.createElement("div", { style: { padding: "0 16px" } },
+        React.createElement("div", { className: "card", style: { padding: 16 } },
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Customer Name *"),
+            React.createElement("input", { value: customerName, onChange: (e) => setCustomerName(e.target.value), placeholder: "Customer/Company naam", style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Mobile"),
+            React.createElement("input", { value: mobile, onChange: (e) => setMobile(e.target.value), placeholder: "10-digit mobile", style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Product / Requirement"),
+            React.createElement("input", { value: product, onChange: (e) => setProduct(e.target.value), placeholder: "Kya chahiye", style: inputStyle }),
+            React.createElement("div", { style: { display: "flex", gap: 10 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Source"),
+                    React.createElement("select", { value: source, onChange: (e) => setSource(e.target.value), style: inputStyle }, LEAD_SOURCES.map((s) => React.createElement("option", { key: s, value: s }, s)))),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Lead Type"),
+                    React.createElement("select", { value: leadType, onChange: (e) => setLeadType(e.target.value), style: inputStyle }, LEAD_TYPES.map((s) => React.createElement("option", { key: s, value: s }, s))))),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Estimated Value (\u20B9)"),
+            React.createElement("input", { type: "number", min: "0", value: estimatedValue, onChange: (e) => setEstimatedValue(e.target.value), className: "num", style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Next Follow-up Date"),
+            React.createElement("input", { type: "date", value: followupDate, onChange: (e) => setFollowupDate(e.target.value), style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Notes"),
+            React.createElement("textarea", { value: notes, onChange: (e) => setNotes(e.target.value), rows: 3, style: Object.assign(Object.assign({}, inputStyle), { resize: "vertical" }) }),
+            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 6 } },
+                React.createElement("button", { onClick: save, disabled: busy || !customerName.trim(), style: { flex: 1, padding: "12px", borderRadius: 11, border: "none", background: customerName.trim() ? COLORS.indigo : "#D6D2EE", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Save Lead"),
+                React.createElement("button", { onClick: onCancel, style: { padding: "12px 18px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))));
+}
+function LeadDetail({ lead, session, onBack, onUpdated, onCreateQuotation }) {
+    const [activities, setActivities] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [status, setStatus] = useState(lead.status);
+    const [followupDate, setFollowupDate] = useState(lead.next_followup_date || "");
+    const [note, setNote] = useState("");
+    const [busy, setBusy] = useState(false);
+    useEffect(() => {
+        sb.from("grasp_lead_activities").select("*").eq("lead_id", lead.id).order("created_at", { ascending: false }).then(({ data }) => {
+            setActivities(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const save = async () => {
+        setBusy(true);
+        const payload = { status, next_followup_date: followupDate || null, updated_at: new Date().toISOString() };
+        const { error: err2 } = await sb.from("grasp_leads").update(payload).eq("id", lead.id);
+        if (!err2) {
+            if (note.trim()) {
+                const act = { id: uid(), lead_id: lead.id, note: note.trim(), next_followup_date: followupDate || null, created_by: session.user.email, created_by_id: session.user.id, created_at: new Date().toISOString() };
+                await sb.from("grasp_lead_activities").insert(act);
+                setActivities([act, ...activities]);
+                setNote("");
+            }
+            onUpdated(Object.assign({}, lead, payload));
+        }
+        setBusy(false);
+    };
+    const meta = leadStatusMeta(status);
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 14, marginBottom: 10 };
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: lead.customer_name, onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 14 } },
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontWeight: 700, fontSize: 15 } }, lead.customer_name),
+                        lead.mobile && React.createElement("div", { style: { fontSize: 12, color: COLORS.muted } }, lead.mobile)),
+                    React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: meta.color, padding: "3px 10px", borderRadius: 8 } }, meta.label)),
+                lead.product && React.createElement("div", { style: { fontSize: 12.5, marginBottom: 4 } },
+                    React.createElement("b", null, "Product: "),
+                    lead.product),
+                React.createElement("div", { style: { fontSize: 12.5, marginBottom: 4 } },
+                    React.createElement("b", null, "Estimated Value: "),
+                    "\u20B9",
+                    fmt(lead.estimated_value)),
+                React.createElement("div", { style: { fontSize: 12.5, color: COLORS.muted } },
+                    "Source: ",
+                    lead.source,
+                    " \u00B7 Type: ",
+                    lead.lead_type),
+                onCreateQuotation && React.createElement("button", { onClick: () => onCreateQuotation(lead), style: { width: "100%", marginTop: 12, padding: "10px", borderRadius: 10, border: "none", background: "linear-gradient(120deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: 12.5 } }, "+ Quotation Banayein Is Lead Se")),
+            React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 14 } },
+                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Status Update Karein"),
+                React.createElement("select", { value: status, onChange: (e) => setStatus(e.target.value), style: inputStyle }, LEAD_STATUSES.map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
+                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Next Follow-up Date"),
+                React.createElement("input", { type: "date", value: followupDate, onChange: (e) => setFollowupDate(e.target.value), style: inputStyle }),
+                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Follow-up Note (optional)"),
+                React.createElement("textarea", { value: note, onChange: (e) => setNote(e.target.value), rows: 2, placeholder: "Aaj kya baat hui...", style: Object.assign(Object.assign({}, inputStyle), { resize: "vertical" }) }),
+                React.createElement("button", { onClick: save, disabled: busy, style: { width: "100%", padding: "11px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Update Karein")),
+            React.createElement("div", { style: { fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 13.5, marginBottom: 8 } }, "Follow-up History"),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: 20, color: COLORS.muted } }, "Loading\u2026") : activities.length === 0 ? React.createElement("div", { className: "card", style: { padding: 18, textAlign: "center", color: COLORS.muted, fontSize: 12.5 } }, "Koi follow-up note nahi hai.") : activities.map((a) => React.createElement("div", { key: a.id, className: "card", style: { padding: 12, marginBottom: 8 } },
+                React.createElement("div", { style: { fontSize: 12.5, marginBottom: 4 } }, a.note),
+                React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted } }, new Date(a.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) + " \u00B7 " + (a.created_by || "").split("@")[0]))))));
+}
+function Leads({ session, perms, onBack, onCreateQuotation }) {
+    const [leads, setLeads] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [subView, setSubView] = useState("list");
+    const [selectedLead, setSelectedLead] = useState(null);
+    const [filter, setFilter] = useState("today");
+    const [error, setError] = useState("");
+    useEffect(() => {
+        sb.from("grasp_leads").select("*").order("created_at", { ascending: false }).then(({ data, error }) => {
+            if (error)
+                setError(error.message);
+            setLeads(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const today = todayISO();
+    const activeLeads = leads.filter((l) => l.status !== "won" && l.status !== "lost");
+    const todayFollowups = activeLeads.filter((l) => l.next_followup_date === today);
+    const overdueFollowups = activeLeads.filter((l) => l.next_followup_date && l.next_followup_date < today);
+    const upcomingFollowups = activeLeads.filter((l) => l.next_followup_date && l.next_followup_date > today);
+    const wonLeads = leads.filter((l) => l.status === "won");
+    const lostLeads = leads.filter((l) => l.status === "lost");
+    const filterMap = { today: todayFollowups, overdue: overdueFollowups, upcoming: upcomingFollowups, all: leads, won: wonLeads, lost: lostLeads };
+    const filteredLeads = filterMap[filter] || [];
+    const addLead = async (data) => {
+        const rec = Object.assign(Object.assign({ id: uid() }, data), { created_by: session.user.email, created_by_id: session.user.id });
+        const { error } = await sb.from("grasp_leads").insert(rec);
+        if (!error) {
+            setLeads([rec, ...leads]);
+            setSubView("list");
+        }
+        else
+            setError(error.message);
+    };
+    if (subView === "add")
+        return (React.createElement("div", null,
+            React.createElement(SubHeader, { title: "Naya Lead", onBack: () => setSubView("list") }),
+            React.createElement(AddLeadForm, { onSave: addLead, onCancel: () => setSubView("list") })));
+    if (subView === "detail" && selectedLead)
+        return React.createElement(LeadDetail, { lead: selectedLead, session: session, onBack: () => setSubView("list"), onUpdated: (updated) => { setLeads(leads.map((l) => (l.id === updated.id ? updated : l))); setSelectedLead(updated); }, onCreateQuotation: onCreateQuotation });
+    const filterBtn = (key, label, count) => React.createElement("button", { key: key, onClick: () => setFilter(key), style: { padding: "7px 12px", borderRadius: 9, border: "none", background: filter === key ? COLORS.indigo : "#F1ECFE", color: filter === key ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 11.5, whiteSpace: "nowrap" } }, `${label} (${count})`);
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Leads & Follow-up", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("button", { onClick: () => setSubView("add"), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, "+ Naya Lead Add Karein"),
+            React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", marginBottom: 14, paddingBottom: 4 } }, [
+                filterBtn("today", "Aaj", todayFollowups.length),
+                filterBtn("overdue", "Overdue", overdueFollowups.length),
+                filterBtn("upcoming", "Upcoming", upcomingFollowups.length),
+                filterBtn("all", "Sabhi", leads.length),
+                filterBtn("won", "Won", wonLeads.length),
+                filterBtn("lost", "Lost", lostLeads.length),
+            ]),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : filteredLeads.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Is category mein koi lead nahi hai.") : filteredLeads.map((l) => {
+                const meta = leadStatusMeta(l.status);
+                return React.createElement("div", { key: l.id, className: "card", style: { padding: 13, marginBottom: 9, cursor: "pointer" }, onClick: () => { setSelectedLead(l); setSubView("detail"); } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 } },
+                        React.createElement("span", { style: { fontWeight: 700, fontSize: 13.5 } }, l.customer_name),
+                        React.createElement("span", { style: { fontSize: 9.5, fontWeight: 800, color: "#fff", background: meta.color, padding: "2px 8px", borderRadius: 6 } }, meta.label)),
+                    l.product && React.createElement("div", { style: { fontSize: 11.5, color: "#555", marginBottom: 3 } }, l.product),
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10.5, color: COLORS.muted } },
+                        React.createElement("span", { className: "num" }, "\u20B9" + fmt(l.estimated_value)),
+                        l.next_followup_date && React.createElement("span", null, "Follow-up: " + l.next_followup_date)));
+            }),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+}
+const ECOM_STATUSES = [
+    ["received", "Order Received", "#94A3B8"],
+    ["processing", "Processing", "#0EA5E9"],
+    ["shipped", "Shipped", "#F59E0B"],
+    ["delivered", "Delivered", "#10B981"],
+    ["cancelled", "Cancelled", "#EF4444"],
+    ["return", "Return", "#EA580C"],
+    ["rto", "RTO", "#DC2626"],
+];
+const MARKETPLACES = ["Amazon", "Flipkart", "Meesho", "IndiaMART", "Own Website", "Other"];
+function statusMetaFrom(list, status) {
+    const found = list.find((s) => s[0] === status);
+    return found ? { label: found[1], color: found[2] } : { label: status, color: COLORS.muted };
+}
+function AddEcomOrderForm({ onSave, onCancel }) {
+    const [marketplace, setMarketplace] = useState("Amazon");
+    const [orderId, setOrderId] = useState("");
+    const [customerName, setCustomerName] = useState("");
+    const [product, setProduct] = useState("");
+    const [quantity, setQuantity] = useState("1");
+    const [sellingPrice, setSellingPrice] = useState("");
+    const [costPrice, setCostPrice] = useState("");
+    const [marketplaceCharges, setMarketplaceCharges] = useState("");
+    const [shippingCharges, setShippingCharges] = useState("");
+    const [gst, setGst] = useState("");
+    const [busy, setBusy] = useState(false);
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 14, marginBottom: 10 };
+    const save = async () => {
+        if (!orderId.trim() || !product.trim())
+            return;
+        setBusy(true);
+        await onSave({
+            marketplace, order_id: orderId.trim(), customer_name: customerName.trim(), product: product.trim(),
+            quantity: Number(quantity) || 1, selling_price: Number(sellingPrice) || 0, cost_price: Number(costPrice) || 0,
+            marketplace_charges: Number(marketplaceCharges) || 0, shipping_charges: Number(shippingCharges) || 0,
+            gst: Number(gst) || 0, return_charges: 0, status: "received", order_date: new Date().toISOString(),
+        });
+        setBusy(false);
+    };
+    return (React.createElement("div", { style: { padding: "0 16px" } },
+        React.createElement("div", { className: "card", style: { padding: 16 } },
+            React.createElement("div", { style: { display: "flex", gap: 10 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Marketplace"),
+                    React.createElement("select", { value: marketplace, onChange: (e) => setMarketplace(e.target.value), style: inputStyle }, MARKETPLACES.map((m) => React.createElement("option", { key: m, value: m }, m)))),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Order ID *"),
+                    React.createElement("input", { value: orderId, onChange: (e) => setOrderId(e.target.value), style: inputStyle }))),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Customer Name"),
+            React.createElement("input", { value: customerName, onChange: (e) => setCustomerName(e.target.value), style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Product *"),
+            React.createElement("input", { value: product, onChange: (e) => setProduct(e.target.value), style: inputStyle }),
+            React.createElement("div", { style: { display: "flex", gap: 10 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Qty"),
+                    React.createElement("input", { type: "number", min: "1", value: quantity, onChange: (e) => setQuantity(e.target.value), className: "num", style: inputStyle })),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Selling Price \u20B9"),
+                    React.createElement("input", { type: "number", min: "0", value: sellingPrice, onChange: (e) => setSellingPrice(e.target.value), className: "num", style: inputStyle }))),
+            React.createElement("div", { style: { display: "flex", gap: 10 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Cost Price \u20B9"),
+                    React.createElement("input", { type: "number", min: "0", value: costPrice, onChange: (e) => setCostPrice(e.target.value), className: "num", style: inputStyle })),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Marketplace Charges \u20B9"),
+                    React.createElement("input", { type: "number", min: "0", value: marketplaceCharges, onChange: (e) => setMarketplaceCharges(e.target.value), className: "num", style: inputStyle }))),
+            React.createElement("div", { style: { display: "flex", gap: 10 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Shipping Charges \u20B9"),
+                    React.createElement("input", { type: "number", min: "0", value: shippingCharges, onChange: (e) => setShippingCharges(e.target.value), className: "num", style: inputStyle })),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "GST \u20B9"),
+                    React.createElement("input", { type: "number", min: "0", value: gst, onChange: (e) => setGst(e.target.value), className: "num", style: inputStyle }))),
+            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 6 } },
+                React.createElement("button", { onClick: save, disabled: busy || !orderId.trim() || !product.trim(), style: { flex: 1, padding: "12px", borderRadius: 11, border: "none", background: orderId.trim() && product.trim() ? COLORS.indigo : "#D6D2EE", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Save Order"),
+                React.createElement("button", { onClick: onCancel, style: { padding: "12px 18px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))));
+}
+function EcomOrders({ session, perms, onBack, onCreateSaleInvoice }) {
+    const [orders, setOrders] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [subView, setSubView] = useState("list");
+    const [filter, setFilter] = useState("all");
+    const [error, setError] = useState("");
+    const [busyId, setBusyId] = useState(null);
+    useEffect(() => {
+        sb.from("grasp_ecom_orders").select("*").order("created_at", { ascending: false }).then(({ data, error }) => {
+            if (error)
+                setError(error.message);
+            setOrders(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const netReal = (o) => (Number(o.selling_price) || 0) - (Number(o.marketplace_charges) || 0) - (Number(o.shipping_charges) || 0) - (Number(o.return_charges) || 0);
+    const profitOf = (o) => netReal(o) - (Number(o.cost_price) || 0) * (Number(o.quantity) || 1);
+    const filteredOrders = filter === "all" ? orders : orders.filter((o) => o.status === filter);
+    const addOrder = async (data) => {
+        const rec = Object.assign(Object.assign({ id: uid() }, data), { created_by: session.user.email, created_by_id: session.user.id });
+        const { error } = await sb.from("grasp_ecom_orders").insert(rec);
+        if (!error) {
+            setOrders([rec, ...orders]);
+            setSubView("list");
+        }
+        else
+            setError(error.message);
+    };
+    const changeStatus = async (o, newStatus) => {
+        setBusyId(o.id);
+        const { error } = await sb.from("grasp_ecom_orders").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", o.id);
+        if (!error)
+            setOrders(orders.map((x) => (x.id === o.id ? Object.assign(Object.assign({}, x), { status: newStatus }) : x)));
+        setBusyId(null);
+    };
+    if (subView === "add")
+        return (React.createElement("div", null,
+            React.createElement(SubHeader, { title: "Naya E-commerce Order", onBack: () => setSubView("list") }),
+            React.createElement(AddEcomOrderForm, { onSave: addOrder, onCancel: () => setSubView("list") })));
+    const filterBtn = (key, label, count) => React.createElement("button", { key: key, onClick: () => setFilter(key), style: { padding: "7px 12px", borderRadius: 9, border: "none", background: filter === key ? COLORS.indigo : "#F1ECFE", color: filter === key ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" } }, `${label} (${count})`);
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "E-commerce Orders", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("button", { onClick: () => setSubView("add"), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#F59E0B,#EA580C)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, "+ Naya Order Add Karein"),
+            React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", marginBottom: 14, paddingBottom: 4 } }, [filterBtn("all", "Sabhi", orders.length), ...ECOM_STATUSES.map(([k, l]) => filterBtn(k, l, orders.filter((o) => o.status === k).length))]),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : filteredOrders.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Is category mein koi order nahi hai.") : filteredOrders.map((o) => {
+                const meta = statusMetaFrom(ECOM_STATUSES, o.status);
+                return React.createElement("div", { key: o.id, className: "card", style: { padding: 13, marginBottom: 9 } }, [
+                    React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, [
+                        React.createElement("span", { key: "n", style: { fontWeight: 700, fontSize: 13 } }, o.marketplace + " \u00B7 " + o.order_id),
+                        React.createElement("span", { key: "s", style: { fontSize: 9.5, fontWeight: 800, color: "#fff", background: meta.color, padding: "2px 8px", borderRadius: 6 } }, meta.label),
+                    ]),
+                    React.createElement("div", { key: "prod", style: { fontSize: 12, color: "#555", marginBottom: 4 } }, o.product + (o.customer_name ? " \u2014 " + o.customer_name : "")),
+                    React.createElement("div", { key: "nums", className: "num", style: { fontSize: 11, color: COLORS.muted, marginBottom: 8 } },
+                        "Net: \u20B9",
+                        fmt(netReal(o)),
+                        " \u00B7 Profit: ",
+                        React.createElement("span", { style: { color: profitOf(o) >= 0 ? COLORS.emerald : COLORS.rose, fontWeight: 700 } }, "\u20B9" + fmt(profitOf(o)))),
+                    React.createElement("select", { key: "sel", value: o.status, onChange: (e) => changeStatus(o, e.target.value), disabled: busyId === o.id, style: { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 12, marginBottom: o.status === "delivered" ? 8 : 0 } }, ECOM_STATUSES.map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
+                    o.status === "delivered" && onCreateSaleInvoice && React.createElement("button", { key: "inv", onClick: () => onCreateSaleInvoice(o), style: { width: "100%", padding: "8px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\uD83E\uDDFE Sale Invoice Banayein"),
+                ]);
+            }),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+}
+const GEM_STATUSES = [
+    ["tender_found", "Tender Found", "#94A3B8"],
+    ["bid_submitted", "Bid Submitted", "#0EA5E9"],
+    ["technical_qualified", "Technical Qualified", "#8B5CF6"],
+    ["financial_bid", "Financial Bid", "#F59E0B"],
+    ["l1", "L1 (Lowest)", "#059669"],
+    ["order_received", "Order Received", "#10B981"],
+    ["supply", "Supply in Progress", "#0369A1"],
+    ["acceptance", "Accepted", "#0D9488"],
+    ["invoiced", "Invoiced", "#7C3AED"],
+    ["paid", "Payment Received", "#10B981"],
+    ["lost", "Lost", "#EF4444"],
+];
+function AddGemTenderForm({ onSave, onCancel }) {
+    const [tenderId, setTenderId] = useState("");
+    const [department, setDepartment] = useState("");
+    const [buyer, setBuyer] = useState("");
+    const [product, setProduct] = useState("");
+    const [tenderValue, setTenderValue] = useState("");
+    const [bidClosingDate, setBidClosingDate] = useState("");
+    const [notes, setNotes] = useState("");
+    const [busy, setBusy] = useState(false);
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 14, marginBottom: 10 };
+    const save = async () => {
+        if (!tenderId.trim() || !product.trim())
+            return;
+        setBusy(true);
+        await onSave({
+            tender_id: tenderId.trim(), department: department.trim(), buyer: buyer.trim(), product: product.trim(),
+            tender_value: Number(tenderValue) || 0, bid_closing_date: bidClosingDate || null, status: "tender_found",
+            order_value: 0, notes: notes.trim(),
+        });
+        setBusy(false);
+    };
+    return (React.createElement("div", { style: { padding: "0 16px" } },
+        React.createElement("div", { className: "card", style: { padding: 16 } },
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Tender ID *"),
+            React.createElement("input", { value: tenderId, onChange: (e) => setTenderId(e.target.value), style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Department"),
+            React.createElement("input", { value: department, onChange: (e) => setDepartment(e.target.value), style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Buyer"),
+            React.createElement("input", { value: buyer, onChange: (e) => setBuyer(e.target.value), style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Product *"),
+            React.createElement("input", { value: product, onChange: (e) => setProduct(e.target.value), style: inputStyle }),
+            React.createElement("div", { style: { display: "flex", gap: 10 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Tender Value \u20B9"),
+                    React.createElement("input", { type: "number", min: "0", value: tenderValue, onChange: (e) => setTenderValue(e.target.value), className: "num", style: inputStyle })),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Bid Closing Date"),
+                    React.createElement("input", { type: "date", value: bidClosingDate, onChange: (e) => setBidClosingDate(e.target.value), style: inputStyle }))),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Notes"),
+            React.createElement("textarea", { value: notes, onChange: (e) => setNotes(e.target.value), rows: 3, style: Object.assign(Object.assign({}, inputStyle), { resize: "vertical" }) }),
+            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 6 } },
+                React.createElement("button", { onClick: save, disabled: busy || !tenderId.trim() || !product.trim(), style: { flex: 1, padding: "12px", borderRadius: 11, border: "none", background: tenderId.trim() && product.trim() ? COLORS.indigo : "#D6D2EE", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Save Tender"),
+                React.createElement("button", { onClick: onCancel, style: { padding: "12px 18px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))));
+}
+function GemTenders({ session, perms, onBack, onCreateSaleInvoice }) {
+    const [tenders, setTenders] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [subView, setSubView] = useState("list");
+    const [filter, setFilter] = useState("all");
+    const [error, setError] = useState("");
+    const [busyId, setBusyId] = useState(null);
+    useEffect(() => {
+        sb.from("grasp_gem_tenders").select("*").order("created_at", { ascending: false }).then(({ data, error }) => {
+            if (error)
+                setError(error.message);
+            setTenders(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const filteredTenders = filter === "all" ? tenders : tenders.filter((t) => t.status === filter);
+    const addTender = async (data) => {
+        const rec = Object.assign(Object.assign({ id: uid() }, data), { created_by: session.user.email, created_by_id: session.user.id });
+        const { error } = await sb.from("grasp_gem_tenders").insert(rec);
+        if (!error) {
+            setTenders([rec, ...tenders]);
+            setSubView("list");
+        }
+        else
+            setError(error.message);
+    };
+    const changeStatus = async (t, newStatus) => {
+        setBusyId(t.id);
+        const { error } = await sb.from("grasp_gem_tenders").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", t.id);
+        if (!error)
+            setTenders(tenders.map((x) => (x.id === t.id ? Object.assign(Object.assign({}, x), { status: newStatus }) : x)));
+        setBusyId(null);
+    };
+    if (subView === "add")
+        return (React.createElement("div", null,
+            React.createElement(SubHeader, { title: "Naya GeM Tender", onBack: () => setSubView("list") }),
+            React.createElement(AddGemTenderForm, { onSave: addTender, onCancel: () => setSubView("list") })));
+    const filterBtn = (key, label, count) => React.createElement("button", { key: key, onClick: () => setFilter(key), style: { padding: "7px 12px", borderRadius: 9, border: "none", background: filter === key ? COLORS.indigo : "#F1ECFE", color: filter === key ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 10.5, whiteSpace: "nowrap" } }, `${label} (${count})`);
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "GeM Tenders", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("button", { onClick: () => setSubView("add"), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#0369A1,#0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, "+ Naya Tender Add Karein"),
+            React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", marginBottom: 14, paddingBottom: 4 } }, [filterBtn("all", "Sabhi", tenders.length), ...GEM_STATUSES.map(([k, l]) => filterBtn(k, l, tenders.filter((t) => t.status === k).length))]),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : filteredTenders.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Is category mein koi tender nahi hai.") : filteredTenders.map((t) => {
+                const meta = statusMetaFrom(GEM_STATUSES, t.status);
+                return React.createElement("div", { key: t.id, className: "card", style: { padding: 13, marginBottom: 9 } }, [
+                    React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, [
+                        React.createElement("span", { key: "n", style: { fontWeight: 700, fontSize: 13 } }, t.tender_id),
+                        React.createElement("span", { key: "s", style: { fontSize: 9.5, fontWeight: 800, color: "#fff", background: meta.color, padding: "2px 8px", borderRadius: 6 } }, meta.label),
+                    ]),
+                    React.createElement("div", { key: "prod", style: { fontSize: 12, color: "#555", marginBottom: 3 } }, t.product),
+                    (t.department || t.buyer) && React.createElement("div", { key: "dept", style: { fontSize: 11, color: COLORS.muted, marginBottom: 4 } }, [t.department, t.buyer].filter(Boolean).join(" \u00B7 ")),
+                    React.createElement("div", { key: "nums", className: "num", style: { fontSize: 11.5, fontWeight: 700, marginBottom: 8 } },
+                        "\u20B9",
+                        fmt(t.tender_value),
+                        t.bid_closing_date && React.createElement("span", { style: { fontSize: 10, color: COLORS.muted, fontWeight: 500, marginLeft: 8 } }, "Closing: " + t.bid_closing_date)),
+                    React.createElement("select", { key: "sel", value: t.status, onChange: (e) => changeStatus(t, e.target.value), disabled: busyId === t.id, style: { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 12, marginBottom: ["order_received", "supply", "acceptance", "invoiced", "paid"].includes(t.status) ? 8 : 0 } }, GEM_STATUSES.map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
+                    ["order_received", "supply", "acceptance", "invoiced", "paid"].includes(t.status) && onCreateSaleInvoice && React.createElement("button", { key: "inv", onClick: () => onCreateSaleInvoice(t), style: { width: "100%", padding: "8px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\uD83E\uDDFE Sale Invoice Banayein"),
+                ]);
+            }),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+}
+const EMPLOYEE_DOC_TYPES = ["Appointment Letter", "ID Proof", "PAN Card", "Bank Details", "Salary Revision Letter", "Warning/Notice", "Experience Letter", "Relieving Letter", "Other"];
+function StaffDocuments({ staffEmail, staffId, isAdmin, session, onBack }) {
+    const [docs, setDocs] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [docType, setDocType] = useState(EMPLOYEE_DOC_TYPES[0]);
+    const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState("");
+    const fileRef = useRef(null);
+    useEffect(() => {
+        sb.from("grasp_employee_documents").select("*").eq("staff_id", staffId).order("uploaded_at", { ascending: false }).then(({ data, error }) => {
+            if (error)
+                setError(error.message);
+            setDocs(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const handleUpload = async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file)
+            return;
+        setUploading(true);
+        setError("");
+        const safeType = docType.replace(/[^a-zA-Z0-9]+/g, "_");
+        const path = `${staffId}/${safeType}_${Date.now()}_${file.name}`;
+        const { error: upErr } = await sb.storage.from("employee-docs").upload(path, file);
+        if (upErr) {
+            setError(upErr.message);
+            setUploading(false);
+            return;
+        }
+        const rec = { id: uid(), staff_email: staffEmail, staff_id: staffId, doc_type: docType, file_name: file.name, file_path: path, uploaded_by: session.user.email, uploaded_at: new Date().toISOString() };
+        const { error: insErr } = await sb.from("grasp_employee_documents").insert(rec);
+        if (!insErr)
+            setDocs([rec, ...docs]);
+        else
+            setError(insErr.message);
+        setUploading(false);
+        if (fileRef.current)
+            fileRef.current.value = "";
+    };
+    const downloadDoc = async (doc) => {
+        const { data, error } = await sb.storage.from("employee-docs").createSignedUrl(doc.file_path, 120);
+        if (data && data.signedUrl)
+            window.open(data.signedUrl, "_blank");
+        else if (error)
+            setError(error.message);
+    };
+    const deleteDoc = async (doc) => {
+        await sb.storage.from("employee-docs").remove([doc.file_path]);
+        await sb.from("grasp_employee_documents").delete().eq("id", doc.id);
+        setDocs(docs.filter((d) => d.id !== doc.id));
+    };
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Employee Documents", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            isAdmin && React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 14 } },
+                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Document Type"),
+                React.createElement("select", { value: docType, onChange: (e) => setDocType(e.target.value), style: { width: "100%", padding: "9px 11px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13.5, marginBottom: 10 } }, EMPLOYEE_DOC_TYPES.map((t) => React.createElement("option", { key: t, value: t }, t))),
+                React.createElement("input", { ref: fileRef, type: "file", onChange: handleUpload, disabled: uploading, style: { width: "100%", fontSize: 12.5 } }),
+                uploading && React.createElement("div", { style: { fontSize: 11.5, color: COLORS.muted, marginTop: 6 } }, "Upload ho raha hai\u2026")),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : docs.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Abhi tak koi document upload nahi hua.") : docs.map((d) => React.createElement("div", { key: d.id, className: "card", style: { padding: 12, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                React.createElement("div", { style: { minWidth: 0, flex: 1 } },
+                    React.createElement("div", { style: { fontSize: 12.5, fontWeight: 700 } }, d.doc_type),
+                    React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, d.file_name)),
+                React.createElement("div", { style: { display: "flex", gap: 6, flexShrink: 0 } },
+                    React.createElement("button", { onClick: () => downloadDoc(d), style: { padding: "7px 11px", borderRadius: 8, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 11 } }, "View"),
+                    isAdmin && React.createElement("button", { onClick: () => deleteDoc(d), style: { padding: "7px 11px", borderRadius: 8, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 11 } }, "\u2715")))),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+}
+const SERVICE_TICKET_STATUSES = [
+    ["open", "Open", "#94A3B8"],
+    ["in_progress", "In Progress", "#0EA5E9"],
+    ["resolved", "Resolved", "#10B981"],
+    ["closed", "Closed", "#059669"],
+    ["cancelled", "Cancelled", "#EF4444"],
+];
+function AddServiceTicketForm({ onSave, onCancel }) {
+    const [customerName, setCustomerName] = useState("");
+    const [mobile, setMobile] = useState("");
+    const [issue, setIssue] = useState("");
+    const [scheduledDate, setScheduledDate] = useState(todayISO());
+    const [busy, setBusy] = useState(false);
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 14, marginBottom: 10 };
+    const save = async () => {
+        if (!customerName.trim() || !issue.trim())
+            return;
+        setBusy(true);
+        await onSave({ ticket_no: "SVC-" + Date.now().toString().slice(-6), customer_name: customerName.trim(), mobile: mobile.trim(), issue: issue.trim(), scheduled_date: scheduledDate || null, status: "open" });
+        setBusy(false);
+    };
+    return (React.createElement("div", { style: { padding: "0 16px" } },
+        React.createElement("div", { className: "card", style: { padding: 16 } },
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Customer Name *"),
+            React.createElement("input", { value: customerName, onChange: (e) => setCustomerName(e.target.value), style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Mobile"),
+            React.createElement("input", { value: mobile, onChange: (e) => setMobile(e.target.value), style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Issue / Complaint *"),
+            React.createElement("textarea", { value: issue, onChange: (e) => setIssue(e.target.value), rows: 3, style: Object.assign(Object.assign({}, inputStyle), { resize: "vertical" }) }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Scheduled Date"),
+            React.createElement("input", { type: "date", value: scheduledDate, onChange: (e) => setScheduledDate(e.target.value), style: inputStyle }),
+            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 6 } },
+                React.createElement("button", { onClick: save, disabled: busy || !customerName.trim() || !issue.trim(), style: { flex: 1, padding: "12px", borderRadius: 11, border: "none", background: customerName.trim() && issue.trim() ? COLORS.indigo : "#D6D2EE", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Save Ticket"),
+                React.createElement("button", { onClick: onCancel, style: { padding: "12px 18px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))));
+}
+function ServiceTickets({ session, perms, onBack }) {
+    const [tickets, setTickets] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [subView, setSubView] = useState("list");
+    const [selected, setSelected] = useState(null);
+    const [filter, setFilter] = useState("all");
+    const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
+    useEffect(() => {
+        sb.from("grasp_service_tickets").select("*").order("created_at", { ascending: false }).then(({ data, error }) => {
+            if (error)
+                setError(error.message);
+            setTickets(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const filteredTickets = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
+    const addTicket = async (data) => {
+        const rec = Object.assign(Object.assign({ id: uid() }, data), { created_by: session.user.email, created_by_id: session.user.id, assigned_email: session.user.email, assigned_id: session.user.id });
+        const { error } = await sb.from("grasp_service_tickets").insert(rec);
+        if (!error) {
+            setTickets([rec, ...tickets]);
+            setSubView("list");
+        }
+        else
+            setError(error.message);
+    };
+    const resolveTicket = async (t, onTime, firstTime, csat) => {
+        setBusy(true);
+        const payload = { status: "resolved", resolved_date: todayISO(), on_time: onTime, first_time_resolved: firstTime, csat_rating: csat, updated_at: new Date().toISOString() };
+        const { error } = await sb.from("grasp_service_tickets").update(payload).eq("id", t.id);
+        if (!error) {
+            const updated = Object.assign(Object.assign({}, t), payload);
+            setTickets(tickets.map((x) => (x.id === t.id ? updated : x)));
+            setSelected(null);
+        }
+        else
+            setError(error.message);
+        setBusy(false);
+    };
+    const changeStatus = async (t, newStatus) => {
+        setBusy(true);
+        const { error } = await sb.from("grasp_service_tickets").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", t.id);
+        if (!error)
+            setTickets(tickets.map((x) => (x.id === t.id ? Object.assign(Object.assign({}, x), { status: newStatus }) : x)));
+        setBusy(false);
+    };
+    if (subView === "add")
+        return (React.createElement("div", null,
+            React.createElement(SubHeader, { title: "Naya Service Ticket", onBack: () => setSubView("list") }),
+            React.createElement(AddServiceTicketForm, { onSave: addTicket, onCancel: () => setSubView("list") })));
+    if (selected) {
+        const t = selected;
+        return (React.createElement("div", null,
+            React.createElement(SubHeader, { title: "Resolve Ticket", onBack: () => setSelected(null) }),
+            React.createElement("div", { style: { padding: "0 16px" } },
+                React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 14 } },
+                    React.createElement("div", { style: { fontWeight: 700, fontSize: 14, marginBottom: 4 } }, t.customer_name),
+                    React.createElement("div", { style: { fontSize: 12.5, color: "#555" } }, t.issue)),
+                React.createElement("div", { className: "card", style: { padding: 14 } },
+                    React.createElement("div", { style: { fontSize: 12, fontWeight: 700, marginBottom: 10 } }, "Resolve karte waqt batayein:"),
+                    React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } }, [
+                        React.createElement("button", { key: "ot", onClick: () => resolveTicket(t, true, true, 5), disabled: busy, style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\u2705 On-time, Pehli baar mein"),
+                    ]),
+                    React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } }, [
+                        React.createElement("button", { key: "late", onClick: () => resolveTicket(t, false, true, 4), disabled: busy, style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: COLORS.amber, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\u23F0 Late ho gaya, par ho gaya"),
+                    ]),
+                    React.createElement("div", { style: { display: "flex", gap: 8 } }, [
+                        React.createElement("button", { key: "multi", onClick: () => resolveTicket(t, false, false, 3), disabled: busy, style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\uD83D\uDD01 Multiple visits lagi"),
+                    ])))));
+    }
+    const filterBtn = (key, label, count) => React.createElement("button", { key: key, onClick: () => setFilter(key), style: { padding: "7px 12px", borderRadius: 9, border: "none", background: filter === key ? COLORS.indigo : "#F1ECFE", color: filter === key ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" } }, `${label} (${count})`);
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Service Tickets", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("button", { onClick: () => setSubView("add"), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#0891B2,#0369A1)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, "+ Naya Ticket Add Karein"),
+            React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", marginBottom: 14, paddingBottom: 4 } }, [filterBtn("all", "Sabhi", tickets.length), ...SERVICE_TICKET_STATUSES.map(([k, l]) => filterBtn(k, l, tickets.filter((t) => t.status === k).length))]),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : filteredTickets.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Is category mein koi ticket nahi hai.") : filteredTickets.map((t) => {
+                const meta = statusMetaFrom(SERVICE_TICKET_STATUSES, t.status);
+                return React.createElement("div", { key: t.id, className: "card", style: { padding: 13, marginBottom: 9 } }, [
+                    React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, [
+                        React.createElement("span", { key: "n", style: { fontWeight: 700, fontSize: 13 } }, t.customer_name),
+                        React.createElement("span", { key: "s", style: { fontSize: 9.5, fontWeight: 800, color: "#fff", background: meta.color, padding: "2px 8px", borderRadius: 6 } }, meta.label),
+                    ]),
+                    React.createElement("div", { key: "issue", style: { fontSize: 11.5, color: "#555", marginBottom: 8 } }, t.issue),
+                    (t.status === "open" || t.status === "in_progress") ? React.createElement("div", { key: "actions", style: { display: "flex", gap: 8 } }, [
+                        t.status === "open" && React.createElement("button", { key: "start", onClick: () => changeStatus(t, "in_progress"), disabled: busy, style: { flex: 1, padding: "8px", borderRadius: 9, border: "none", background: "#0EA5E9", color: "#fff", fontWeight: 700, fontSize: 11 } }, "Start Karein"),
+                        React.createElement("button", { key: "resolve", onClick: () => setSelected(t), disabled: busy, style: { flex: 1, padding: "8px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11 } }, "\u2705 Resolve Karein"),
+                    ]) : React.createElement("div", { key: "meta", style: { fontSize: 10, color: COLORS.muted } }, t.csat_rating ? `Rating: ${t.csat_rating}/5` : ""),
+                ]);
+            }),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+}
+function IncentiveManagement({ invoices, onBack }) {
+    const [staffList, setStaffList] = useState([]);
+    const [incentives, setIncentives] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [busyId, setBusyId] = useState(null);
+    const now = new Date();
+    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    useEffect(() => {
+        (async () => {
+            const [uRes, iRes] = await Promise.all([
+                sb.from("grasp_users").select("*"),
+                sb.from("grasp_incentives").select("*").eq("period", period),
+            ]);
+            setStaffList((uRes.data || []).filter((u) => !u.is_admin && u.is_active !== false && Number(u.incentive_rate) > 0));
+            setIncentives(iRes.data || []);
+            setLoaded(true);
+        })();
+    }, []);
+    const computeRow = (u) => {
+        const target = (Number(u.target_amount) || 0) / 12;
+        const achieved = invoices.filter((i) => i.docType === "sale" && i.createdBy === u.email && new Date(i.date) >= monthStart && new Date(i.date) <= now).reduce((s, i) => s + i.total, 0);
+        const pct = target > 0 ? Math.round((achieved / target) * 100) : 0;
+        const rate = Number(u.incentive_rate) || 0;
+        const earned = Math.round((achieved * rate) / 100);
+        const existing = incentives.find((x) => x.staff_email === u.email);
+        return { u, target, achieved, pct, rate, earned, existing };
+    };
+    const setStatus = async (row, newStatus) => {
+        setBusyId(row.u.email);
+        const rec = {
+            id: (row.existing && row.existing.id) || uid(),
+            staff_email: row.u.email, staff_id: row.u.id, period,
+            target_amount: row.target, achieved_amount: row.achieved, achievement_pct: row.pct,
+            incentive_rate: row.rate, incentive_earned: row.earned,
+            status: newStatus,
+            paid_amount: newStatus === "paid" ? row.earned : ((row.existing && row.existing.paid_amount) || 0),
+            paid_at: newStatus === "paid" ? new Date().toISOString() : ((row.existing && row.existing.paid_at) || null),
+            updated_at: new Date().toISOString(),
+        };
+        const { error } = await sb.from("grasp_incentives").upsert(rec, { onConflict: "staff_email,period" });
+        if (!error) {
+            setIncentives((prev) => [...prev.filter((x) => x.staff_email !== row.u.email), rec]);
+        }
+        setBusyId(null);
+    };
+    const statusColor = { earned: COLORS.amber, approved: "#0EA5E9", paid: COLORS.emerald };
+    const statusLabel = { earned: "Earned (pending approval)", approved: "Approved (not paid)", paid: "Paid" };
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Incentive Management", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("div", { className: "card", style: { padding: 12, marginBottom: 14, fontSize: 11.5, color: COLORS.muted } },
+                "Is mahine (",
+                period,
+                ") ka incentive: Achieved Sales \u00D7 Incentive Rate%. Sirf un staff ke liye jinka Incentive % set hai."),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : staffList.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi staff ka Incentive % set nahi hai.") : staffList.map((u) => {
+                const row = computeRow(u);
+                const status = (row.existing && row.existing.status) || "earned";
+                return React.createElement("div", { key: u.email, className: "card", style: { padding: 14, marginBottom: 10 } }, [
+                    React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", marginBottom: 6 } }, [
+                        React.createElement("span", { key: "n", style: { fontSize: 13.5, fontWeight: 700 } }, u.full_name || u.email.split("@")[0]),
+                        React.createElement("span", { key: "s", style: { fontSize: 10, fontWeight: 800, color: "#fff", background: statusColor[status], padding: "2px 9px", borderRadius: 7 } }, statusLabel[status]),
+                    ]),
+                    React.createElement("div", { key: "nums", className: "num", style: { fontSize: 12, color: COLORS.muted, marginBottom: 8 } },
+                        "\u20B9",
+                        fmt(row.achieved),
+                        " / \u20B9",
+                        fmt(row.target),
+                        " (",
+                        row.pct,
+                        "%) \u00B7 Rate: ",
+                        row.rate,
+                        "%"),
+                    React.createElement("div", { key: "earned", className: "num", style: { fontSize: 16, fontWeight: 800, color: COLORS.violet, marginBottom: 10 } },
+                        "\u20B9",
+                        fmt(row.earned),
+                        React.createElement("span", { style: { fontSize: 10.5, color: COLORS.muted, fontWeight: 500, marginLeft: 6 } }, "incentive earned")),
+                    React.createElement("div", { key: "actions", style: { display: "flex", gap: 8 } }, [
+                        status === "earned" && React.createElement("button", { key: "appr", onClick: () => setStatus(row, "approved"), disabled: busyId === u.email, style: { flex: 1, padding: "9px", borderRadius: 9, border: "none", background: "#0EA5E9", color: "#fff", fontWeight: 700, fontSize: 12 } }, "Approve"),
+                        (status === "approved" || status === "earned") && React.createElement("button", { key: "paid", onClick: () => setStatus(row, "paid"), disabled: busyId === u.email, style: { flex: 1, padding: "9px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 12 } }, "Mark Paid"),
+                        status === "paid" && React.createElement("div", { key: "done", style: { flex: 1, textAlign: "center", padding: "9px", color: COLORS.emerald, fontWeight: 700, fontSize: 12 } }, "\u2705 Paid"),
+                    ]),
+                ]);
+            }))));
+}
+function ratingFor(pct) {
+    if (pct >= 90)
+        return { label: "Excellent", color: COLORS.emerald };
+    if (pct >= 80)
+        return { label: "Very Good", color: "#0EA5E9" };
+    if (pct >= 70)
+        return { label: "Good", color: COLORS.violet };
+    if (pct >= 60)
+        return { label: "Satisfactory", color: COLORS.amber };
+    if (pct >= 50)
+        return { label: "Needs Improvement", color: "#F97316" };
+    return { label: "Poor", color: COLORS.rose };
+}
+function MyPerformance({ session, perms, invoices, onBack }) {
+    const [history, setHistory] = useState([]);
+    const [attendanceStats, setAttendanceStats] = useState({ present: 0, total: 0 });
+    const [myIncentive, setMyIncentive] = useState(null);
+    const [loaded, setLoaded] = useState(false);
+    useEffect(() => {
+        (async () => {
+            const now = new Date();
+            const y = now.getFullYear(), m = now.getMonth();
+            const monthStartStr = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+            const period = `${y}-${String(m + 1).padStart(2, "0")}`;
+            const [hRes, aRes, incRes] = await Promise.all([
+                sb.from("grasp_staff_history").select("*").eq("staff_email", session.user.email).order("recorded_at", { ascending: false }),
+                sb.from("grasp_attendance").select("*").eq("staff_email", session.user.email).gte("date", monthStartStr),
+                sb.from("grasp_incentives").select("*").eq("staff_email", session.user.email).eq("period", period).maybeSingle(),
+            ]);
+            setHistory(hRes.data || []);
+            const present = (aRes.data || []).filter((a) => a.status !== "absent").length;
+            setAttendanceStats({ present, total: (aRes.data || []).length });
+            setMyIncentive(incRes.data || null);
+            setLoaded(true);
+        })();
+    }, []);
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    const monthStart = new Date(y, m, 1);
+    const monthlyTarget = (Number(perms.targetAmount) || 0) / 12;
+    const myMonthSales = invoices.filter((i) => i.docType === "sale" && i.createdBy === session.user.email && new Date(i.date) >= monthStart && new Date(i.date) <= now).reduce((s, i) => s + i.total, 0);
+    const monthPct = monthlyTarget > 0 ? Math.round((myMonthSales / monthlyTarget) * 100) : 0;
+    const fyTarget = Number(perms.targetAmount) || 0;
+    const fySales = invoices.filter((i) => i.docType === "sale" && i.createdBy === session.user.email).reduce((s, i) => s + i.total, 0);
+    const fyPct = fyTarget > 0 ? Math.round((fySales / fyTarget) * 100) : 0;
+    const attendancePct = attendanceStats.total > 0 ? Math.round((attendanceStats.present / attendanceStats.total) * 100) : null;
+    const rating = fyTarget > 0 ? ratingFor(Math.min(100, fyPct)) : null;
+    const progressBar = (pct, color, key) => React.createElement("div", { key: key || "bar", style: { height: 9, borderRadius: 5, background: "#F1ECFE", overflow: "hidden", marginTop: 6, marginBottom: 4 } },
+        React.createElement("div", { style: { height: "100%", width: `${Math.max(2, Math.min(100, pct))}%`, background: color, borderRadius: 5 } }));
+    const ratingIcon = { Excellent: "\uD83C\uDFC6", "Very Good": "\u2B50", Good: "\uD83D\uDC4D", Satisfactory: "\uD83D\uDC4C", "Needs Improvement": "\uD83D\uDCAA", Poor: "\uD83D\uDCC9" };
+    const progressCard = (icon, title, achieved, target, pct, gradient) => React.createElement("div", { key: title, className: "card", style: { padding: 16, marginBottom: 12, border: "none", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } }, [
+        React.createElement("div", { key: "hdr", style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } }, [
+            React.createElement("span", { key: "i", style: { fontSize: 16 } }, icon),
+            React.createElement("span", { key: "t", style: { fontSize: 12, color: COLORS.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 } }, title),
+        ]),
+        progressBar(pct, gradient, "bar"),
+        React.createElement("div", { key: "row", style: { display: "flex", justifyContent: "space-between", marginTop: 2 } }, [
+            React.createElement("span", { key: "amt", className: "num", style: { fontSize: 13, fontWeight: 700 } },
+                "\u20B9",
+                fmt(achieved),
+                " / \u20B9",
+                fmt(target)),
+            React.createElement("span", { key: "pct", className: "num", style: { fontSize: 13, fontWeight: 800, color: pct >= 100 ? COLORS.emerald : COLORS.violet } },
+                pct,
+                "%"),
+        ]),
+    ]);
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "My Performance", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            fyTarget === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Aapka Sales Target abhi set nahi hai. Admin se sampark karein.") : React.createElement(React.Fragment, null, [
+                rating && React.createElement("div", { key: "rate", style: { padding: "22px 18px", marginBottom: 16, textAlign: "center", background: "linear-gradient(135deg,#4F46E5,#7C3AED 60%,#DB2777)", borderRadius: 20, boxShadow: "0 10px 24px rgba(124,58,237,0.3)" } }, [
+                    React.createElement("div", { key: "icon", style: { fontSize: 36, marginBottom: 6 } }, ratingIcon[rating.label] || "\uD83C\uDFC6"),
+                    React.createElement("div", { key: "l", style: { fontSize: 11, color: "rgba(255,255,255,0.85)", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 } }, "Overall Rating \u00B7 This FY"),
+                    React.createElement("div", { key: "r", style: { fontSize: 24, fontWeight: 800, color: "#fff", fontFamily: "'Sora',sans-serif" } }, rating.label),
+                    React.createElement("div", { key: "p", className: "num", style: { fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 4, fontWeight: 700 } }, fyPct + "% achievement"),
+                ]),
+                progressCard("\uD83D\uDCC5", "This Month", myMonthSales, monthlyTarget, monthPct, monthPct >= 100 ? "linear-gradient(90deg,#10B981,#059669)" : "linear-gradient(90deg,#7C3AED,#4F46E5)"),
+                progressCard("\uD83D\uDCC6", "This Financial Year", fySales, fyTarget, fyPct, fyPct >= 100 ? "linear-gradient(90deg,#10B981,#059669)" : "linear-gradient(90deg,#7C3AED,#4F46E5)"),
+                attendancePct !== null && React.createElement("div", { key: "att", className: "card", style: { padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
+                            React.createElement("span", { style: { fontSize: 16 } }, "\uD83D\uDCCD"),
+                            React.createElement("span", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 } }, "Attendance \u00B7 Is Mahine")),
+                        React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted, marginLeft: 24 } },
+                            attendanceStats.present,
+                            " / ",
+                            attendanceStats.total,
+                            " din present")),
+                    React.createElement("div", { className: "num", style: { fontSize: 22, fontWeight: 800, color: attendancePct >= 90 ? COLORS.emerald : attendancePct >= 75 ? COLORS.amber : COLORS.rose } },
+                        attendancePct,
+                        "%")),
+                myIncentive && React.createElement("div", { key: "inc", className: "card", style: { padding: 16, marginBottom: 12, border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
+                        React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 } }, [
+                            React.createElement("span", { key: "i", style: { fontSize: 16 } }, "\uD83C\uDF81"),
+                            React.createElement("span", { key: "t" }, "Incentive \u00B7 Is Mahine"),
+                        ]),
+                        React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: myIncentive.status === "paid" ? COLORS.emerald : myIncentive.status === "approved" ? "#0EA5E9" : COLORS.amber, padding: "2px 9px", borderRadius: 7 } }, myIncentive.status === "paid" ? "Paid" : myIncentive.status === "approved" ? "Approved" : "Pending Approval")),
+                    React.createElement("div", { className: "num", style: { fontSize: 22, fontWeight: 800, color: COLORS.violet } },
+                        "\u20B9",
+                        fmt(myIncentive.incentive_earned))),
+                history.length > 0 && React.createElement(React.Fragment, { key: "hist" }, [
+                    React.createElement("div", { key: "t", style: { fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 13.5, marginTop: 16, marginBottom: 8 } }, "Salary & Target History"),
+                    React.createElement("div", { key: "list", className: "card", style: { padding: 4 } }, history.map((h) => React.createElement("div", { key: h.id, style: { padding: "10px 12px", borderBottom: "1px solid " + COLORS.border, display: "flex", justifyContent: "space-between" } },
+                        React.createElement("span", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 600 } }, h.fy),
+                        React.createElement("span", { className: "num", style: { fontSize: 12 } },
+                            "\u20B9",
+                            fmt(h.salary),
+                            "/mo \u00B7 Target \u20B9",
+                            fmt(h.target_amount))))),
+                ]),
+            ]))));
 }
 function Analytics({ invoices, onBack }) {
     const sales = invoices.filter((i) => i.docType === "sale");
@@ -2171,7 +3654,7 @@ function EditBusinessDetails({ profile, onBack, onSave }) {
                 React.createElement(Icon, { size: 16 }, "\u2705"),
                 " Saved")) : "Save Details"))));
 }
-const DESIGNATIONS = ["Staff", "Sales", "Service", "Manager", "Accountant"];
+const DESIGNATIONS = ["Staff", "Sales", "Service", "Manager", "Accountant", "E-commerce Sales Executive", "GeM Sales Executive", "Service Executive / Technician", "Office Boy / Support Staff", "HR / Admin Executive"];
 const PERM_FIELDS = [
     ["canViewPurchases", "can_view_purchases", "Purchase Bills", "Dekh/bana sakta hai"],
     ["canConfirmPayments", "can_confirm_payments", "Confirm Payments", "Payment status update kar sakta hai"],
@@ -2366,7 +3849,7 @@ function Payroll({ invoices, onBack }) {
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error),
             React.createElement("div", { style: { marginTop: 16, fontSize: 11.5, color: "#B4AFD6", lineHeight: 1.6 } }, "Incentive apne aap staff ki is mahine ki Sales aur unke Incentive % se calculate hoti hai (Manage Staff mein set karein). Net Payable edit kar sakte hain (jaise deductions ke liye)."))));
 }
-function AdminPanel({ session, onBack }) {
+function AdminPanel({ session, onBack, onOpenDocuments }) {
     const [users, setUsers] = useState([]);
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState("");
@@ -2388,6 +3871,7 @@ function AdminPanel({ session, onBack }) {
         })();
     }, []);
     const setDraft = (id, field, value) => setDrafts(Object.assign(Object.assign({}, drafts), { [id]: Object.assign(Object.assign({}, drafts[id]), { [field]: value }) }));
+    const TARGET_MULTIPLIER = { "E-commerce Sales Executive": 15, "GeM Sales Executive": 20 };
     const handleDesignationChange = (u, value) => {
         const current = drafts[u.id] || u;
         const patch = { designation: value };
@@ -2395,6 +3879,18 @@ function AdminPanel({ session, onBack }) {
             patch.can_view_all_sales = true;
             patch.can_view_purchases = true;
             patch.can_confirm_payments = true;
+        }
+        if (TARGET_MULTIPLIER[value] && Number(current.monthly_salary) > 0) {
+            patch.target_amount = Number(current.monthly_salary) * TARGET_MULTIPLIER[value];
+        }
+        setDrafts(Object.assign(Object.assign({}, drafts), { [u.id]: Object.assign(Object.assign({}, current), patch) }));
+    };
+    const handleSalaryChange = (u, value) => {
+        const current = drafts[u.id] || u;
+        const patch = { monthly_salary: value };
+        const mult = TARGET_MULTIPLIER[current.designation];
+        if (mult && Number(value) > 0) {
+            patch.target_amount = Number(value) * mult;
         }
         setDrafts(Object.assign(Object.assign({}, drafts), { [u.id]: Object.assign(Object.assign({}, current), patch) }));
     };
@@ -2414,6 +3910,7 @@ function AdminPanel({ session, onBack }) {
         else {
             setUsers(users.map((x) => (x.id === u.id ? Object.assign(Object.assign({}, x), { is_active: newVal }) : x)));
             setDrafts(Object.assign(Object.assign({}, drafts), { [u.id]: Object.assign(Object.assign({}, current), { is_active: newVal }) }));
+            logAudit(session, newVal ? "staff_activated" : "staff_deactivated", "staff", u.email, { is_active: !newVal }, { is_active: newVal });
         }
         setBusyId(null);
     };
@@ -2433,12 +3930,35 @@ function AdminPanel({ session, onBack }) {
             target_amount: Number(d.target_amount) || 0,
             monthly_salary: Number(d.monthly_salary) || 0,
             incentive_rate: Number(d.incentive_rate) || 0,
+            department: (d.department || "").trim() || null,
+            emergency_contact: (d.emergency_contact || "").trim() || null,
+            reporting_manager_email: (d.reporting_manager_email || "").trim() || null,
+            employment_status: d.employment_status || "active",
+            joining_date: d.joining_date || null,
+            employee_id: (d.employee_id || "").trim() || null,
+            photo_url: (d.photo_url || "").trim() || null,
         };
         const { error } = await sb.from("grasp_users").update(payload).eq("id", u.id);
         if (error)
             setError(error.message);
-        else
+        else {
+            const salaryChanged = Number(u.monthly_salary) !== payload.monthly_salary;
+            const targetChanged = Number(u.target_amount) !== payload.target_amount;
+            if (salaryChanged || targetChanged) {
+                logAudit(session, "salary_target_changed", "staff", u.email, { monthly_salary: Number(u.monthly_salary) || 0, target_amount: Number(u.target_amount) || 0 }, { monthly_salary: payload.monthly_salary, target_amount: payload.target_amount });
+                await sb.from("grasp_staff_history").insert({
+                    id: uid(), staff_email: u.email, staff_id: u.id, fy: getFY(todayISO()),
+                    salary: payload.monthly_salary, target_amount: payload.target_amount,
+                    designation: payload.designation, recorded_by: session.user.email,
+                });
+            }
+            const oldPermsSnapshot = { can_view_purchases: !!u.can_view_purchases, can_confirm_payments: !!u.can_confirm_payments, can_view_all_sales: !!u.can_view_all_sales, doc_permissions: u.doc_permissions || {}, designation: u.designation };
+            const newPermsSnapshot = { can_view_purchases: payload.can_view_purchases, can_confirm_payments: payload.can_confirm_payments, can_view_all_sales: payload.can_view_all_sales, doc_permissions: payload.doc_permissions, designation: payload.designation };
+            if (JSON.stringify(oldPermsSnapshot) !== JSON.stringify(newPermsSnapshot)) {
+                logAudit(session, "permissions_changed", "staff", u.email, oldPermsSnapshot, newPermsSnapshot);
+            }
             setUsers(users.map((x) => (x.id === u.id ? Object.assign(Object.assign({}, x), payload) : x)));
+        }
         setBusyId(null);
     };
     return (React.createElement("div", null,
@@ -2471,8 +3991,37 @@ function AdminPanel({ session, onBack }) {
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Designation"),
                         React.createElement("select", { value: d.designation, onChange: (e) => handleDesignationChange(u, e.target.value), style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }, DESIGNATIONS.map((opt) => (React.createElement("option", { key: opt, value: opt }, opt)))),
                         d.designation === "Manager" && React.createElement("div", { style: { fontSize: 10.5, color: COLORS.emerald, marginTop: -8, marginBottom: 12, fontWeight: 600 } }, "\u2713 Manager ko View All Sales, Purchase Bills, aur Confirm Payments automatically de diya gaya hai \u2014 neeche check karके confirm kar lein."),
+                        React.createElement("div", { style: { display: "flex", gap: 8 } },
+                            React.createElement("div", { style: { flex: 1 } },
+                                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Employee ID"),
+                                React.createElement("input", { value: d.employee_id || "", onChange: (e) => setDraft(u.id, "employee_id", e.target.value), placeholder: "e.g. EMP-001", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } })),
+                            React.createElement("div", { style: { flex: 1 } },
+                                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Photo URL"),
+                                React.createElement("input", { value: d.photo_url || "", onChange: (e) => setDraft(u.id, "photo_url", e.target.value), placeholder: "Documents mein upload karke link paste karein", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }))),
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Mobile Number"),
                         React.createElement("input", { type: "tel", value: d.phone || "", onChange: (e) => setDraft(u.id, "phone", e.target.value), placeholder: "e.g. 9876543210", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }),
+                        React.createElement("div", { style: { display: "flex", gap: 8 } },
+                            React.createElement("div", { style: { flex: 1 } },
+                                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Department"),
+                                React.createElement("input", { value: d.department || "", onChange: (e) => setDraft(u.id, "department", e.target.value), placeholder: "e.g. Sales", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } })),
+                            React.createElement("div", { style: { flex: 1 } },
+                                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Joining Date"),
+                                React.createElement("input", { type: "date", value: d.joining_date || "", onChange: (e) => setDraft(u.id, "joining_date", e.target.value), style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }))),
+                        React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Emergency Contact"),
+                        React.createElement("input", { value: d.emergency_contact || "", onChange: (e) => setDraft(u.id, "emergency_contact", e.target.value), placeholder: "Naam - Mobile", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }),
+                        React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Reporting Manager (email)"),
+                        React.createElement("input", { type: "email", value: d.reporting_manager_email || "", onChange: (e) => setDraft(u.id, "reporting_manager_email", e.target.value), placeholder: "manager@example.com", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }),
+                        React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Employment Status"),
+                        React.createElement("select", { value: d.employment_status || "active", onChange: (e) => {
+                                setDraft(u.id, "employment_status", e.target.value);
+                                if (e.target.value === "resigned" || e.target.value === "terminated")
+                                    setDraft(u.id, "is_active", false);
+                            }, style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }, [
+                            React.createElement("option", { key: "active", value: "active" }, "Active"),
+                            React.createElement("option", { key: "inactive", value: "inactive" }, "Inactive"),
+                            React.createElement("option", { key: "resigned", value: "resigned" }, "Resigned"),
+                            React.createElement("option", { key: "terminated", value: "terminated" }, "Terminated"),
+                        ]),
                         PERM_FIELDS.map(([key, dbKey, label, hint]) => (React.createElement("label", { key: key, style: { display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 10, cursor: "pointer" } },
                             React.createElement("input", { type: "checkbox", checked: !!d[dbKey], onChange: (e) => setDraft(u.id, dbKey, e.target.checked), style: { marginTop: 3 } }),
                             React.createElement("div", null,
@@ -2493,14 +4042,20 @@ function AdminPanel({ session, onBack }) {
                                 ]);
                             })),
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block", marginTop: 6 } }, "Sales Target (\u20B9, is FY ke liye)"),
-                        React.createElement("input", { type: "number", min: "0", value: d.target_amount, onChange: (e) => setDraft(u.id, "target_amount", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }),
+                        React.createElement("input", { type: "number", min: "0", value: d.target_amount, onChange: (e) => setDraft(u.id, "target_amount", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 4 } }),
+                        TARGET_MULTIPLIER[d.designation] && React.createElement("div", { style: { fontSize: 10, color: COLORS.emerald, marginBottom: 12, fontWeight: 600 } },
+                            "\u2713 Automatic: Salary \u00D7 ",
+                            TARGET_MULTIPLIER[d.designation],
+                            " (chahein to manually badal sakte hain)"),
+                        !TARGET_MULTIPLIER[d.designation] && React.createElement("div", { style: { marginBottom: 12 } }),
                         React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 12 } },
                             React.createElement("div", { style: { flex: 1 } },
                                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Monthly Salary (\u20B9)"),
-                                React.createElement("input", { type: "number", min: "0", value: d.monthly_salary, onChange: (e) => setDraft(u.id, "monthly_salary", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } })),
+                                React.createElement("input", { type: "number", min: "0", value: d.monthly_salary, onChange: (e) => handleSalaryChange(u, e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } })),
                             React.createElement("div", { style: { flex: 1 } },
                                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Incentive % (on sales)"),
                                 React.createElement("input", { type: "number", min: "0", value: d.incentive_rate, onChange: (e) => setDraft(u.id, "incentive_rate", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } }))),
+                        onOpenDocuments && React.createElement("button", { onClick: () => onOpenDocuments(u.id, u.email), style: { width: "100%", padding: "10px", borderRadius: 10, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.violet, fontWeight: 700, fontSize: 12.5, marginBottom: 8 } }, "\uD83D\uDCC1 Employee Documents"),
                         React.createElement("button", { onClick: () => savePerms(u), disabled: busyId === u.id, style: { width: "100%", padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, busyId === u.id ? "Saving…" : "Save Access")))));
             }))),
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error),
@@ -3629,7 +5184,57 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                         label,
                         ": "),
                     React.createElement("span", { className: "pv-bank-text", style: { color: "#333" } }, val))))),
-            React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", borderBottom: "1px solid #333" } },
+            inv.docType === "sale" ? (React.createElement("table", { className: "pv-sales-table", style: { width: "100%", borderCollapse: "collapse", borderBottom: "1px solid #333" } },
+                React.createElement("thead", null,
+                    React.createElement("tr", null, [
+                        React.createElement("th", { key: "sn", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "#"),
+                        React.createElement("th", { key: "desc", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Product / Description"),
+                        React.createElement("th", { key: "hsn", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "HSN/SAC"),
+                        React.createElement("th", { key: "qty", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Qty"),
+                        React.createElement("th", { key: "unit", className: "pv-th pv-cell", style: { textAlign: "center", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Unit"),
+                        React.createElement("th", { key: "rate", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Rate"),
+                        (Number(inv.discountAmount) || 0) > 0 && React.createElement("th", { key: "disc", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Discount"),
+                        React.createElement("th", { key: "taxable", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Taxable Value"),
+                        React.createElement("th", { key: "gstpct", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "GST%"),
+                        isInterstate ? React.createElement("th", { key: "igst", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "IGST") : [
+                            React.createElement("th", { key: "cgst", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "CGST"),
+                            React.createElement("th", { key: "sgst", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "SGST"),
+                        ],
+                        React.createElement("th", { key: "total", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333" } }, "Total Amount"),
+                    ])),
+                React.createElement("tbody", null, [
+                    ...visibleItems.map((it, i) => {
+                        const itemGross = (Number(it.qty) || 0) * (Number(it.rate) || 0);
+                        const itemDiscount = itemGross * discountRatio;
+                        const taxable = itemGross - itemDiscount;
+                        const itGst = Number(it.gst) || 0;
+                        const taxAmt = (taxable * itGst) / 100;
+                        const cellStyle = { verticalAlign: "top", borderRight: "1px solid #333", borderBottom: "1px solid #eee" };
+                        const nowrapNum = { whiteSpace: "nowrap" };
+                        return React.createElement("tr", { key: it.id }, [
+                            React.createElement("td", { key: "sn", className: "pv-td pv-cell", style: Object.assign(Object.assign({ color: "#333" }, cellStyle), nowrapNum) }, i + 1),
+                            React.createElement("td", { key: "desc", className: "pv-td pv-cell", style: Object.assign({ fontWeight: 600 }, cellStyle) },
+                                React.createElement("div", null, it.name),
+                                it.description && React.createElement("div", { className: "pv-td-sub", style: { color: "#555", fontWeight: 700, marginTop: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", maxWidth: 180, lineHeight: 1.4 } }, it.description)),
+                            React.createElement("td", { key: "hsn", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ color: "#333" }, cellStyle), nowrapNum) }, it.hsn || "\u2014"),
+                            React.createElement("td", { key: "qty", className: "num pv-td pv-cell", style: Object.assign(Object.assign({ textAlign: "right" }, cellStyle), nowrapNum) }, it.qty),
+                            React.createElement("td", { key: "unit", className: "pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "center", color: "#555" }, cellStyle), nowrapNum) }, it.unit || "NOS"),
+                            React.createElement("td", { key: "rate", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333" }, cellStyle), nowrapNum) }, fmt(it.rate)),
+                            (Number(inv.discountAmount) || 0) > 0 && React.createElement("td", { key: "disc", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#555" }, cellStyle), nowrapNum) }, fmt(itemDiscount)),
+                            React.createElement("td", { key: "taxable", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333", fontWeight: 700 }, cellStyle), nowrapNum) }, fmt(taxable)),
+                            React.createElement("td", { key: "gstpct", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#555" }, cellStyle), nowrapNum) }, itGst + "%"),
+                            isInterstate ? React.createElement("td", { key: "igst", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333" }, cellStyle), nowrapNum) }, fmt(taxAmt)) : [
+                                React.createElement("td", { key: "cgst", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333" }, cellStyle), nowrapNum) }, fmt(taxAmt / 2)),
+                                React.createElement("td", { key: "sgst", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333" }, cellStyle), nowrapNum) }, fmt(taxAmt / 2)),
+                            ],
+                            React.createElement("td", { key: "total", className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee", whiteSpace: "nowrap" } }, fmt(taxable + taxAmt)),
+                        ]);
+                    }),
+                    Math.max(0, 15 - visibleItems.length) > 0 && (() => {
+                        const colCount = 9 + (isInterstate ? 1 : 2) + ((Number(inv.discountAmount) || 0) > 0 ? 1 : 0);
+                        return React.createElement("tr", { key: "filler" }, Array.from({ length: colCount }).map((_, ci) => React.createElement("td", { key: ci, className: "pv-cell", style: Object.assign({ borderRight: ci < colCount - 1 ? "1px solid #333" : "none" }, ci === 0 ? { height: Math.max(0, 15 - visibleItems.length) * 23 } : {}) }, "\u00A0")));
+                    })(),
+                ]))) : (React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", borderBottom: "1px solid #333" } },
                 React.createElement("thead", null,
                     React.createElement("tr", null,
                         React.createElement("th", { className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "#"),
@@ -3672,7 +5277,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell" }, "\u00A0")),
-                ])),
+                ]))),
             React.createElement("div", { className: "pv-total-items", style: { padding: "5px 10px", color: "#333", borderBottom: "1px solid #333" } },
                 "Total Items / Qty : ",
                 visibleItems.length,
