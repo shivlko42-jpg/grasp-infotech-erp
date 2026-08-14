@@ -5190,17 +5190,15 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                         React.createElement("th", { key: "sn", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "#"),
                         React.createElement("th", { key: "desc", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Product / Description"),
                         React.createElement("th", { key: "hsn", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "HSN/SAC"),
-                        React.createElement("th", { key: "qty", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Qty"),
-                        React.createElement("th", { key: "unit", className: "pv-th pv-cell", style: { textAlign: "center", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Unit"),
                         React.createElement("th", { key: "rate", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Rate"),
+                        React.createElement("th", { key: "qty", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Qty"),
                         (Number(inv.discountAmount) || 0) > 0 && React.createElement("th", { key: "disc", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Discount"),
-                        React.createElement("th", { key: "taxable", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Taxable Value"),
                         React.createElement("th", { key: "gstpct", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "GST%"),
                         isInterstate ? React.createElement("th", { key: "igst", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "IGST") : [
                             React.createElement("th", { key: "cgst", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "CGST"),
                             React.createElement("th", { key: "sgst", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "SGST"),
                         ],
-                        React.createElement("th", { key: "total", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333" } }, "Total Amount"),
+                        React.createElement("th", { key: "total", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333" } }, "Amount"),
                     ])),
                 React.createElement("tbody", null, [
                     ...visibleItems.map((it, i) => {
@@ -5215,13 +5213,14 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                             React.createElement("td", { key: "sn", className: "pv-td pv-cell", style: Object.assign(Object.assign({ color: "#333" }, cellStyle), nowrapNum) }, i + 1),
                             React.createElement("td", { key: "desc", className: "pv-td pv-cell", style: Object.assign({ fontWeight: 600 }, cellStyle) },
                                 React.createElement("div", null, it.name),
-                                it.description && React.createElement("div", { className: "pv-td-sub", style: { color: "#555", fontWeight: 700, marginTop: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", maxWidth: 180, lineHeight: 1.4 } }, it.description)),
+                                it.description && React.createElement("div", { className: "pv-td-sub", style: { color: "#555", fontWeight: 700, marginTop: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", maxWidth: 220, lineHeight: 1.4 } }, it.description)),
                             React.createElement("td", { key: "hsn", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ color: "#333" }, cellStyle), nowrapNum) }, it.hsn || "\u2014"),
-                            React.createElement("td", { key: "qty", className: "num pv-td pv-cell", style: Object.assign(Object.assign({ textAlign: "right" }, cellStyle), nowrapNum) }, it.qty),
-                            React.createElement("td", { key: "unit", className: "pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "center", color: "#555" }, cellStyle), nowrapNum) }, it.unit || "NOS"),
-                            React.createElement("td", { key: "rate", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333" }, cellStyle), nowrapNum) }, fmt(it.rate)),
+                            React.createElement("td", { key: "rate", className: "num pv-td pv-cell", style: Object.assign(Object.assign({ textAlign: "right" }, cellStyle), nowrapNum) }, fmt(it.rate)),
+                            React.createElement("td", { key: "qty", className: "num pv-td pv-cell", style: Object.assign(Object.assign({ textAlign: "right" }, cellStyle), nowrapNum) },
+                                it.qty,
+                                " ",
+                                React.createElement("span", { style: { fontSize: "0.85em", color: "#666" } }, it.unit || "NOS")),
                             (Number(inv.discountAmount) || 0) > 0 && React.createElement("td", { key: "disc", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#555" }, cellStyle), nowrapNum) }, fmt(itemDiscount)),
-                            React.createElement("td", { key: "taxable", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333", fontWeight: 700 }, cellStyle), nowrapNum) }, fmt(taxable)),
                             React.createElement("td", { key: "gstpct", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#555" }, cellStyle), nowrapNum) }, itGst + "%"),
                             isInterstate ? React.createElement("td", { key: "igst", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333" }, cellStyle), nowrapNum) }, fmt(taxAmt)) : [
                                 React.createElement("td", { key: "cgst", className: "num pv-td-sub pv-cell", style: Object.assign(Object.assign({ textAlign: "right", color: "#333" }, cellStyle), nowrapNum) }, fmt(taxAmt / 2)),
@@ -5231,7 +5230,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                         ]);
                     }),
                     Math.max(0, 15 - visibleItems.length) > 0 && (() => {
-                        const colCount = 9 + (isInterstate ? 1 : 2) + ((Number(inv.discountAmount) || 0) > 0 ? 1 : 0);
+                        const colCount = 7 + (isInterstate ? 1 : 2) + ((Number(inv.discountAmount) || 0) > 0 ? 1 : 0);
                         return React.createElement("tr", { key: "filler" }, Array.from({ length: colCount }).map((_, ci) => React.createElement("td", { key: ci, className: "pv-cell", style: Object.assign({ borderRight: ci < colCount - 1 ? "1px solid #333" : "none" }, ci === 0 ? { height: Math.max(0, 15 - visibleItems.length) * 23 } : {}) }, "\u00A0")));
                     })(),
                 ]))) : (React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", borderBottom: "1px solid #333" } },
