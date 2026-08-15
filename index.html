@@ -3825,7 +3825,13 @@ function MyPerformance({ session, perms, invoices, onBack }) {
                 ]),
                 progressCard("\uD83D\uDCC5", "This Month", myMonthSales, monthlyTarget, monthPct, monthPct >= 100 ? "linear-gradient(90deg,#10B981,#059669)" : "linear-gradient(90deg,#7C3AED,#4F46E5)"),
                 progressCard("\uD83D\uDCC6", "This Financial Year", fySales, fyTarget, fyPct, fyPct >= 100 ? "linear-gradient(90deg,#10B981,#059669)" : "linear-gradient(90deg,#7C3AED,#4F46E5)"),
-                attendancePct !== null && React.createElement("div", { key: "att", className: "card", style: { padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } },
+                !loaded && React.createElement("div", { key: "skel1", className: "card", style: { padding: 16, marginBottom: 12, minHeight: 68, border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } },
+                    React.createElement("div", { style: { height: 10, width: "40%", borderRadius: 4, background: "#F1ECFE" } }),
+                    React.createElement("div", { style: { height: 16, width: "55%", borderRadius: 4, background: "#F1ECFE", marginTop: 10 } })),
+                !loaded && React.createElement("div", { key: "skel2", className: "card", style: { padding: 16, marginBottom: 12, minHeight: 68, border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } },
+                    React.createElement("div", { style: { height: 10, width: "45%", borderRadius: 4, background: "#F1ECFE" } }),
+                    React.createElement("div", { style: { height: 16, width: "50%", borderRadius: 4, background: "#F1ECFE", marginTop: 10 } })),
+                loaded && attendancePct !== null && React.createElement("div", { key: "att", className: "card", style: { padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } },
                     React.createElement("div", null,
                         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
                             React.createElement("span", { style: { fontSize: 16 } }, "\uD83D\uDCCD"),
@@ -3838,7 +3844,7 @@ function MyPerformance({ session, perms, invoices, onBack }) {
                     React.createElement("div", { className: "num", style: { fontSize: 22, fontWeight: 800, color: attendancePct >= 90 ? COLORS.emerald : attendancePct >= 75 ? COLORS.amber : COLORS.rose } },
                         attendancePct,
                         "%")),
-                myIncentive && React.createElement("div", { key: "inc", className: "card", style: { padding: 16, marginBottom: 12, border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } },
+                loaded && myIncentive && React.createElement("div", { key: "inc", className: "card", style: { padding: 16, marginBottom: 12, border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" } },
                     React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
                         React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 } }, [
                             React.createElement("span", { key: "i", style: { fontSize: 16 } }, "\uD83C\uDF81"),
@@ -3848,7 +3854,7 @@ function MyPerformance({ session, perms, invoices, onBack }) {
                     React.createElement("div", { className: "num", style: { fontSize: 22, fontWeight: 800, color: COLORS.violet } },
                         "\u20B9",
                         fmt(myIncentive.incentive_earned))),
-                history.length > 0 && React.createElement(React.Fragment, { key: "hist" }, [
+                loaded && history.length > 0 && React.createElement(React.Fragment, { key: "hist" }, [
                     React.createElement("div", { key: "t", style: { fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 13.5, marginTop: 16, marginBottom: 8 } }, "Salary & Target History"),
                     React.createElement("div", { key: "list", className: "card", style: { padding: 4 } }, history.map((h) => React.createElement("div", { key: h.id, style: { padding: "10px 12px", borderBottom: "1px solid " + COLORS.border, display: "flex", justifyContent: "space-between" } },
                         React.createElement("span", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 600 } }, h.fy),
