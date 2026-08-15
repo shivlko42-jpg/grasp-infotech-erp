@@ -4264,6 +4264,7 @@ function AdminPanel({ session, onBack, onOpenDocuments }) {
     }, []);
     const setDraft = (id, field, value) => setDrafts(Object.assign(Object.assign({}, drafts), { [id]: Object.assign(Object.assign({}, drafts[id]), { [field]: value }) }));
     const TARGET_MULTIPLIER = { "E-commerce Sales Executive": 15, "GeM Sales Executive": 20 };
+    const computeTeamTarget = (managerEmail) => users.filter((u) => u.reporting_manager_email === managerEmail && u.is_active !== false).reduce((s, u) => s + (Number(u.target_amount) || 0), 0);
     const handleDesignationChange = (u, value) => {
         const current = drafts[u.id] || u;
         const patch = { designation: value };
@@ -4271,6 +4272,7 @@ function AdminPanel({ session, onBack, onOpenDocuments }) {
             patch.can_view_all_sales = true;
             patch.can_view_purchases = true;
             patch.can_confirm_payments = true;
+            patch.target_amount = computeTeamTarget(u.email);
         }
         if (TARGET_MULTIPLIER[value] && Number(current.monthly_salary) > 0) {
             patch.target_amount = Number(current.monthly_salary) * TARGET_MULTIPLIER[value];
@@ -4319,7 +4321,7 @@ function AdminPanel({ session, onBack, onOpenDocuments }) {
             can_confirm_payments: !!d.can_confirm_payments,
             can_view_all_sales: !!d.can_view_all_sales,
             doc_permissions: d.doc_permissions || {},
-            target_amount: Number(d.target_amount) || 0,
+            target_amount: d.designation === "Manager" ? computeTeamTarget(u.email) : (Number(d.target_amount) || 0),
             monthly_salary: Number(d.monthly_salary) || 0,
             incentive_rate: Number(d.incentive_rate) || 0,
             department: (d.department || "").trim() || null,
@@ -4401,8 +4403,11 @@ function AdminPanel({ session, onBack, onOpenDocuments }) {
                                 React.createElement("input", { type: "date", value: d.joining_date || "", onChange: (e) => setDraft(u.id, "joining_date", e.target.value), style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }))),
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Emergency Contact"),
                         React.createElement("input", { value: d.emergency_contact || "", onChange: (e) => setDraft(u.id, "emergency_contact", e.target.value), placeholder: "Naam - Mobile", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }),
-                        React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Reporting Manager (email)"),
-                        React.createElement("input", { type: "email", value: d.reporting_manager_email || "", onChange: (e) => setDraft(u.id, "reporting_manager_email", e.target.value), placeholder: "manager@example.com", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }),
+                        React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Reporting Manager"),
+                        React.createElement("select", { value: d.reporting_manager_email || "", onChange: (e) => setDraft(u.id, "reporting_manager_email", e.target.value), style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 12 } }, [
+                            React.createElement("option", { key: "none", value: "" }, "\u2014 Koi Manager Nahi \u2014"),
+                            ...users.filter((mgr) => mgr.designation === "Manager" && mgr.id !== u.id).map((mgr) => React.createElement("option", { key: mgr.id, value: mgr.email }, mgr.full_name || mgr.email)),
+                        ]),
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Employment Status"),
                         React.createElement("select", { value: d.employment_status || "active", onChange: (e) => {
                                 setDraft(u.id, "employment_status", e.target.value);
@@ -4434,7 +4439,9 @@ function AdminPanel({ session, onBack, onOpenDocuments }) {
                                 ]);
                             })),
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block", marginTop: 6 } }, "Sales Target (\u20B9, is FY ke liye)"),
-                        React.createElement("input", { type: "number", min: "0", value: d.target_amount, onChange: (e) => setDraft(u.id, "target_amount", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 4 } }),
+                        React.createElement("input", { type: "number", min: "0", value: d.designation === "Manager" ? computeTeamTarget(u.email) : d.target_amount, disabled: d.designation === "Manager", onChange: (e) => setDraft(u.id, "target_amount", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 4, background: d.designation === "Manager" ? "#F5F3FF" : "#fff", color: d.designation === "Manager" ? "#6D28D9" : "inherit" } }),
+                        d.designation === "Manager" && React.createElement("div", { style: { fontSize: 10, color: "#6D28D9", marginBottom: 12, fontWeight: 600 } },
+                            "\u2713 Team Target (automatic) \u2014 iske team members (\"Reporting Manager\" mein isko select karne wale staff) ke targets ka jod hai. Team members ke targets Manage Staff mein set karein."),
                         TARGET_MULTIPLIER[d.designation] && React.createElement("div", { style: { fontSize: 10, color: COLORS.emerald, marginBottom: 12, fontWeight: 600 } },
                             "\u2713 Automatic: Salary \u00D7 ",
                             TARGET_MULTIPLIER[d.designation],
