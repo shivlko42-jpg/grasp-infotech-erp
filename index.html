@@ -955,7 +955,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, staffNames: staffNames })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (o) => { setEditingInv({ docType: "sale", party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "managementdash" && perms.isAdmin ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, staffNames: staffNames })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (o) => { setEditingInv({ docType: "sale", party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "leave" ? (React.createElement(LeaveManagement, { session: session, perms: perms, onBack: () => setView("home") })) : view === "holidays" ? (React.createElement(HolidayCalendar, { perms: perms, session: session, onBack: () => setView("home") })) : view === "dailyactivity" && perms.isAdmin ? (React.createElement(DailyActivity, { invoices: invoices, onBack: () => setView("managementdash") })) : view === "managementdash" && perms.isAdmin ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home"), onOpenDailyActivity: () => setView("dailyactivity") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
                 error && React.createElement("div", { className: "no-print", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error)),
             view !== "preview" && React.createElement("div", { className: "no-print" },
                 React.createElement(BottomNav, { view: view, setView: setView, perms: perms }))),
@@ -1144,7 +1144,7 @@ function DailyGoalWidget({ session, perms, invoices }) {
                 fmt(monthRemaining),
                 " aur chahiye is mahine ke target ke liye"))));
 }
-function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenGemTenders, onOpenServiceTickets, onOpenMyDocuments, staffNames }) {
+function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenGemTenders, onOpenServiceTickets, onOpenLeave, onOpenHolidays, onOpenMyDocuments, staffNames }) {
     const recent = invoices.slice(0, 4);
     const hasFullView = perms.isAdmin || perms.canViewAllSales;
     const achievementPct = perms.targetAmount > 0 ? Math.min(100, Math.round((totals.sales / perms.targetAmount) * 100)) : null;
@@ -1192,6 +1192,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                 " target"))),
         React.createElement(AttendanceWidget, { session: session, profile: profile }),
         React.createElement(DailyGoalWidget, { session: session, perms: perms, invoices: invoices }),
+        React.createElement(MyDailyReportCard, { session: session }),
         (overdueList.length > 0 || dueSoonList.length > 0) && React.createElement("button", { onClick: onOpenDue, style: { width: "100%", textAlign: "left", background: overdueList.length > 0 ? "#FDE7EB" : "#FEF3DD", border: "1px solid " + (overdueList.length > 0 ? "#F5B8C4" : "#FBE3B0"), borderRadius: 14, padding: "13px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 } },
             React.createElement("div", { style: { fontSize: 22 } }, overdueList.length > 0 ? "\u26A0\uFE0F" : "\u23F0"),
             React.createElement("div", { style: { flex: 1 } },
@@ -1231,6 +1232,8 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
             React.createElement(FolderButton, { icon: "\uD83D\uDED2", label: "E-commerce Orders", color: "#F59E0B", bg: "#FEF3DD", onClick: onOpenEcomOrders }),
             React.createElement(FolderButton, { icon: "\uD83C\uDFDB\uFE0F", label: "GeM Tenders", color: "#0369A1", bg: "#E0F2FE", onClick: onOpenGemTenders }),
             React.createElement(FolderButton, { icon: "\uD83D\uDD27", label: "Service Tickets", color: "#0891B2", bg: "#CFFAFE", onClick: onOpenServiceTickets }),
+            React.createElement(FolderButton, { icon: "\uD83C\uDFD6\uFE0F", label: "Leave", color: "#DB2777", bg: "#FCE7F3", onClick: onOpenLeave }),
+            React.createElement(FolderButton, { icon: "\uD83C\uDF89", label: "Holidays", color: "#DB2777", bg: "#FCE7F3", onClick: onOpenHolidays }),
             React.createElement(FolderButton, { icon: "\uD83D\uDCC1", label: "My Documents", color: "#7C3AED", bg: "#F1ECFE", onClick: onOpenMyDocuments })),
         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
             React.createElement("div", { style: { fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15 } }, "Recent"),
@@ -2534,19 +2537,22 @@ function AuditLog({ onBack }) {
                 ]),
             ])))));
 }
-function ManagementDashboard({ invoices, expenses, profile, onBack }) {
+function ManagementDashboard({ invoices, expenses, profile, onBack, onOpenDailyActivity }) {
     const [staffList, setStaffList] = useState([]);
     const [todayAttendance, setTodayAttendance] = useState([]);
+    const [payments, setPayments] = useState([]);
     const [loaded, setLoaded] = useState(false);
     useEffect(() => {
         (async () => {
             const today = todayISO();
-            const [uRes, aRes] = await Promise.all([
+            const [uRes, aRes, pRes] = await Promise.all([
                 sb.from("grasp_users").select("*"),
                 sb.from("grasp_attendance").select("*").eq("date", today),
+                sb.from("grasp_payments").select("*"),
             ]);
             setStaffList((uRes.data || []).filter((u) => !u.is_admin && u.is_active !== false));
             setTodayAttendance(aRes.data || []);
+            setPayments(pRes.data || []);
             setLoaded(true);
         })();
     }, []);
@@ -2559,6 +2565,8 @@ function ManagementDashboard({ invoices, expenses, profile, onBack }) {
     const todaySales = invoices.filter((i) => i.docType === "sale" && isToday(i.date)).reduce((s, i) => s + i.total, 0);
     const todayPurchase = invoices.filter((i) => i.docType === "purchase" && isToday(i.date)).reduce((s, i) => s + i.total, 0);
     const todayExpenses = expenses.filter((e) => isToday(e.date)).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const todayCollection = payments.filter((p) => isToday(p.date)).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const monthCollection = payments.filter((p) => isThisMonth(p.date)).reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const outstanding = invoices.filter((i) => i.docType === "sale").reduce((s, i) => s + Math.max(0, i.total - (Number(i.paidAmount) || 0)), 0);
     const monthSales = invoices.filter((i) => i.docType === "sale" && isThisMonth(i.date)).reduce((s, i) => s + i.total, 0);
     const monthPurchase = invoices.filter((i) => i.docType === "purchase" && isThisMonth(i.date)).reduce((s, i) => s + i.total, 0);
@@ -2603,17 +2611,21 @@ function ManagementDashboard({ invoices, expenses, profile, onBack }) {
                     heroStat("\uD83D\uDCC8", "This Month", "\u20B9" + fmt(monthSales), "rgba(255,255,255,0.15)"),
                 ]),
             ]),
+            React.createElement("button", { key: "dailybtn", onClick: onOpenDailyActivity, style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#DB2777,#BE185D)", color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } },
+                "\uD83D\uDCCB Daily Staff Activity Dekhein"),
             sectionHeader("\u2600\uFE0F", "Today"),
             React.createElement("div", { key: "g1", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
                 statCard("\uD83D\uDCB0", "Sales", "\u20B9" + fmt(todaySales), COLORS.emerald, "#E3FBF1"),
                 statCard("\uD83D\uDCE6", "Purchase", "\u20B9" + fmt(todayPurchase), COLORS.rose, "#FDE7EB"),
+                statCard("\uD83D\uDCB3", "Payment Received", "\u20B9" + fmt(todayCollection), "#0369A1", "#E0F2FE"),
                 statCard("\uD83E\uDDFE", "Expenses", "\u20B9" + fmt(todayExpenses), COLORS.amber, "#FEF3DD"),
-                statCard("\u23F3", "Outstanding", "\u20B9" + fmt(outstanding), COLORS.violet, "#F1ECFE"),
+                statCard("\u23F3", "Total Outstanding", "\u20B9" + fmt(outstanding), COLORS.violet, "#F1ECFE"),
             ]),
             sectionHeader("\uD83D\uDCCA", "This Month"),
             React.createElement("div", { key: "g2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
                 statCard("\uD83D\uDCB5", "Total Sales", "\u20B9" + fmt(monthSales), COLORS.emerald, "#E3FBF1"),
                 statCard("\uD83D\uDED2", "Total Purchase", "\u20B9" + fmt(monthPurchase), COLORS.rose, "#FDE7EB"),
+                statCard("\uD83D\uDCB3", "Payment Received", "\u20B9" + fmt(monthCollection), "#0369A1", "#E0F2FE"),
                 statCard(grossProfit >= 0 ? "\uD83D\uDCC8" : "\uD83D\uDCC9", "Gross Profit", "\u20B9" + fmt(grossProfit), grossProfit >= 0 ? COLORS.emerald : COLORS.rose, grossProfit >= 0 ? "#E3FBF1" : "#FDE7EB"),
                 statCard("\u26A0\uFE0F", "Below Target", belowTargetCount, COLORS.amber, "#FEF3DD"),
             ]),
@@ -3193,6 +3205,330 @@ function AddServiceTicketForm({ onSave, onCancel }) {
             React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 6 } },
                 React.createElement("button", { onClick: save, disabled: busy || !customerName.trim() || !issue.trim(), style: { flex: 1, padding: "12px", borderRadius: 11, border: "none", background: customerName.trim() && issue.trim() ? COLORS.indigo : "#D6D2EE", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Save Ticket"),
                 React.createElement("button", { onClick: onCancel, style: { padding: "12px 18px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))));
+}
+const LEAVE_TYPES = [
+    ["Casual", 12],
+    ["Sick", 8],
+    ["Earned", 15],
+    ["Unpaid", null],
+];
+const LEAVE_STATUS_META = {
+    pending: { label: "Pending", color: "#F59E0B" },
+    approved: { label: "Approved", color: "#10B981" },
+    rejected: { label: "Rejected", color: "#EF4444" },
+};
+function daysBetween(from, to) {
+    const d1 = new Date(from), d2 = new Date(to);
+    return Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+}
+function AddLeaveForm({ onSave, onCancel }) {
+    const [leaveType, setLeaveType] = useState("Casual");
+    const [fromDate, setFromDate] = useState(todayISO());
+    const [toDate, setToDate] = useState(todayISO());
+    const [reason, setReason] = useState("");
+    const [busy, setBusy] = useState(false);
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 14, marginBottom: 10 };
+    const days = daysBetween(fromDate, toDate);
+    const save = async () => {
+        if (!fromDate || !toDate || days < 1)
+            return;
+        setBusy(true);
+        await onSave({ leave_type: leaveType, from_date: fromDate, to_date: toDate, days, reason: reason.trim(), status: "pending" });
+        setBusy(false);
+    };
+    return (React.createElement("div", { style: { padding: "0 16px" } },
+        React.createElement("div", { className: "card", style: { padding: 16 } },
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Leave Type"),
+            React.createElement("select", { value: leaveType, onChange: (e) => setLeaveType(e.target.value), style: inputStyle }, LEAVE_TYPES.map(([t]) => React.createElement("option", { key: t, value: t }, t))),
+            React.createElement("div", { style: { display: "flex", gap: 10 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "From"),
+                    React.createElement("input", { type: "date", value: fromDate, onChange: (e) => setFromDate(e.target.value), style: inputStyle })),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "To"),
+                    React.createElement("input", { type: "date", value: toDate, onChange: (e) => setToDate(e.target.value), style: inputStyle }))),
+            days >= 1 && React.createElement("div", { style: { fontSize: 11.5, color: COLORS.violet, fontWeight: 700, marginTop: -4, marginBottom: 10 } }, days + " din ki leave"),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Reason"),
+            React.createElement("textarea", { value: reason, onChange: (e) => setReason(e.target.value), rows: 3, style: Object.assign(Object.assign({}, inputStyle), { resize: "vertical" }) }),
+            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 6 } },
+                React.createElement("button", { onClick: save, disabled: busy || days < 1, style: { flex: 1, padding: "12px", borderRadius: 11, border: "none", background: days >= 1 ? COLORS.indigo : "#D6D2EE", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Apply Karein"),
+                React.createElement("button", { onClick: onCancel, style: { padding: "12px 18px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))));
+}
+function MyDailyReportCard({ session, onSaved }) {
+    const [remark, setRemark] = useState("");
+    const [existing, setExisting] = useState(null);
+    const [loaded, setLoaded] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [open, setOpen] = useState(false);
+    const today = todayISO();
+    useEffect(() => {
+        sb.from("grasp_daily_reports").select("*").eq("staff_email", session.user.email).eq("date", today).maybeSingle().then(({ data }) => {
+            setExisting(data || null);
+            setRemark((data && data.remarks) || "");
+            setLoaded(true);
+        });
+    }, []);
+    const save = async () => {
+        setBusy(true);
+        const payload = { id: (existing && existing.id) || uid(), staff_email: session.user.email, staff_id: session.user.id, date: today, remarks: remark.trim(), updated_at: new Date().toISOString() };
+        const { error } = await sb.from("grasp_daily_reports").upsert(payload, { onConflict: "staff_email,date" });
+        if (!error) {
+            setExisting(payload);
+            setOpen(false);
+            if (onSaved)
+                onSaved();
+        }
+        setBusy(false);
+    };
+    if (!loaded)
+        return null;
+    return (React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+            React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: COLORS.muted, textTransform: "uppercase" } }, "\uD83D\uDCDD Aaj Ka Report"),
+            React.createElement("button", { onClick: () => setOpen(!open), style: { fontSize: 11, fontWeight: 700, color: COLORS.violet, background: "none", border: "none" } }, existing ? "Edit" : "Add")),
+        existing && !open && React.createElement("div", { style: { fontSize: 12.5, color: "#333", marginTop: 6 } }, existing.remarks || "(khali)"),
+        !existing && !open && React.createElement("div", { style: { fontSize: 11.5, color: COLORS.muted, marginTop: 6 } }, "Agar aaj koi khaas kaam nahi hua, to yahan reason likh dein."),
+        open && React.createElement("div", { style: { marginTop: 8 } },
+            React.createElement("textarea", { value: remark, onChange: (e) => setRemark(e.target.value), rows: 3, placeholder: "Aaj kya kiya, ya kyun kuch nahi ho paya...", style: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 13, resize: "vertical", marginBottom: 8 } }),
+            React.createElement("button", { onClick: save, disabled: busy, style: { width: "100%", padding: "9px", borderRadius: 9, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, busy ? "Saving\u2026" : "Save Karein"))));
+}
+function DailyActivity({ invoices, onBack }) {
+    const [staffList, setStaffList] = useState([]);
+    const [leads, setLeads] = useState([]);
+    const [tickets, setTickets] = useState([]);
+    const [attendance, setAttendance] = useState([]);
+    const [leaves, setLeaves] = useState([]);
+    const [reports, setReports] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const today = todayISO();
+    useEffect(() => {
+        (async () => {
+            const [uRes, lRes, tRes, aRes, lvRes, rRes] = await Promise.all([
+                sb.from("grasp_users").select("*"),
+                sb.from("grasp_leads").select("*").gte("created_at", today),
+                sb.from("grasp_service_tickets").select("*").gte("updated_at", today),
+                sb.from("grasp_attendance").select("*").eq("date", today),
+                sb.from("grasp_leave_requests").select("*").eq("status", "approved").lte("from_date", today).gte("to_date", today),
+                sb.from("grasp_daily_reports").select("*").eq("date", today),
+            ]);
+            setStaffList((uRes.data || []).filter((u) => !u.is_admin && u.is_active !== false));
+            setLeads(lRes.data || []);
+            setTickets(tRes.data || []);
+            setAttendance(aRes.data || []);
+            setLeaves(lvRes.data || []);
+            setReports(rRes.data || []);
+            setLoaded(true);
+        })();
+    }, []);
+    const isToday = (d) => (d || "").slice(0, 10) === today;
+    const rows = staffList.map((u) => {
+        const salesToday = invoices.filter((i) => i.docType === "sale" && i.createdBy === u.email && isToday(i.date));
+        const leadsToday = leads.filter((l) => l.created_by === u.email || l.assigned_email === u.email);
+        const ticketsToday = tickets.filter((t) => t.assigned_email === u.email);
+        const att = attendance.find((a) => a.staff_email === u.email);
+        const onLeave = leaves.find((l) => l.staff_email === u.email);
+        const report = reports.find((r) => r.staff_email === u.email);
+        const hasActivity = salesToday.length > 0 || leadsToday.length > 0 || ticketsToday.length > 0;
+        const salesAmount = salesToday.reduce((s, i) => s + i.total, 0);
+        return { u, salesToday, leadsToday, ticketsToday, att, onLeave, report, hasActivity, salesAmount };
+    });
+    const flagged = rows.filter((r) => !r.hasActivity && !r.onLeave && !(r.report && r.report.remarks));
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Daily Staff Activity", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("div", { className: "card", style: { padding: 12, marginBottom: 14, fontSize: 11.5, color: COLORS.muted } }, "Aaj (" + today + ") ka activity summary. Jo staff Leave par hai, unki reason automatic \"On Leave\" dikhti hai."),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : rows.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi active staff nahi hai.") : rows.map(({ u, hasActivity, salesToday, salesAmount, leadsToday, ticketsToday, att, onLeave, report }) => {
+                const isFlagged = !hasActivity && !onLeave && !(report && report.remarks);
+                return React.createElement("div", { key: u.email, className: "card", style: { padding: 13, marginBottom: 9, border: isFlagged ? "1.5px solid " + COLORS.rose : "none" } }, [
+                    React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, [
+                        React.createElement("span", { key: "n", style: { fontWeight: 700, fontSize: 13.5 } }, u.full_name || u.email.split("@")[0]),
+                        React.createElement("span", { key: "att", style: { fontSize: 9.5, fontWeight: 800, color: "#fff", background: att && att.status !== "absent" ? COLORS.emerald : COLORS.rose, padding: "2px 8px", borderRadius: 6 } }, att ? (att.status === "absent" ? "Absent" : "Present") : "No Check-in"),
+                    ]),
+                    onLeave ? React.createElement("div", { key: "leave", style: { fontSize: 12, color: "#0369A1", fontWeight: 700, background: "#E0F2FE", padding: "6px 10px", borderRadius: 8 } }, "\uD83C\uDFD6\uFE0F On Leave (" + onLeave.leave_type + ")") :
+                        hasActivity ? React.createElement("div", { key: "act", style: { fontSize: 12, color: "#333" } }, [
+                            salesToday.length > 0 && React.createElement("div", { key: "s" }, "\uD83E\uDDFE " + salesToday.length + " Sale(s) \u2014 \u20B9" + fmt(salesAmount)),
+                            leadsToday.length > 0 && React.createElement("div", { key: "l" }, "\uD83C\uDFAF " + leadsToday.length + " Lead(s) touched"),
+                            ticketsToday.length > 0 && React.createElement("div", { key: "t" }, "\uD83D\uDD27 " + ticketsToday.length + " Ticket(s) handled"),
+                        ]) : report && report.remarks ? React.createElement("div", { key: "rem", style: { fontSize: 12, color: "#555", fontStyle: "italic" } }, "\uD83D\uDCDD \"" + report.remarks + "\"") :
+                            React.createElement("div", { key: "none", style: { fontSize: 12, color: COLORS.rose, fontWeight: 700 } }, "\u26A0\uFE0F Koi activity nahi, koi reason nahi diya"),
+                ]);
+            }),
+            loaded && flagged.length > 0 && React.createElement("div", { key: "summary", style: { marginTop: 8, padding: "10px 14px", background: "#FDE7EB", borderRadius: 10, fontSize: 12.5, color: COLORS.rose, fontWeight: 700 } }, flagged.length + " staff ne aaj kuch report nahi kiya"))));
+}
+const HOLIDAY_TYPES = ["National", "Festival", "Optional"];
+function AddHolidayForm({ onSave, onCancel }) {
+    const [name, setName] = useState("");
+    const [date, setDate] = useState("");
+    const [type, setType] = useState("Festival");
+    const [busy, setBusy] = useState(false);
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid " + COLORS.border, fontSize: 14, marginBottom: 10 };
+    const save = async () => {
+        if (!name.trim() || !date)
+            return;
+        setBusy(true);
+        await onSave({ name: name.trim(), date, type });
+        setBusy(false);
+    };
+    return (React.createElement("div", { style: { padding: "0 16px" } },
+        React.createElement("div", { className: "card", style: { padding: 16 } },
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Holiday Naam *"),
+            React.createElement("input", { value: name, onChange: (e) => setName(e.target.value), placeholder: "e.g. Diwali, Holi, Independence Day", style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Date *"),
+            React.createElement("input", { type: "date", value: date, onChange: (e) => setDate(e.target.value), style: inputStyle }),
+            React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Type"),
+            React.createElement("select", { value: type, onChange: (e) => setType(e.target.value), style: inputStyle }, HOLIDAY_TYPES.map((t) => React.createElement("option", { key: t, value: t }, t))),
+            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 6 } },
+                React.createElement("button", { onClick: save, disabled: busy || !name.trim() || !date, style: { flex: 1, padding: "12px", borderRadius: 11, border: "none", background: name.trim() && date ? COLORS.indigo : "#D6D2EE", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Add Karein"),
+                React.createElement("button", { onClick: onCancel, style: { padding: "12px 18px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))));
+}
+function HolidayCalendar({ perms, session, onBack }) {
+    const [holidays, setHolidays] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [subView, setSubView] = useState("list");
+    const [error, setError] = useState("");
+    useEffect(() => {
+        sb.from("grasp_holidays").select("*").order("date", { ascending: true }).then(({ data, error }) => {
+            if (error)
+                setError(error.message);
+            setHolidays(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const today = todayISO();
+    const upcoming = holidays.filter((h) => h.date >= today);
+    const past = holidays.filter((h) => h.date < today).reverse();
+    const addHoliday = async (data) => {
+        const rec = Object.assign(Object.assign({ id: uid() }, data), { created_by: session.user.email });
+        const { error } = await sb.from("grasp_holidays").insert(rec);
+        if (!error) {
+            setHolidays([...holidays, rec].sort((a, b) => a.date.localeCompare(b.date)));
+            setSubView("list");
+        }
+        else
+            setError(error.message);
+    };
+    const deleteHoliday = async (id) => {
+        const { error } = await sb.from("grasp_holidays").delete().eq("id", id);
+        if (!error)
+            setHolidays(holidays.filter((h) => h.id !== id));
+        else
+            setError(error.message);
+    };
+    const daysUntil = (date) => Math.round((new Date(date) - new Date(today)) / (1000 * 60 * 60 * 24));
+    const typeColor = { National: "#0369A1", Festival: "#DB2777", Optional: "#6B7280" };
+    if (subView === "add")
+        return (React.createElement("div", null,
+            React.createElement(SubHeader, { title: "Naya Holiday", onBack: () => setSubView("list") }),
+            React.createElement(AddHolidayForm, { onSave: addHoliday, onCancel: () => setSubView("list") })));
+    const holidayRow = (h, isPast) => React.createElement("div", { key: h.id, className: "card", style: { padding: 13, marginBottom: 9, opacity: isPast ? 0.6 : 1, display: "flex", justifyContent: "space-between", alignItems: "center" } },
+        React.createElement("div", null,
+            React.createElement("div", { style: { fontWeight: 700, fontSize: 13.5 } }, h.name),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 3 } },
+                React.createElement("span", { style: { fontSize: 11.5, color: COLORS.muted } }, new Date(h.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", weekday: "short" })),
+                React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: typeColor[h.type] || COLORS.muted, padding: "2px 7px", borderRadius: 6 } }, h.type)),
+            !isPast && daysUntil(h.date) <= 14 && React.createElement("div", { style: { fontSize: 10.5, color: COLORS.violet, fontWeight: 700, marginTop: 2 } }, daysUntil(h.date) === 0 ? "Aaj hai!" : daysUntil(h.date) + " din baaki")),
+        perms.isAdmin && React.createElement("button", { onClick: () => deleteHoliday(h.id), style: { padding: "7px 11px", borderRadius: 8, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 11 } }, "\u2715"));
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Festival / Holiday Calendar", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            perms.isAdmin && React.createElement("button", { onClick: () => setSubView("add"), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#DB2777,#BE185D)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, "+ Holiday Add Karein"),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : holidays.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Abhi tak koi holiday add nahi hua.") : React.createElement(React.Fragment, null, [
+                upcoming.length > 0 && React.createElement(React.Fragment, { key: "up" }, [
+                    React.createElement("div", { key: "t1", style: { fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 13.5, marginBottom: 8 } }, "Aane Wale Holidays"),
+                    ...upcoming.map((h) => holidayRow(h, false)),
+                ]),
+                past.length > 0 && React.createElement(React.Fragment, { key: "pa" }, [
+                    React.createElement("div", { key: "t2", style: { fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 13.5, marginTop: 16, marginBottom: 8, color: COLORS.muted } }, "Guzar Chuke Holidays"),
+                    ...past.map((h) => holidayRow(h, true)),
+                ]),
+            ]),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
+}
+function LeaveManagement({ session, perms, onBack }) {
+    const [requests, setRequests] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [subView, setSubView] = useState("list");
+    const [tab, setTab] = useState("mine");
+    const [error, setError] = useState("");
+    const [busyId, setBusyId] = useState(null);
+    const isManager = perms.isAdmin || perms.canViewAllSales;
+    useEffect(() => {
+        sb.from("grasp_leave_requests").select("*").order("created_at", { ascending: false }).then(({ data, error }) => {
+            if (error)
+                setError(error.message);
+            setRequests(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const myRequests = requests.filter((r) => r.staff_email === session.user.email);
+    const pendingAll = requests.filter((r) => r.status === "pending");
+    const now = new Date();
+    const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const fyStart = new Date(fyStartYear, 3, 1);
+    const usedByType = {};
+    myRequests.filter((r) => r.status === "approved" && new Date(r.from_date) >= fyStart).forEach((r) => {
+        usedByType[r.leave_type] = (usedByType[r.leave_type] || 0) + Number(r.days);
+    });
+    const addRequest = async (data) => {
+        const rec = Object.assign(Object.assign({ id: uid() }, data), { staff_email: session.user.email, staff_id: session.user.id, created_by: session.user.email, created_by_id: session.user.id });
+        const { error } = await sb.from("grasp_leave_requests").insert(rec);
+        if (!error) {
+            setRequests([rec, ...requests]);
+            setSubView("list");
+        }
+        else
+            setError(error.message);
+    };
+    const decide = async (r, newStatus) => {
+        setBusyId(r.id);
+        const payload = { status: newStatus, approved_by: session.user.email, approved_at: new Date().toISOString() };
+        const { error } = await sb.from("grasp_leave_requests").update(payload).eq("id", r.id);
+        if (!error) {
+            setRequests(requests.map((x) => (x.id === r.id ? Object.assign(Object.assign({}, x), payload) : x)));
+            logAudit(session, newStatus === "approved" ? "leave_approved" : "leave_rejected", "leave", r.staff_email, { status: r.status }, { status: newStatus });
+        }
+        else
+            setError(error.message);
+        setBusyId(null);
+    };
+    if (subView === "add")
+        return (React.createElement("div", null,
+            React.createElement(SubHeader, { title: "Leave Apply Karein", onBack: () => setSubView("list") }),
+            React.createElement(AddLeaveForm, { onSave: addRequest, onCancel: () => setSubView("list") })));
+    const listToShow = tab === "mine" ? myRequests : pendingAll;
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Leave Management", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } },
+            React.createElement("button", { onClick: () => setSubView("add"), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#4F46E5,#7C3AED)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, "+ Leave Apply Karein"),
+            React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 14 } },
+                React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 10, textTransform: "uppercase" } }, "Is Saal Ka Balance"),
+                LEAVE_TYPES.filter(([, alloc]) => alloc !== null).map(([type, alloc]) => {
+                    const used = usedByType[type] || 0;
+                    const remaining = alloc - used;
+                    return React.createElement("div", { key: type, style: { display: "flex", justifyContent: "space-between", marginBottom: 6 } },
+                        React.createElement("span", { style: { fontSize: 12.5 } }, type),
+                        React.createElement("span", { className: "num", style: { fontSize: 12.5, fontWeight: 700, color: remaining <= 0 ? COLORS.rose : COLORS.ink } }, remaining + " / " + alloc + " bachi"));
+                })),
+            isManager && React.createElement("div", { key: "tabs", style: { display: "flex", gap: 6, marginBottom: 14 } }, [
+                React.createElement("button", { key: "mine", onClick: () => setTab("mine"), style: { flex: 1, padding: "9px", borderRadius: 9, border: "none", background: tab === "mine" ? COLORS.indigo : "#F1ECFE", color: tab === "mine" ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 12 } }, "Meri Requests"),
+                React.createElement("button", { key: "pending", onClick: () => setTab("pending"), style: { flex: 1, padding: "9px", borderRadius: 9, border: "none", background: tab === "pending" ? COLORS.indigo : "#F1ECFE", color: tab === "pending" ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 12 } }, `Approvals (${pendingAll.length})`),
+            ]),
+            !loaded ? React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026") : listToShow.length === 0 ? React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi request nahi hai.") : listToShow.map((r) => {
+                const meta = LEAVE_STATUS_META[r.status];
+                return React.createElement("div", { key: r.id, className: "card", style: { padding: 13, marginBottom: 9 } }, [
+                    React.createElement("div", { key: "hdr", style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, [
+                        React.createElement("span", { key: "n", style: { fontWeight: 700, fontSize: 13 } }, tab === "pending" ? r.staff_email.split("@")[0] + " \u2014 " + r.leave_type : r.leave_type),
+                        React.createElement("span", { key: "s", style: { fontSize: 9.5, fontWeight: 800, color: "#fff", background: meta.color, padding: "2px 8px", borderRadius: 6 } }, meta.label),
+                    ]),
+                    React.createElement("div", { key: "dates", style: { fontSize: 11.5, color: "#555", marginBottom: 6 } }, r.from_date + " se " + r.to_date + " (" + r.days + " din)"),
+                    r.reason && React.createElement("div", { key: "reason", style: { fontSize: 11, color: COLORS.muted, marginBottom: 8 } }, r.reason),
+                    tab === "pending" && r.status === "pending" && React.createElement("div", { key: "actions", style: { display: "flex", gap: 8 } }, [
+                        React.createElement("button", { key: "appr", onClick: () => decide(r, "approved"), disabled: busyId === r.id, style: { flex: 1, padding: "8px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11 } }, "\u2705 Approve"),
+                        React.createElement("button", { key: "rej", onClick: () => decide(r, "rejected"), disabled: busyId === r.id, style: { flex: 1, padding: "8px", borderRadius: 9, border: "none", background: COLORS.rose, color: "#fff", fontWeight: 700, fontSize: 11 } }, "\u2715 Reject"),
+                    ]),
+                ]);
+            }),
+            error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
 }
 function ServiceTickets({ session, perms, onBack }) {
     const [tickets, setTickets] = useState([]);
