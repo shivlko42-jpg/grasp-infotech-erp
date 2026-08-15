@@ -1037,7 +1037,11 @@ function AttendanceWidget({ session, profile }) {
         setBusy(false);
     };
     if (!loaded)
-        return null;
+        return React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minHeight: 62 } },
+            React.createElement("div", { style: { flex: 1 } },
+                React.createElement("div", { style: { height: 10, width: "45%", borderRadius: 4, background: "#F1ECFE" } }),
+                React.createElement("div", { style: { height: 13, width: "60%", borderRadius: 4, background: "#F1ECFE", marginTop: 8 } })),
+            React.createElement("div", { style: { height: 38, width: 90, borderRadius: 11, background: "#F1ECFE", flexShrink: 0 } }));
     const fmtTime = (iso) => new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
     return (React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 } },
         React.createElement("div", null,
@@ -1190,6 +1194,15 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                 " of \u20B9",
                 fmt(perms.targetAmount),
                 " target"))),
+        (perms.isAdmin || perms.canViewAllSales) && React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16, background: "linear-gradient(135deg,#1E293B,#334155)" } }, [
+            React.createElement("div", { key: "t", style: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: 800, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 } }, "\uD83D\uDC51 Admin Quick Access"),
+            React.createElement("div", { key: "g", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, [
+                React.createElement("button", { key: "att", onClick: onOpenAttendance, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83D\uDCCD Staff Attendance"),
+                React.createElement("button", { key: "act", onClick: onOpenManagementDashboard, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83D\uDCCB Daily Activity"),
+                React.createElement("button", { key: "leave", onClick: onOpenLeave, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83C\uDFD6\uFE0F Leave Approvals"),
+                React.createElement("button", { key: "notice", onClick: onOpenNotices, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83D\uDCE2 Send Notice"),
+            ]),
+        ]),
         React.createElement(AttendanceWidget, { session: session, profile: profile }),
         React.createElement(DailyGoalWidget, { session: session, perms: perms, invoices: invoices }),
         React.createElement(MyDailyReportCard, { session: session }),
@@ -2541,18 +2554,21 @@ function ManagementDashboard({ invoices, expenses, profile, onBack, onOpenDailyA
     const [staffList, setStaffList] = useState([]);
     const [todayAttendance, setTodayAttendance] = useState([]);
     const [payments, setPayments] = useState([]);
+    const [leads, setLeads] = useState([]);
     const [loaded, setLoaded] = useState(false);
     useEffect(() => {
         (async () => {
             const today = todayISO();
-            const [uRes, aRes, pRes] = await Promise.all([
+            const [uRes, aRes, pRes, lRes] = await Promise.all([
                 sb.from("grasp_users").select("*"),
                 sb.from("grasp_attendance").select("*").eq("date", today),
                 sb.from("grasp_payments").select("*"),
+                sb.from("grasp_leads").select("*"),
             ]);
             setStaffList((uRes.data || []).filter((u) => !u.is_admin && u.is_active !== false));
             setTodayAttendance(aRes.data || []);
             setPayments(pRes.data || []);
+            setLeads(lRes.data || []);
             setLoaded(true);
         })();
     }, []);
@@ -2570,7 +2586,13 @@ function ManagementDashboard({ invoices, expenses, profile, onBack, onOpenDailyA
     const outstanding = invoices.filter((i) => i.docType === "sale").reduce((s, i) => s + Math.max(0, i.total - (Number(i.paidAmount) || 0)), 0);
     const monthSales = invoices.filter((i) => i.docType === "sale" && isThisMonth(i.date)).reduce((s, i) => s + i.total, 0);
     const monthPurchase = invoices.filter((i) => i.docType === "purchase" && isThisMonth(i.date)).reduce((s, i) => s + i.total, 0);
+    const monthExpenses = expenses.filter((e) => isThisMonth(e.date)).reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const grossProfit = monthSales - monthPurchase;
+    const netProfit = monthSales - monthPurchase - monthExpenses;
+    const invoicesToday = invoices.filter((i) => isToday(i.date)).length;
+    const leadsToday = leads.filter((l) => isToday(l.created_at)).length;
+    const leadsThisMonth = leads.filter((l) => isThisMonth(l.created_at)).length;
+    const leadsWonThisMonth = leads.filter((l) => l.status === "won" && isThisMonth(l.updated_at)).length;
     const empSales = {};
     invoices.filter((i) => i.docType === "sale" && isThisMonth(i.date)).forEach((i) => {
         empSales[i.createdBy] = (empSales[i.createdBy] || 0) + i.total;
@@ -2619,6 +2641,7 @@ function ManagementDashboard({ invoices, expenses, profile, onBack, onOpenDailyA
                 statCard("\uD83D\uDCE6", "Purchase", "\u20B9" + fmt(todayPurchase), COLORS.rose, "#FDE7EB"),
                 statCard("\uD83D\uDCB3", "Payment Received", "\u20B9" + fmt(todayCollection), "#0369A1", "#E0F2FE"),
                 statCard("\uD83E\uDDFE", "Expenses", "\u20B9" + fmt(todayExpenses), COLORS.amber, "#FEF3DD"),
+                statCard("\uD83C\uDFAF", "New Leads", leadsToday, "#DB2777", "#FCE7F3"),
                 statCard("\u23F3", "Total Outstanding", "\u20B9" + fmt(outstanding), COLORS.violet, "#F1ECFE"),
             ]),
             sectionHeader("\uD83D\uDCCA", "This Month"),
@@ -2627,6 +2650,9 @@ function ManagementDashboard({ invoices, expenses, profile, onBack, onOpenDailyA
                 statCard("\uD83D\uDED2", "Total Purchase", "\u20B9" + fmt(monthPurchase), COLORS.rose, "#FDE7EB"),
                 statCard("\uD83D\uDCB3", "Payment Received", "\u20B9" + fmt(monthCollection), "#0369A1", "#E0F2FE"),
                 statCard(grossProfit >= 0 ? "\uD83D\uDCC8" : "\uD83D\uDCC9", "Gross Profit", "\u20B9" + fmt(grossProfit), grossProfit >= 0 ? COLORS.emerald : COLORS.rose, grossProfit >= 0 ? "#E3FBF1" : "#FDE7EB"),
+                statCard(netProfit >= 0 ? "\uD83D\uDCC8" : "\uD83D\uDCC9", "Net Profit", "\u20B9" + fmt(netProfit), netProfit >= 0 ? "#059669" : COLORS.rose, netProfit >= 0 ? "#D1FAE5" : "#FDE7EB", "sales \u2212 purchase \u2212 expenses"),
+                statCard("\uD83C\uDFAF", "New Leads", leadsThisMonth, "#DB2777", "#FCE7F3"),
+                statCard("\uD83C\uDFC6", "Leads Won", leadsWonThisMonth, "#059669", "#D1FAE5"),
                 statCard("\u26A0\uFE0F", "Below Target", belowTargetCount, COLORS.amber, "#FEF3DD"),
             ]),
             sectionHeader("\uD83D\uDC65", "HR"),
@@ -3281,7 +3307,9 @@ function MyDailyReportCard({ session, onSaved }) {
         setBusy(false);
     };
     if (!loaded)
-        return null;
+        return React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16, minHeight: 62 } },
+            React.createElement("div", { style: { height: 10, width: "40%", borderRadius: 4, background: "#F1ECFE" } }),
+            React.createElement("div", { style: { height: 11, width: "85%", borderRadius: 4, background: "#F1ECFE", marginTop: 10 } }));
     return (React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16 } },
         React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
             React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: COLORS.muted, textTransform: "uppercase" } }, "\uD83D\uDCDD Aaj Ka Report"),
