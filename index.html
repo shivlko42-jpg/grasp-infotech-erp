@@ -117,6 +117,8 @@
   .pv-cell { padding: 6px 5px; }
   .pv-sales-table .pv-cell { padding: 5px 4px; }
   .pv-section { padding: 13px; }
+  .pv-fill-page { min-height: 1075px; }
+  .pv-spacer { flex: 1 1 auto; }
 
   @media print {
     .no-print { display: none !important; }
@@ -4654,6 +4656,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
       body { font-family: 'Inter', Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       @page { margin: 8mm 10mm 5mm 10mm; }
       .print-area { margin: 0 !important; box-shadow: none !important; }
+      .pv-fill-page { min-height: 755pt !important; }
       .num { font-family: 'IBM Plex Mono', 'Courier New', monospace; }
       .pv-title { font-size: 15pt; }
       .pv-copytag { font-size: 8pt; }
@@ -5126,7 +5129,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                 React.createElement("b", null, "\"Save as PDF\""),
                 " par set karein \u2014 us PDF file ko phir WhatsApp/Email se seedha share kar sakte hain.")),
         inv.docType === "quotation" ? React.createElement(QuotationPrintLayout, { inv: inv, profile: profile, printRef: printRef, gstTotal: gstTotal, isInterstate: isInterstate, staffNames: staffNames, staffPhones: staffPhones }) :
-        React.createElement("div", { ref: printRef, className: "print-area", style: { margin: "0 16px", background: "#fff", border: "2px solid #333", borderRadius: 4, overflow: "hidden" } },
+        React.createElement("div", { ref: printRef, className: "print-area pv-fill-page", style: { margin: "0 16px", background: "#fff", border: "2px solid #333", borderRadius: 4, overflow: "hidden", display: "flex", flexDirection: "column" } },
             React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: "9px 10px", borderBottom: "1.5px solid #333" } },
                 React.createElement("div", { className: "pv-title", style: { fontWeight: 800, color: "#1D4ED8", letterSpacing: 1.5 } }, meta.label.toUpperCase()),
                 React.createElement("div", { className: "pv-copytag", style: { position: "absolute", right: 10, fontWeight: 700, color: "#333", letterSpacing: 0.4 } }, meta.copyTag)),
@@ -5336,6 +5339,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                 inv.reason && React.createElement("div", { className: "pv-bank-text", style: { color: "#333" } },
                     React.createElement("b", null, "Reason: "),
                     inv.reason))),
+            React.createElement("div", { key: "pv-spacer", className: "pv-spacer", style: { flex: "1 1 auto", minHeight: 0 } }),
             React.createElement("div", { style: { display: "flex", borderBottom: "1px solid #333" } },
                 React.createElement("div", { className: "pv-section", style: { flex: 1.1, borderRight: "1px solid #333" } }, (profile.bankName || profile.accountNumber) && (React.createElement(React.Fragment, null,
                     React.createElement("div", { className: "pv-bank-label", style: { fontWeight: 700, marginBottom: 3 } }, "Bank Details:"),
