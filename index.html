@@ -115,7 +115,7 @@
   .pv-cell { padding: 6px 5px; }
   .pv-sales-table .pv-cell { padding: 5px 4px; }
   .pv-section { padding: 13px; }
-  .pv-fill-page { min-height: 1075px; }
+  .pv-fill-page { min-height: 0; }
   .pv-spacer { flex: 1 1 auto; }
 
   @media print {
@@ -5166,6 +5166,10 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                 shell.style.maxWidth = captureWidth + "px";
                 shell.style.width = captureWidth + "px";
             }
+            const clonedPrintArea = clonedDoc.querySelector(".print-area");
+            if (clonedPrintArea) {
+                clonedPrintArea.style.minHeight = "1075px";
+            }
         };
         try {
             const canvas = await window.html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true, imageTimeout: 8000, windowWidth: captureWidth, width: captureWidth, onclone: widenShell });
@@ -5656,8 +5660,8 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                             React.createElement("td", { key: "total", className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee", whiteSpace: "nowrap" } }, fmt(taxable + taxAmt)),
                         ]);
                     }),
-                    Math.max(0, 10 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
-                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 10 - visibleItems.length) * 26 } }, "\u00A0"),
+                    Math.max(0, 3 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 3 - visibleItems.length) * 26 } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
@@ -5699,8 +5703,8 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                                     "%)")),
                             React.createElement("td", { className: "num pv-td pv-cell", style: { textAlign: "right", fontWeight: 700, verticalAlign: "top", borderBottom: "1px solid #eee" } }, fmt(taxable + taxAmt))));
                     }),
-                    Math.max(0, 10 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
-                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 10 - visibleItems.length) * 26 } }, "\u00A0"),
+                    Math.max(0, 3 - visibleItems.length) > 0 && React.createElement("tr", { key: "filler" },
+                        React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333", height: Math.max(0, 3 - visibleItems.length) * 26 } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
                         React.createElement("td", { className: "pv-cell", style: { borderRight: "1px solid #333" } }, "\u00A0"),
