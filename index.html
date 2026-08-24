@@ -16,8 +16,6 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #F5F4FB; }
@@ -160,7 +158,7 @@
     .pv-terms-text { font-size: 8pt; }
     .pv-cell { padding: 5pt 6pt; }
     .pv-sales-table .pv-cell { padding: 4pt 4pt; }
-    .pv-section { padding: 9pt 8pt; }
+    .pv-section { padding: 6pt 8pt; }
   }
 </style>
 </head>
@@ -484,6 +482,29 @@ function permsFromDb(r) {
         targetAmount: Number(r.target_amount) || 0, fullName: r.full_name || "",
         docPermissions: r.doc_permissions || {},
     };
+}
+function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+        }
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("Script load fail: " + src));
+        document.head.appendChild(s);
+    });
+}
+let pdfLibsPromise = null;
+function ensurePdfLibsLoaded() {
+    if (!pdfLibsPromise) {
+        pdfLibsPromise = Promise.all([
+            window.html2canvas ? Promise.resolve() : loadScriptOnce("https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"),
+            window.jspdf ? Promise.resolve() : loadScriptOnce("https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"),
+        ]).catch((e) => { pdfLibsPromise = null; throw e; });
+    }
+    return pdfLibsPromise;
 }
 function canDoc(perms, docType, level) {
     if (perms.isAdmin)
@@ -5077,7 +5098,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
       .pv-terms-text { font-size: 8pt; }
       .pv-cell { padding: 5pt 6pt; }
       .pv-sales-table .pv-cell { padding: 4pt 4pt; }
-      .pv-section { padding: 9pt 8pt; }
+      .pv-section { padding: 6pt 8pt; }
     `;
         const win = window.open("", "_blank");
         if (!win) {
@@ -5407,9 +5428,19 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         return pdf.output("blob");
     };
     const handleSharePdf = async () => {
+        setPdfBusy(true);
+        try {
+            await ensurePdfLibsLoaded();
+        }
+        catch (e) {
+            setPdfBusy(false);
+            await handleShare();
+            return;
+        }
         const needsHtml2Canvas = inv.docType !== "quotation";
         if ((needsHtml2Canvas && !window.html2canvas) || !window.jspdf) {
             // libraries failed to load (e.g. no internet) — fall back to text share
+            setPdfBusy(false);
             await handleShare();
             return;
         }
@@ -5418,7 +5449,6 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         if (itemCount > 15) {
             allowMultiPage = window.confirm(`Is bill mein ${itemCount} items hain (15 se zyada). Kya isse readable rakhne ke liye 2 (ya zyada) pages mein banaya jaye?\n\n"OK" = Multi-page (bada, saaf)\n"Cancel" = 1 hi page (thoda chhota ho jayega)`);
         }
-        setPdfBusy(true);
         try {
             const blob = await generatePdfBlob(allowMultiPage);
             const fileName = `${inv.invoiceNo || meta.label}.pdf`;
