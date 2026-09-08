@@ -162,22 +162,22 @@
   }
   @keyframes splashPop {
     0% { transform: scale(0.6); opacity: 0; }
-    55% { transform: scale(1.08); opacity: 1; }
-    75% { transform: scale(0.96); }
+    55% { transform: scale(1.06); opacity: 1; }
+    75% { transform: scale(0.98); }
     100% { transform: scale(1); }
-  }
-  @keyframes splashPulse {
-    0%, 100% { transform: scale(1); filter: drop-shadow(0 6px 18px rgba(124,58,237,0.35)); }
-    50% { transform: scale(1.06); filter: drop-shadow(0 10px 26px rgba(124,58,237,0.5)); }
   }
   @keyframes splashFadeUp {
     0% { opacity: 0; transform: translateY(6px); }
     100% { opacity: 1; transform: translateY(0); }
   }
+  .splash-wrap {
+    overflow: hidden;
+  }
   .splash-logo {
     width: 84px; height: 84px; object-fit: contain;
-    animation: splashPop 0.6s cubic-bezier(.34,1.56,.64,1) both,
-               splashPulse 1.8s ease-in-out 0.6s infinite;
+    filter: drop-shadow(0 8px 20px rgba(124,58,237,0.4));
+    animation: splashPop 0.6s cubic-bezier(.34,1.56,.64,1) both;
+    will-change: transform;
   }
   .splash-text {
     animation: splashFadeUp 0.5s ease 0.35s both;
@@ -598,7 +598,7 @@ function Root() {
                 React.createElement("button", { onClick: () => { setInactiveBlock(false); setSession(null); }, style: { padding: "10px 20px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, "Back to Login"))));
     }
     if (session === undefined) {
-        return React.createElement("div", { style: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, color: COLORS.muted } },
+        return React.createElement("div", { className: "splash-wrap", style: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, color: COLORS.muted, overflow: "hidden" } },
             React.createElement("img", { src: "app-icon.webp", alt: "Grasp Infotech", className: "splash-logo" }),
             React.createElement("div", { className: "splash-text", style: { fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 13.5, letterSpacing: 0.2 } }, "Loading\u2026"));
     }
