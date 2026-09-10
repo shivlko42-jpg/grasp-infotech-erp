@@ -1000,7 +1000,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, staffNames: staffNames })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (o) => { setEditingInv({ docType: "sale", party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "leave" ? (React.createElement(LeaveManagement, { session: session, perms: perms, onBack: () => setView("home") })) : view === "holidays" ? (React.createElement(HolidayCalendar, { perms: perms, session: session, onBack: () => setView("home") })) : view === "dailyactivity" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(DailyActivity, { invoices: invoices, onBack: () => setView("managementdash") })) : view === "managementdash" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home"), onOpenDailyActivity: () => setView("dailyactivity") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports"), onPnlReport: () => setView("pnlreport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "pnlreport" && perms.isAdmin ? (React.createElement(CompanyPnlReport, { onBack: () => setView("settings") })) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, staffNames: staffNames })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (o) => { setEditingInv({ docType: "sale", party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "leave" ? (React.createElement(LeaveManagement, { session: session, perms: perms, onBack: () => setView("home") })) : view === "holidays" ? (React.createElement(HolidayCalendar, { perms: perms, session: session, onBack: () => setView("home") })) : view === "dailyactivity" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(DailyActivity, { invoices: invoices, onBack: () => setView("managementdash") })) : view === "managementdash" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home"), onOpenDailyActivity: () => setView("dailyactivity") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports"), onPnlReport: () => setView("pnlreport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "pnlreport" && perms.isAdmin ? (React.createElement(CompanyPnlReport, { onBack: () => setView("settings") })) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, profile: profile, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
                 error && React.createElement("div", { className: "no-print", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error)),
             view !== "preview" && React.createElement("div", { className: "no-print" },
                 React.createElement(BottomNav, { view: view, setView: setView, perms: perms }))),
@@ -2145,6 +2145,178 @@ function incrementPctFor(ratingLabel) {
     const map = { Excellent: 12, "Very Good": 8, Good: 5, Satisfactory: 2, "Needs Improvement": 1, Poor: 0 };
     return map[ratingLabel] || 0;
 }
+const ROLE_INFO = {
+    Staff: {
+        reportsTo: "Manager / Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Assigned billing/sales/office tasks poore karna",
+            "Daily attendance aur company guidelines follow karna",
+            "Apne Manager/Admin ko regular update dena",
+        ],
+    },
+    Sales: {
+        reportsTo: "Manager / Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Sale Invoice/Quotation banana aur leads follow-up karna",
+            "Monthly Sales Target achieve karna",
+            "Customer relationships maintain karna",
+        ],
+    },
+    Service: {
+        reportsTo: "Manager / Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Service Tickets handle karna aur on-time resolve karna",
+            "Customer Satisfaction (CSAT) maintain karna",
+            "Recurring issues Manager ko report karna",
+        ],
+    },
+    Manager: {
+        reportsTo: "Admin",
+        manages: "Team members (jo Reporting Manager mein isko select karte hain)",
+        duties: [
+            "Apni team ka daily performance aur target-achievement track karna",
+            "Sale/Purchase documents review karna, Payments confirm karna",
+            "Team ke issues escalate karna Admin tak, jab zaroorat ho",
+            "Team ka combined target (automatic) achieve karwana",
+        ],
+    },
+    Accountant: {
+        reportsTo: "Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Accounting accuracy maintain karna",
+            "GST/Tax compliance dekhna",
+            "Bank/Cash reconciliation karna",
+            "Receivable/Collection follow-up karna",
+            "Financial reporting Admin ko dena",
+        ],
+    },
+    "E-commerce Sales Executive": {
+        reportsTo: "Manager / Admin",
+        manages: "Koi nahi",
+        duties: [
+            "E-commerce Orders manage karna (marketplace tracking, profit calculation)",
+            "Order conversion aur follow-up karna",
+            "Return/Cancellation control karna",
+            "Monthly Sales Target achieve karna",
+        ],
+    },
+    "GeM Sales Executive": {
+        reportsTo: "Manager / Admin",
+        manages: "Koi nahi",
+        duties: [
+            "GeM Tenders track karna aur bid participate karna",
+            "Buyer follow-up karna",
+            "Order conversion aur Payment collection karna",
+        ],
+    },
+    "Service Executive / Technician": {
+        reportsTo: "Manager / Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Assigned Service Calls on-time complete karna",
+            "First-time Resolution maintain karna",
+            "Customer Satisfaction (CSAT) achieve karna",
+            "Pending complaints control karna",
+        ],
+    },
+    "Office Boy / Support Staff": {
+        reportsTo: "Admin / Manager",
+        manages: "Koi nahi",
+        duties: [
+            "Office ke daily support tasks poore karna",
+            "Punctuality aur discipline maintain karna",
+            "Assigned tasks time par complete karna",
+        ],
+    },
+    "HR / Admin Executive": {
+        reportsTo: "Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Attendance/Leave Management dekhna",
+            "Payroll accuracy maintain karna",
+            "Employee records maintain karna",
+            "Recruitment/Joining support karna",
+        ],
+    },
+    "Category Manager": {
+        reportsTo: "Super Admin",
+        manages: "Category Executive(s)",
+        duties: [
+            "Apni assigned categories ke naye vendor-applications approve/reject karna",
+            "Product listings review karna (quality, pricing sahi hai ya nahi)",
+            "Vendor-performance track karna (return-rate, delivery-time)",
+            "Apni category ka commission-rate propose karna (Super Admin approve karega)",
+            "Category Executive ki recommendations approve/reject karna",
+            "Apne category ka monthly GMV target achieve karna",
+        ],
+    },
+    "Category Executive": {
+        reportsTo: "apna Category Manager",
+        manages: "Koi nahi",
+        duties: [
+            "Naye vendor-documents check karke Manager ko \"approve karo\" recommend karna",
+            "Product-pricing check karke agar galat lage to flag karna",
+            "Vendor-complaints/returns note karke Manager ko batana",
+            "Chhote offers/discounts suggest karna",
+            "Khud koi final decision NAHI le sakta \u2014 sirf Manager ko recommend karta hai",
+        ],
+    },
+    "Orders Manager": {
+        reportsTo: "Super Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Sabhi orders ka status track karna (pending, shipped, delivered)",
+            "Delivery-delay ya courier-issues resolve karna",
+            "Riders ke saath coordinate karna (instant-delivery orders)",
+            "Cancelled/failed orders ka reason check karna",
+        ],
+    },
+    "Inventory Manager": {
+        reportsTo: "Super Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Dark-store ka stock-level daily check karna",
+            "Out-of-stock products flag karna, vendor ko inform karna",
+            "Warehouse rack/shelf-organization manage karna",
+            "Stock-audit karna (jo system me hai, wahi physically hai ya nahi)",
+        ],
+    },
+    "Marketing Manager": {
+        reportsTo: "Super Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Homepage-banners create/update karna",
+            "Offers/Coupons/Campaigns launch karna",
+            "Naye-customer-acquisition ke liye strategy banana",
+            "Sponsored-banner requests review karna (vendor se aayi hui)",
+        ],
+    },
+    "Finance Manager": {
+        reportsTo: "Super Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Vendor-settlements verify karna (commission sahi kata hai ya nahi)",
+            "Vendor-payouts process karna (on-time payment)",
+            "Return/Refund ke financial-adjustments check karna",
+            "GST/TCS/TDS ka record maintain karna",
+            "Monthly/Quarterly financial-report Super Admin ko dena",
+        ],
+    },
+    "Support Staff": {
+        reportsTo: "Super Admin",
+        manages: "Koi nahi",
+        duties: [
+            "Customer ke sawalon/complaints ka jawab dena (chat/call)",
+            "Order-related issues resolve karna",
+            "Escalated-complaints ko sahi Manager tak forward karna",
+            "Chatbot se aayi complex-queries handle karna",
+        ],
+    },
+};
 const KPI_DEFINITIONS = {
     "E-commerce Sales Executive": [
         ["sales_achievement", "Sales Target Achievement", 40, "auto"],
@@ -4425,7 +4597,7 @@ function Payroll({ invoices, onBack }) {
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error),
             React.createElement("div", { style: { marginTop: 16, fontSize: 11.5, color: "#B4AFD6", lineHeight: 1.6 } }, "Incentive apne aap staff ki is mahine ki Sales aur unke Incentive % se calculate hoti hai (Manage Staff mein set karein). Net Payable edit kar sakte hain (jaise deductions ke liye)."))));
 }
-function AdminPanel({ session, onBack, onOpenDocuments }) {
+function AdminPanel({ session, profile, onBack, onOpenDocuments }) {
     const [users, setUsers] = useState([]);
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState("");
@@ -4549,6 +4721,68 @@ function AdminPanel({ session, onBack, onOpenDocuments }) {
         }
         setBusyId(null);
     };
+    const generateJobLetter = (u) => {
+        const d = drafts[u.id] || u;
+        const role = ROLE_INFO[d.designation] || { reportsTo: "Admin", manages: "Koi nahi", duties: ["Assigned responsibilities poori karna."] };
+        const dutiesHtml = role.duties.map((t) => `<li>${t}</li>`).join("");
+        const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+        const joining = d.joining_date ? new Date(d.joining_date).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }) : "\u2014";
+        const html = `<!DOCTYPE html><html><head><title>Job Letter - ${d.full_name || u.email}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; color: #1E1B3A; padding: 40px 50px; max-width: 800px; margin: 0 auto; }
+  .letterhead { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #4F46E5; padding-bottom: 16px; margin-bottom: 24px; }
+  .letterhead img { width: 52px; height: 52px; border-radius: 12px; }
+  .co-name { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 20px; color: #4F46E5; }
+  .co-sub { font-size: 11px; color: #7A7690; margin-top: 2px; }
+  .title { text-align: center; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 24px; text-decoration: underline; }
+  .row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+  .label { color: #7A7690; }
+  .value { font-weight: 700; }
+  .section-title { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 13.5px; color: #4F46E5; margin: 22px 0 8px; }
+  ul { padding-left: 20px; margin: 0; }
+  li { font-size: 12.5px; line-height: 1.8; }
+  .sign-row { display: flex; justify-content: space-between; margin-top: 60px; }
+  .sign-box { text-align: center; font-size: 12px; }
+  .sign-line { border-top: 1px solid #1E1B3A; width: 180px; margin-bottom: 6px; padding-top: 6px; }
+  @media print { body { padding: 20px 30px; } }
+</style></head>
+<body>
+  <div class="letterhead">
+    <img src="app-icon.webp" />
+    <div>
+      <div class="co-name">${profile.name || "Grasp Infotech"}</div>
+      <div class="co-sub">${profile.address || ""}${profile.gstin ? " &nbsp;|&nbsp; GSTIN: " + profile.gstin : ""}${profile.phone ? " &nbsp;|&nbsp; " + profile.phone : ""}</div>
+    </div>
+  </div>
+  <div style="text-align:right; font-size:12px; color:#7A7690;">Date: ${today}</div>
+  <div class="title">Role &amp; Responsibility Letter</div>
+  <div class="row"><span class="label">Employee Name</span><span class="value">${d.full_name || u.email}</span></div>
+  <div class="row"><span class="label">Employee ID</span><span class="value">${d.employee_id || "\u2014"}</span></div>
+  <div class="row"><span class="label">Designation</span><span class="value">${d.designation}</span></div>
+  <div class="row"><span class="label">Department</span><span class="value">${d.department || "\u2014"}${d.category ? " (" + d.category + ")" : ""}</span></div>
+  <div class="row"><span class="label">Joining Date</span><span class="value">${joining}</span></div>
+  <div class="row"><span class="label">Reports To</span><span class="value">${role.reportsTo}</span></div>
+  <div class="row"><span class="label">Manages</span><span class="value">${role.manages}</span></div>
+  <div class="section-title">Key Responsibilities</div>
+  <ul>${dutiesHtml}</ul>
+  <div class="sign-row">
+    <div class="sign-box"><div class="sign-line"></div>Employee Signature</div>
+    <div class="sign-box"><div class="sign-line"></div>For ${profile.name || "Grasp Infotech"}<br/>Authorized Signatory</div>
+  </div>
+</body></html>`;
+        const win = window.open("", "_blank");
+        if (!win) { return; }
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+        const doPrint = () => { try { win.focus(); win.print(); } catch (e) { } };
+        if (win.document.readyState === "complete") { setTimeout(doPrint, 400); }
+        else { win.onload = () => setTimeout(doPrint, 400); }
+    };
     return (React.createElement("div", null,
         React.createElement(SubHeader, { title: "Manage Staff", onBack: onBack }),
         React.createElement("div", { style: { padding: "0 16px" } },
@@ -4659,6 +4893,7 @@ function AdminPanel({ session, onBack, onOpenDocuments }) {
                                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Incentive % (on sales)"),
                                 React.createElement("input", { type: "number", min: "0", value: d.incentive_rate, onChange: (e) => setDraft(u.id, "incentive_rate", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } }))),
                         onOpenDocuments && React.createElement("button", { onClick: () => onOpenDocuments(u.id, u.email), style: { width: "100%", padding: "10px", borderRadius: 10, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.violet, fontWeight: 700, fontSize: 12.5, marginBottom: 8 } }, "\uD83D\uDCC1 Employee Documents"),
+                        React.createElement("button", { onClick: () => generateJobLetter(u), style: { width: "100%", padding: "10px", borderRadius: 10, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 12.5, marginBottom: 8 } }, "\uD83D\uDCC4 Generate Job Letter (Role & Responsibilities)"),
                         React.createElement("button", { onClick: () => savePerms(u), disabled: busyId === u.id, style: { width: "100%", padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, busyId === u.id ? "Saving…" : "Save Access")))));
             }))),
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error),
