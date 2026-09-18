@@ -1576,7 +1576,7 @@ function CreateInvoice({ parties, invoices, profile, existing, perms, itemCatalo
                         "\u2212 \u20B9",
                         fmt(discountAmount)))),
                 React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } },
-                    React.createElement("span", { style: { fontSize: 13.5, color: COLORS.muted } }, "Taxable Amount"),
+                    React.createElement("span", { style: { fontSize: 13.5, color: COLORS.muted } }, "Taxable Value"),
                     React.createElement("span", { className: "num", style: { fontSize: 13.5 } },
                         "\u20B9",
                         fmt(subtotal))),
@@ -4381,7 +4381,27 @@ function EditBusinessDetails({ profile, onBack, onSave }) {
 }
 const DESIGNATIONS = ["Staff", "Sales", "Service", "Manager", "Accountant", "E-commerce Sales Executive", "GeM Sales Executive", "Service Executive / Technician", "Office Boy / Support Staff", "HR / Admin Executive", "Category Manager", "Category Executive", "Orders Manager", "Inventory Manager", "Marketing Manager", "Finance Manager", "Support Staff"];
 const MANAGER_DESIGNATIONS = ["Manager", "Category Manager", "Orders Manager", "Inventory Manager", "Marketing Manager", "Finance Manager"];
-const CATEGORIES = ["Electronics & Tech", "Home & Grocery", "Fashion & Lifestyle", "Health & Sports", "General & Specialty"];
+const CATEGORIES = [
+    "Mobiles & Accessories",
+    "Electronics & Gadgets",
+    "Computers, Laptops & Office Technology",
+    "Home & Kitchen",
+    "Home Decor & Furnishing",
+    "Grocery & Daily Essentials",
+    "Beauty, Personal Care & Grooming",
+    "Health & Wellness",
+    "Fashion",
+    "Footwear",
+    "Baby, Kids & Toys",
+    "Sports, Fitness & Outdoor",
+    "Automotive",
+    "Tools, Hardware & Electrical",
+    "Office Products & Stationery",
+    "Books & Education",
+    "Pet Supplies",
+    "Puja, Spiritual & Festival",
+    "Sweets & Bakery",
+];
 const DEPARTMENTS = [
     ["Sales", "SAL"],
     ["Service", "SER"],
@@ -5371,10 +5391,19 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
                 React.createElement("span", { style: { fontSize: "0.85em", color: "#888" } }, it.unit || "NOS")),
             React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#555", fontSize: 11 } }, "\u20B9" + fmt(it.rate)),
             React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 8px 9px 4px", borderBottom: "1px solid #F3F0FD", color: "#1a1a2e", fontWeight: 700, fontSize: 11 } }, "\u20B9" + fmt((Number(it.qty) || 0) * (Number(it.rate) || 0)))))));
+    const grossAmount = inv.subtotal + (Number(inv.discountAmount) || 0);
     const totalsEl = React.createElement("div", { key: "totals", style: { display: "flex", justifyContent: "flex-end", marginTop: 14 } },
         React.createElement("div", { style: { width: "58%", minWidth: 200 } }, [
+            (Number(inv.discountAmount) || 0) > 0 && React.createElement("div", { key: "amt", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
+                React.createElement("span", { key: "l", className: "quo-small", style: { color: "#666" } }, "Amount"),
+                React.createElement("span", { key: "v", className: "quo-small num", style: { color: "#333" } }, "\u20B9" + fmt(grossAmount)),
+            ]),
+            (Number(inv.discountAmount) || 0) > 0 && React.createElement("div", { key: "disc", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
+                React.createElement("span", { key: "l", className: "quo-small", style: { color: "#666" } }, "Discount" + (inv.discountType === "percent" ? ` (${inv.discountValue}%)` : "")),
+                React.createElement("span", { key: "v", className: "quo-small num", style: { color: "#DC2626" } }, "\u2212\u20B9" + fmt(inv.discountAmount)),
+            ]),
             React.createElement("div", { key: "sub", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
-                React.createElement("span", { key: "l", className: "quo-small", style: { color: "#666" } }, "Subtotal"),
+                React.createElement("span", { key: "l", className: "quo-small", style: { color: "#666" } }, "Taxable Value"),
                 React.createElement("span", { key: "v", className: "quo-small num", style: { color: "#333" } }, "\u20B9" + fmt(inv.subtotal)),
             ]),
             gstTotal > 0 && React.createElement("div", { key: "gst", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
@@ -5758,8 +5787,21 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         y += 6;
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(10);
+        const grossAmountPdf = inv.subtotal + (Number(inv.discountAmount) || 0);
+        if ((Number(inv.discountAmount) || 0) > 0) {
+            pdf.setTextColor(102, 102, 102);
+            pdf.text("Amount", col.rate, y, { align: "right" });
+            pdf.setTextColor(51, 51, 51);
+            pdf.text(R(grossAmountPdf), col.amt, y, { align: "right" });
+            y += 15;
+            pdf.setTextColor(102, 102, 102);
+            pdf.text("Discount" + (inv.discountType === "percent" ? ` (${inv.discountValue}%)` : ""), col.rate, y, { align: "right" });
+            pdf.setTextColor(220, 38, 38);
+            pdf.text("-" + R(inv.discountAmount), col.amt, y, { align: "right" });
+            y += 15;
+        }
         pdf.setTextColor(102, 102, 102);
-        pdf.text("Subtotal", col.rate, y, { align: "right" });
+        pdf.text("Taxable Value", col.rate, y, { align: "right" });
         pdf.setTextColor(51, 51, 51);
         pdf.text(R(inv.subtotal), col.amt, y, { align: "right" });
         y += 15;
@@ -6172,7 +6214,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                 React.createElement("div", { style: { width: "58%" } },
                     (Number(inv.discountAmount) || 0) > 0 && React.createElement(PrintRow, { label: "Amount", value: fmt(grossAmount) }),
                     (Number(inv.discountAmount) || 0) > 0 && React.createElement(PrintRow, { label: `Discount${inv.discountType === "percent" ? ` (${inv.discountValue}%)` : ""}`, value: fmt(inv.discountAmount), negative: true }),
-                    React.createElement(PrintRow, { label: "Taxable Amount", value: fmt(inv.subtotal) }),
+                    React.createElement(PrintRow, { label: "Taxable Value", value: fmt(inv.subtotal) }),
                     isInterstate ? (React.createElement(PrintRow, { label: "IGST", value: fmt(gstTotal) })) : (React.createElement(React.Fragment, null,
                         React.createElement(PrintRow, { label: "CGST", value: fmt(gstTotal / 2) }),
                         React.createElement(PrintRow, { label: "SGST", value: fmt(gstTotal / 2) }))),
