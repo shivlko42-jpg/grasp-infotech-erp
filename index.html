@@ -5342,107 +5342,107 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
     const items = (inv.items || []).filter((it) => it.name);
     const preparedByName = (staffNames && inv.createdBy && staffNames[inv.createdBy]) || (inv.createdBy ? inv.createdBy.split("@")[0] : "");
     const preparedByPhone = (staffPhones && inv.createdBy && staffPhones[inv.createdBy]) || "";
-    const headerEl = React.createElement("div", { key: "hdr", className: "quo-header", style: { background: "#fff", padding: "20px 24px 16px", borderBottom: "2px solid #EDE9FE", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, [
-        React.createElement("div", { key: "left", style: { display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0, marginRight: 10 } }, [
-            React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 44, height: 44, objectFit: "contain", flexShrink: 0 } }),
-            React.createElement("div", { key: "cwrap", style: { minWidth: 0, flex: 1 } }, [
-                React.createElement("div", { key: "cname", className: "quo-company", style: { fontWeight: 800, fontSize: 17, color: "#4F46E5" } }, profile.name || "Grasp Infotech"),
-                profile.gstin && React.createElement("div", { key: "cgst", className: "quo-small", style: { color: "#7C3AED", marginTop: 4, fontSize: 11 } }, "GSTIN: " + profile.gstin),
-                profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, profile.address),
-                profile.phone && React.createElement("div", { key: "cphone", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 11 } }, "Mobile: " + profile.phone),
-            ]),
-        ]),
-        React.createElement("div", { key: "right", style: { textAlign: "right", flexShrink: 0 } }, [
-            React.createElement("div", { key: "ttl", className: "quo-title", style: { fontWeight: 800, fontSize: 20, color: "#7C3AED" } }, "QUOTATION"),
-            React.createElement("div", { key: "num", className: "quo-small", style: { color: "#8B5CF6", marginTop: 3 } }, inv.invoiceNo),
-        ]),
+    const grossAmount = inv.subtotal + (Number(inv.discountAmount) || 0);
+    const dateStr = new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const contactLine = [profile.phone && ("Telephone: " + profile.phone), profile.email && ("E-mail: " + profile.email)].filter(Boolean).join("  \u00B7  ");
+    const headerEl = React.createElement("div", { key: "hdr", style: { padding: "22px 30px 14px", textAlign: "center", borderBottom: "3px solid #4F46E5" } }, [
+        React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 40, height: 40, objectFit: "contain", marginBottom: 6 } }),
+        React.createElement("div", { key: "cname", style: { fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 18, color: "#4F46E5" } }, (profile.name || "Grasp Infotech").toUpperCase()),
+        profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#555", marginTop: 4, fontSize: 10 } }, profile.address),
+        contactLine && React.createElement("div", { key: "ccontact", className: "quo-small", style: { color: "#555", marginTop: 2, fontSize: 10 } }, contactLine),
+        profile.gstin && React.createElement("div", { key: "cgst", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 10, fontWeight: 700 } }, "GSTIN: " + profile.gstin),
     ]);
-    const partyRowEl = React.createElement("div", { key: "party-row", style: { display: "flex", padding: "18px 24px 4px", gap: 24, flexWrap: "wrap" } }, [
-        React.createElement("div", { key: "for", style: { flex: 1, minWidth: 160 } }, [
-            React.createElement("div", { key: "l1", className: "quo-label", style: { color: "#8B5CF6", fontWeight: 700, marginBottom: 4 } }, "PREPARED FOR"),
-            React.createElement("div", { key: "p1", className: "quo-party", style: { fontWeight: 700, color: "#1a1a2e" } }, inv.party || "-"),
-            inv.partyAddress && React.createElement("div", { key: "p2", className: "quo-small", style: { color: "#666", marginTop: 2, whiteSpace: "pre-line" } }, inv.partyAddress),
-            inv.partyPhone && React.createElement("div", { key: "p3", className: "quo-small", style: { color: "#666", marginTop: 2 } }, inv.partyPhone),
-        ]),
-        React.createElement("div", { key: "datewrap", style: { textAlign: "right" } }, [
-            React.createElement("div", { key: "l2", className: "quo-label", style: { color: "#8B5CF6", fontWeight: 700, marginBottom: 4 } }, "DATE"),
-            React.createElement("div", { key: "d1", className: "quo-small", style: { color: "#333", fontWeight: 600, marginBottom: 8 } }, new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })),
-            inv.dueDate && React.createElement("div", { key: "l3", className: "quo-label", style: { color: "#8B5CF6", fontWeight: 700, marginBottom: 4 } }, "VALID UNTIL"),
-            inv.dueDate && React.createElement("div", { key: "d2", className: "quo-small", style: { color: "#333", fontWeight: 600 } }, new Date(inv.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })),
-        ]),
+    const refRowEl = React.createElement("div", { key: "refrow", style: { display: "flex", justifyContent: "space-between", padding: "14px 30px 0", fontSize: 11.5, color: "#333" } }, [
+        React.createElement("div", { key: "l" }, inv.invoiceNo),
+        React.createElement("div", { key: "r" }, "Date: " + dateStr),
     ]);
-    const tableEl = React.createElement("table", { key: "tbl", style: { width: "100%", borderCollapse: "collapse" } },
+    const toBlockEl = React.createElement("div", { key: "to", style: { padding: "18px 30px 0", fontSize: 12, color: "#1a1a2e", lineHeight: 1.7 } }, [
+        React.createElement("div", { key: "l1" }, "To,"),
+        React.createElement("div", { key: "l2", style: { fontWeight: 700 } }, inv.party || "-"),
+        inv.partyAddress && React.createElement("div", { key: "l3", style: { whiteSpace: "pre-line", color: "#444" } }, inv.partyAddress),
+        inv.partyPhone && React.createElement("div", { key: "l4", style: { color: "#444" } }, inv.partyPhone),
+    ]);
+    const subjectEl = React.createElement("div", { key: "subj", style: { padding: "14px 30px 0", fontSize: 12, color: "#1a1a2e" } }, [
+        React.createElement("span", { key: "l", style: { fontWeight: 700 } }, "Sub: "),
+        inv.notes ? inv.notes : "Quotation as per your requirement.",
+    ]);
+    const greetEl = React.createElement("div", { key: "greet", style: { padding: "14px 30px 0", fontSize: 12, color: "#1a1a2e", lineHeight: 1.7 } }, [
+        React.createElement("div", { key: "d" }, "Dear Sir/Madam,"),
+        React.createElement("div", { key: "p" }, "With reference to your requirement, we are pleased to quote our rates as under:"),
+    ]);
+    const tableEl = React.createElement("table", { key: "tbl", style: { width: "100%", borderCollapse: "collapse", marginTop: 14 } },
         React.createElement("thead", null,
             React.createElement("tr", null, [
-                React.createElement("th", { key: "h0", style: { textAlign: "left", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "#"),
-                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "ITEM"),
-                React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "QTY"),
-                React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 4px", borderBottom: "2px solid #EDE9FE" } }, "RATE"),
-                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#8B5CF6", fontWeight: 700, fontSize: 10, padding: "8px 8px 8px 4px", borderBottom: "2px solid #EDE9FE" } }, "AMOUNT"),
+                React.createElement("th", { key: "h0", style: { textAlign: "left", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "S.No"),
+                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Item / Description"),
+                React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Rate"),
+                React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Qty"),
+                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "GST%"),
+                React.createElement("th", { key: "h5", style: { textAlign: "right", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 8px 8px 6px" } }, "Amount"),
             ])),
-        React.createElement("tbody", null, items.map((it, idx) => React.createElement("tr", { key: idx },
-            React.createElement("td", { style: { color: "#999", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", fontSize: 11 } }, idx + 1),
-            React.createElement("td", { style: { verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#1a1a2e", fontWeight: 600, fontSize: 11.5 } },
-                React.createElement("div", null, it.name),
-                it.description && React.createElement("div", { style: { color: "#555", fontWeight: 700, marginTop: 3, fontSize: 9.5, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", maxWidth: 200, lineHeight: 1.4 } }, it.description)),
-            React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#555", fontSize: 11 } },
-                it.qty,
-                " ",
-                React.createElement("span", { style: { fontSize: "0.85em", color: "#888" } }, it.unit || "NOS")),
-            React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 4px", borderBottom: "1px solid #F3F0FD", color: "#555", fontSize: 11 } }, "\u20B9" + fmt(it.rate)),
-            React.createElement("td", { className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "9px 8px 9px 4px", borderBottom: "1px solid #F3F0FD", color: "#1a1a2e", fontWeight: 700, fontSize: 11 } }, "\u20B9" + fmt((Number(it.qty) || 0) * (Number(it.rate) || 0)))))));
-    const grossAmount = inv.subtotal + (Number(inv.discountAmount) || 0);
-    const totalsEl = React.createElement("div", { key: "totals", style: { display: "flex", justifyContent: "flex-end", marginTop: 14 } },
-        React.createElement("div", { style: { width: "58%", minWidth: 200 } }, [
-            (Number(inv.discountAmount) || 0) > 0 && React.createElement("div", { key: "amt", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
-                React.createElement("span", { key: "l", className: "quo-small", style: { color: "#666" } }, "Amount"),
-                React.createElement("span", { key: "v", className: "quo-small num", style: { color: "#333" } }, "\u20B9" + fmt(grossAmount)),
+        React.createElement("tbody", null, items.map((it, idx) => {
+            const itGst = Number(it.gst) || 0;
+            const base = (Number(it.qty) || 0) * (Number(it.rate) || 0);
+            const rowAmount = base * (1 + itGst / 100);
+            return React.createElement("tr", { key: idx }, [
+                React.createElement("td", { key: "c0", style: { color: "#666", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", fontSize: 11 } }, idx + 1),
+                React.createElement("td", { key: "c1", style: { verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#1a1a2e", fontWeight: 600, fontSize: 11 } },
+                    React.createElement("div", null, it.name),
+                    it.description && React.createElement("div", { style: { color: "#666", fontWeight: 500, marginTop: 2, fontSize: 9.5, whiteSpace: "pre-wrap" } }, it.description)),
+                React.createElement("td", { key: "c2", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, "\u20B9" + fmt(it.rate)),
+                React.createElement("td", { key: "c3", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, it.qty + " " + (it.unit || "NOS")),
+                React.createElement("td", { key: "c4", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, itGst + "%"),
+                React.createElement("td", { key: "c5", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 8px 8px 6px", borderBottom: "1px solid #EDE9FE", color: "#1a1a2e", fontWeight: 700, fontSize: 11 } }, "\u20B9" + fmt(rowAmount)),
+            ]);
+        })),
+        React.createElement("tfoot", null,
+            React.createElement("tr", null,
+                React.createElement("td", { colSpan: 5, style: { textAlign: "right", padding: "10px 6px", fontWeight: 800, fontSize: 12.5, color: "#4F46E5", borderTop: "2px solid #4F46E5" } }, "Grand Total"),
+                React.createElement("td", { className: "num", style: { textAlign: "right", padding: "10px 8px 10px 6px", fontWeight: 800, fontSize: 13.5, color: "#4F46E5", borderTop: "2px solid #4F46E5" } }, "\u20B9" + fmt(inv.total)))));
+    const breakupEl = React.createElement("div", { key: "breakup", style: { display: "flex", justifyContent: "flex-end", marginTop: 10 } },
+        React.createElement("div", { style: { width: "55%", minWidth: 190, fontSize: 11 } }, [
+            (Number(inv.discountAmount) || 0) > 0 && React.createElement("div", { key: "amt", style: { display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#666" } }, [
+                React.createElement("span", { key: "l" }, "Amount"),
+                React.createElement("span", { key: "v", className: "num" }, "\u20B9" + fmt(grossAmount)),
             ]),
-            (Number(inv.discountAmount) || 0) > 0 && React.createElement("div", { key: "disc", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
-                React.createElement("span", { key: "l", className: "quo-small", style: { color: "#666" } }, "Discount" + (inv.discountType === "percent" ? ` (${inv.discountValue}%)` : "")),
-                React.createElement("span", { key: "v", className: "quo-small num", style: { color: "#DC2626" } }, "\u2212\u20B9" + fmt(inv.discountAmount)),
+            (Number(inv.discountAmount) || 0) > 0 && React.createElement("div", { key: "disc", style: { display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#DC2626" } }, [
+                React.createElement("span", { key: "l" }, "Discount" + (inv.discountType === "percent" ? ` (${inv.discountValue}%)` : "")),
+                React.createElement("span", { key: "v", className: "num" }, "\u2212\u20B9" + fmt(inv.discountAmount)),
             ]),
-            React.createElement("div", { key: "sub", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
-                React.createElement("span", { key: "l", className: "quo-small", style: { color: "#666" } }, "Taxable Value"),
-                React.createElement("span", { key: "v", className: "quo-small num", style: { color: "#333" } }, "\u20B9" + fmt(inv.subtotal)),
+            React.createElement("div", { key: "sub", style: { display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#666" } }, [
+                React.createElement("span", { key: "l" }, "Taxable Value"),
+                React.createElement("span", { key: "v", className: "num" }, "\u20B9" + fmt(inv.subtotal)),
             ]),
-            gstTotal > 0 && React.createElement("div", { key: "gst", style: { display: "flex", justifyContent: "space-between", padding: "4px 0" } }, [
-                React.createElement("span", { key: "l", className: "quo-small", style: { color: "#666" } }, isInterstate ? "IGST" : "GST (CGST+SGST)"),
-                React.createElement("span", { key: "v", className: "quo-small num", style: { color: "#333" } }, "\u20B9" + fmt(gstTotal)),
-            ]),
-            React.createElement("div", { key: "tot", style: { display: "flex", justifyContent: "space-between", padding: "10px 0 4px", borderTop: "2px solid #EDE9FE", marginTop: 6 } }, [
-                React.createElement("span", { key: "l", style: { fontWeight: 800, fontSize: 15, color: "#4F46E5" } }, "Total"),
-                React.createElement("span", { key: "v", className: "num", style: { fontWeight: 800, fontSize: 17, color: "#4F46E5" } }, "\u20B9" + fmt(inv.total)),
+            gstTotal > 0 && React.createElement("div", { key: "gst", style: { display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#666" } }, [
+                React.createElement("span", { key: "l" }, isInterstate ? "IGST" : "GST (CGST+SGST)"),
+                React.createElement("span", { key: "v", className: "num" }, "\u20B9" + fmt(gstTotal)),
             ]),
         ]));
-    const itemsBlockEl = React.createElement("div", { key: "items-block", style: { padding: "18px 26px 18px 24px" } }, [
-        tableEl,
-        totalsEl,
-        React.createElement("div", { key: "words", className: "quo-small", style: { color: "#999", marginTop: 4, textAlign: "right", fontStyle: "italic" } }, words),
+    const itemsBlockEl = React.createElement("div", { key: "items-block", style: { padding: "0 30px" } }, [
+        tableEl, breakupEl,
+        React.createElement("div", { key: "words", className: "quo-small", style: { color: "#999", marginTop: 6, textAlign: "right", fontStyle: "italic", fontSize: 10.5 } }, words),
     ]);
-    const termsEl = React.createElement("div", { key: "terms", style: { padding: "14px 24px", background: "#FAF9FF", borderTop: "1px solid #EDE9FE" } }, [
-        inv.notes && React.createElement("div", { key: "n", className: "quo-small", style: { color: "#444", whiteSpace: "pre-line", marginBottom: 8 } }, inv.notes),
-        React.createElement("div", { key: "dt", className: "quo-small", style: { color: "#555", marginBottom: 4 } }, [
-            React.createElement("span", { key: "l", style: { fontWeight: 700, color: "#7C3AED" } }, "Delivery Terms: "),
+    const termsEl = React.createElement("div", { key: "terms", style: { padding: "18px 30px 0", fontSize: 11.5, color: "#333", lineHeight: 1.8 } }, [
+        React.createElement("div", { key: "dt" }, [
+            React.createElement("span", { key: "l", style: { fontWeight: 700 } }, "Delivery Period: "),
             "Within 7\u201310 working days from order confirmation, subject to stock availability.",
         ]),
-        React.createElement("div", { key: "pt", className: "quo-small", style: { color: "#555" } }, [
-            React.createElement("span", { key: "l", style: { fontWeight: 700, color: "#7C3AED" } }, "Payment Terms: "),
+        React.createElement("div", { key: "pt" }, [
+            React.createElement("span", { key: "l", style: { fontWeight: 700 } }, "Payment Terms: "),
             "50% advance with order confirmation, balance before delivery.",
         ]),
+        React.createElement("div", { key: "ref", style: { textDecoration: "underline", marginTop: 8 } }, "Please mention our quotation no. in your order."),
+        React.createElement("div", { key: "thanks", style: { marginTop: 8 } }, "Thanking you & assuring you of our best services at all times."),
     ]);
-    const footerEl = React.createElement("div", { key: "footer", style: { padding: "16px 24px 22px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 10 } }, [
-        React.createElement("div", { key: "msg", className: "quo-small", style: { color: "#8B5CF6", fontWeight: 700, maxWidth: 220 } }, "Thank you for considering us! We look forward to working with you."),
-        React.createElement("div", { key: "sig", style: { textAlign: "center" } }, [
-            React.createElement("div", { key: "forco", className: "quo-small", style: { color: "#333", fontWeight: 700, marginBottom: 4 } }, "For " + (profile.name || "Grasp Infotech")),
-            React.createElement("img", { key: "stamp", src: "stamp.webp", alt: "Stamp", style: { width: 56, height: 56, objectFit: "contain", margin: "0 auto" } }),
-            preparedByName && React.createElement("div", { key: "sigstaff", className: "quo-small", style: { color: "#333", fontWeight: 700, marginTop: 4 } }, preparedByName),
-            preparedByPhone && React.createElement("div", { key: "sigphone", className: "quo-small", style: { color: "#666", marginTop: 1 } }, preparedByPhone),
-            React.createElement("div", { key: "auth", className: "quo-small", style: { color: "#999", marginTop: 2 } }, "Authorised Signatory"),
-        ]),
+    const footerEl = React.createElement("div", { key: "footer", style: { padding: "22px 30px 22px" } }, [
+        React.createElement("div", { key: "yf", style: { fontSize: 11.5, color: "#333", marginBottom: 6 } }, "Yours faithfully,"),
+        React.createElement("div", { key: "forco", style: { fontSize: 11.5, color: "#333", fontWeight: 700, marginBottom: 6 } }, "For " + (profile.name || "Grasp Infotech")),
+        React.createElement("img", { key: "stamp", src: "stamp.webp", alt: "Stamp", style: { width: 56, height: 56, objectFit: "contain" } }),
+        preparedByName && React.createElement("div", { key: "sigstaff", style: { fontSize: 11.5, color: "#333", fontWeight: 700, marginTop: 6 } }, "(" + preparedByName + ")"),
+        preparedByPhone && React.createElement("div", { key: "sigphone", style: { fontSize: 11, color: "#666", marginTop: 1 } }, preparedByPhone),
     ]);
     return React.createElement("div", { ref: printRef, className: "print-area quo-area", style: { margin: "0 16px", background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" } }, [
-        headerEl, partyRowEl, itemsBlockEl, termsEl, footerEl,
+        headerEl, refRowEl, toBlockEl, subjectEl, greetEl, itemsBlockEl, termsEl, footerEl,
     ]);
 }
 function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, onEdit, onDelete, onUpdatePayment, onConvert }) {
@@ -5670,192 +5670,211 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         const pageW = 595.28;
         const mX = 42;
         const rightX = pageW - mX;
+        const centerX = pageW / 2;
         let y = 50;
         const R = (n) => "Rs. " + fmt(n);
         const logoImg = await loadImageAsPngDataUrl("logo.webp");
-        const textX = logoImg ? mX + 40 : mX;
         if (logoImg) {
-            const logoSize = 32;
+            const logoSize = 30;
             try {
-                pdf.addImage(logoImg.dataUrl, "PNG", mX, y - 24, logoSize, logoSize);
+                pdf.addImage(logoImg.dataUrl, "PNG", centerX - logoSize / 2, y - 22, logoSize, logoSize);
             }
             catch (e) { }
+            y += 14;
         }
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(15);
         pdf.setTextColor(79, 70, 229);
-        pdf.text(profile.name || "Grasp Infotech", textX, y);
-        pdf.setFontSize(18);
-        pdf.setTextColor(124, 58, 237);
-        pdf.text("QUOTATION", rightX, y, { align: "right" });
+        pdf.text((profile.name || "Grasp Infotech").toUpperCase(), centerX, y, { align: "center" });
         y += 15;
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(9);
-        pdf.setTextColor(124, 58, 237);
-        if (profile.gstin) {
-            pdf.text("GSTIN: " + profile.gstin, textX, y);
-        }
-        pdf.setTextColor(139, 92, 246);
-        pdf.text(inv.invoiceNo, rightX, y, { align: "right" });
-        y += 12;
+        pdf.setTextColor(85, 85, 85);
         if (profile.address) {
+            pdf.text(profile.address, centerX, y, { align: "center", maxWidth: rightX - mX });
+            y += 12;
+        }
+        const contactLine = [profile.phone && ("Telephone: " + profile.phone), profile.email && ("E-mail: " + profile.email)].filter(Boolean).join("   \u00B7   ");
+        if (contactLine) {
+            pdf.text(contactLine, centerX, y, { align: "center" });
+            y += 12;
+        }
+        if (profile.gstin) {
+            pdf.setFont("helvetica", "bold");
             pdf.setTextColor(124, 58, 237);
-            pdf.text(profile.address, textX, y);
+            pdf.text("GSTIN: " + profile.gstin, centerX, y, { align: "center" });
             y += 12;
         }
-        if (profile.phone) {
-            pdf.text("Mobile: " + profile.phone, textX, y);
-            y += 12;
-        }
-        y += 8;
-        pdf.setDrawColor(237, 233, 254);
-        pdf.setLineWidth(1.2);
+        y += 6;
+        pdf.setDrawColor(79, 70, 229);
+        pdf.setLineWidth(2);
         pdf.line(mX, y, rightX, y);
-        y += 24;
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(9);
-        pdf.setTextColor(139, 92, 246);
-        pdf.text("PREPARED FOR", mX, y);
-        pdf.text("DATE", rightX, y, { align: "right" });
-        y += 15;
-        pdf.setFontSize(11);
-        pdf.setTextColor(26, 26, 46);
-        pdf.text(inv.party || "-", mX, y);
+        y += 22;
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(10);
+        pdf.setFontSize(10.5);
         pdf.setTextColor(51, 51, 51);
-        pdf.text(new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), rightX, y, { align: "right" });
+        pdf.text(inv.invoiceNo, mX, y);
+        pdf.text("Date: " + new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }), rightX, y, { align: "right" });
+        y += 22;
+        pdf.text("To,", mX, y);
         y += 14;
-        let leftY = y;
+        pdf.setFont("helvetica", "bold");
+        pdf.text(inv.party || "-", mX, y);
+        y += 14;
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(68, 68, 68);
         if (inv.partyAddress) {
-            pdf.setFontSize(9.5);
-            pdf.setTextColor(102, 102, 102);
-            const lines = pdf.splitTextToSize(inv.partyAddress, 260);
-            lines.forEach((line) => { pdf.text(line, mX, leftY); leftY += 11; });
+            const lines = pdf.splitTextToSize(inv.partyAddress, rightX - mX);
+            lines.forEach((line) => { pdf.text(line, mX, y); y += 13; });
         }
         if (inv.partyPhone) {
-            pdf.text(inv.partyPhone, mX, leftY);
-            leftY += 11;
+            pdf.text(inv.partyPhone, mX, y);
+            y += 13;
         }
-        y = Math.max(leftY, y) + 16;
-        const col = { sr: mX, item: mX + 26, qty: rightX - 190, rate: rightX - 95, amt: rightX };
+        y += 10;
+        pdf.setTextColor(26, 26, 46);
         pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(9);
-        pdf.setTextColor(139, 92, 246);
-        pdf.text("#", col.sr, y);
-        pdf.text("ITEM", col.item, y);
-        pdf.text("QTY", col.qty, y, { align: "right" });
-        pdf.text("RATE", col.rate, y, { align: "right" });
-        pdf.text("AMOUNT", col.amt, y, { align: "right" });
-        y += 6;
-        pdf.setDrawColor(237, 233, 254);
-        pdf.setLineWidth(1.2);
-        pdf.line(mX, y, rightX, y);
-        y += 16;
-        const itemColWidth = col.qty - col.item - 20;
+        pdf.text("Sub: ", mX, y);
+        pdf.setFont("helvetica", "normal");
+        const subjectText = inv.notes ? inv.notes : "Quotation as per your requirement.";
+        const subLines = pdf.splitTextToSize(subjectText, rightX - mX - 30);
+        subLines.forEach((line, i) => pdf.text(line, mX + 30, y + i * 13));
+        y += subLines.length * 13 + 14;
+        pdf.text("Dear Sir/Madam,", mX, y);
+        y += 14;
+        pdf.text("With reference to your requirement, we are pleased to quote our rates as under:", mX, y, { maxWidth: rightX - mX });
+        y += 22;
+        const col = { sr: mX, item: mX + 26, rate: rightX - 175, qty: rightX - 115, gstp: rightX - 65, amt: rightX };
+        pdf.setFillColor(79, 70, 229);
+        pdf.rect(mX, y - 11, rightX - mX, 18, "F");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(255, 255, 255);
+        pdf.text("S.No", col.sr + 2, y);
+        pdf.text("Item / Description", col.item, y);
+        pdf.text("Rate", col.rate, y, { align: "right" });
+        pdf.text("Qty", col.qty, y, { align: "right" });
+        pdf.text("GST%", col.gstp, y, { align: "right" });
+        pdf.text("Amount", col.amt, y, { align: "right" });
+        y += 18;
+        const itemColWidth = col.rate - col.item - 100;
+        let grandTotalRows = 0;
         (inv.items || []).filter((it) => it.name).forEach((it, idx) => {
             const rowStartY = y;
-            pdf.setFont("helvetica", "bold");
-            pdf.setFontSize(10.5);
-            pdf.setTextColor(153, 153, 153);
-            pdf.text(String(idx + 1), col.sr, y);
+            const itGst = Number(it.gst) || 0;
+            const base = (Number(it.qty) || 0) * (Number(it.rate) || 0);
+            const rowAmount = base * (1 + itGst / 100);
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(102, 102, 102);
+            pdf.text(String(idx + 1), col.sr + 2, y);
             pdf.setTextColor(26, 26, 46);
             const nameLines = pdf.splitTextToSize(it.name, itemColWidth);
-            nameLines.forEach((line, i) => pdf.text(line, col.item, y + i * 13));
-            let localY = y + nameLines.length * 13;
+            nameLines.forEach((line, i) => pdf.text(line, col.item, y + i * 12));
+            let localY = y + nameLines.length * 12;
             if (it.description) {
-                pdf.setFont("helvetica", "bold");
-                pdf.setFontSize(8.5);
-                pdf.setTextColor(85, 85, 85);
+                pdf.setFontSize(8);
+                pdf.setTextColor(102, 102, 102);
                 const descLines = pdf.splitTextToSize(it.description, itemColWidth);
-                descLines.forEach((line, i) => pdf.text(line, col.item, localY + 3 + i * 10));
-                localY += 3 + descLines.length * 10;
+                descLines.forEach((line, i) => pdf.text(line, col.item, localY + 2 + i * 9));
+                localY += 2 + descLines.length * 9;
             }
-            pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(10);
+            pdf.setFontSize(9.5);
             pdf.setTextColor(85, 85, 85);
-            pdf.text(`${it.qty} ${it.unit || "NOS"}`, col.qty, rowStartY, { align: "right" });
             pdf.text(R(it.rate), col.rate, rowStartY, { align: "right" });
+            pdf.text(String(it.qty) + " " + (it.unit || "NOS"), col.qty, rowStartY, { align: "right" });
+            pdf.text(itGst + "%", col.gstp, rowStartY, { align: "right" });
             pdf.setFont("helvetica", "bold");
             pdf.setTextColor(26, 26, 46);
-            pdf.text(R((Number(it.qty) || 0) * (Number(it.rate) || 0)), col.amt, rowStartY, { align: "right" });
-            y = Math.max(localY, rowStartY + 14) + 10;
-            pdf.setDrawColor(243, 240, 253);
+            pdf.text(R(rowAmount), col.amt, rowStartY, { align: "right" });
+            y = Math.max(localY, rowStartY + 12) + 8;
+            pdf.setDrawColor(237, 233, 254);
             pdf.setLineWidth(0.75);
-            pdf.line(mX, y - 6, rightX, y - 6);
+            pdf.line(mX, y - 5, rightX, y - 5);
+            grandTotalRows++;
         });
-        y += 6;
+        y += 4;
+        pdf.setDrawColor(79, 70, 229);
+        pdf.setLineWidth(1.5);
+        pdf.line(mX, y, rightX, y);
+        y += 15;
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11.5);
+        pdf.setTextColor(79, 70, 229);
+        pdf.text("Grand Total", col.gstp, y, { align: "right" });
+        pdf.text(R(inv.total), col.amt, y, { align: "right" });
+        y += 22;
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(10);
+        pdf.setFontSize(9.5);
         const grossAmountPdf = inv.subtotal + (Number(inv.discountAmount) || 0);
         if ((Number(inv.discountAmount) || 0) > 0) {
             pdf.setTextColor(102, 102, 102);
-            pdf.text("Amount", col.rate, y, { align: "right" });
+            pdf.text("Amount", col.gstp, y, { align: "right" });
             pdf.setTextColor(51, 51, 51);
             pdf.text(R(grossAmountPdf), col.amt, y, { align: "right" });
-            y += 15;
+            y += 13;
             pdf.setTextColor(102, 102, 102);
-            pdf.text("Discount" + (inv.discountType === "percent" ? ` (${inv.discountValue}%)` : ""), col.rate, y, { align: "right" });
+            pdf.text("Discount" + (inv.discountType === "percent" ? ` (${inv.discountValue}%)` : ""), col.gstp, y, { align: "right" });
             pdf.setTextColor(220, 38, 38);
             pdf.text("-" + R(inv.discountAmount), col.amt, y, { align: "right" });
-            y += 15;
+            y += 13;
         }
         pdf.setTextColor(102, 102, 102);
-        pdf.text("Taxable Value", col.rate, y, { align: "right" });
+        pdf.text("Taxable Value", col.gstp, y, { align: "right" });
         pdf.setTextColor(51, 51, 51);
         pdf.text(R(inv.subtotal), col.amt, y, { align: "right" });
-        y += 15;
+        y += 13;
         if (gstTotal > 0) {
             pdf.setTextColor(102, 102, 102);
-            pdf.text(isInterstate ? "IGST" : "GST (CGST+SGST)", col.rate, y, { align: "right" });
+            pdf.text(isInterstate ? "IGST" : "GST (CGST+SGST)", col.gstp, y, { align: "right" });
             pdf.setTextColor(51, 51, 51);
             pdf.text(R(gstTotal), col.amt, y, { align: "right" });
-            y += 15;
+            y += 13;
         }
-        pdf.setDrawColor(237, 233, 254);
-        pdf.setLineWidth(1.2);
-        pdf.line(col.rate - 60, y, rightX, y);
-        y += 16;
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(12.5);
-        pdf.setTextColor(79, 70, 229);
-        pdf.text("Total", col.rate, y, { align: "right" });
-        pdf.text(R(inv.total), col.amt, y, { align: "right" });
-        y += 14;
         pdf.setFont("helvetica", "italic");
         pdf.setFontSize(9);
         pdf.setTextColor(153, 153, 153);
         pdf.text(amountInWords(inv.total), rightX, y, { align: "right" });
         y += 24;
-        pdf.setDrawColor(237, 233, 254);
-        pdf.setLineWidth(1);
-        pdf.line(mX, y, rightX, y);
-        y += 20;
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9.5);
-        pdf.setTextColor(85, 85, 85);
-        pdf.text("Delivery Terms: Within 7-10 working days from order confirmation, subject to stock availability.", mX, y, { maxWidth: rightX - mX });
-        y += 24;
-        pdf.text("Payment Terms: 50% advance with order confirmation, balance before delivery.", mX, y, { maxWidth: rightX - mX });
-        y += 34;
         pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10.5);
-        pdf.setTextColor(139, 92, 246);
-        pdf.text("Thank you for considering us! We look forward to working with you.", mX, y, { maxWidth: 260 });
+        pdf.setFontSize(9.5);
         pdf.setTextColor(51, 51, 51);
-        pdf.text("For " + (profile.name || "Grasp Infotech"), rightX, y, { align: "right" });
-        y += 10;
+        pdf.text("Delivery Period: ", mX, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Within 7-10 working days from order confirmation, subject to stock availability.", mX + 78, y, { maxWidth: rightX - mX - 78 });
+        y += 18;
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Payment Terms: ", mX, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.text("50% advance with order confirmation, balance before delivery.", mX + 78, y, { maxWidth: rightX - mX - 78 });
+        y += 18;
+        pdf.setTextColor(51, 51, 51);
+        pdf.text("Please mention our quotation no. in your order.", mX, y);
+        pdf.setDrawColor(51, 51, 51);
+        pdf.setLineWidth(0.5);
+        const refTextWidth = pdf.getTextWidth("Please mention our quotation no. in your order.");
+        pdf.line(mX, y + 2, mX + refTextWidth, y + 2);
+        y += 18;
+        pdf.text("Thanking you & assuring you of our best services at all times.", mX, y);
+        y += 30;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10.5);
+        pdf.text("Yours faithfully,", mX, y);
+        y += 15;
+        pdf.setFont("helvetica", "bold");
+        pdf.text("For " + (profile.name || "Grasp Infotech"), mX, y);
+        y += 8;
         const stampImg = await loadImageAsPngDataUrl("stamp.webp");
         if (stampImg) {
-            const stampSize = 46;
+            const stampSize = 50;
             try {
-                pdf.addImage(stampImg.dataUrl, "PNG", rightX - stampSize, y, stampSize, stampSize);
+                pdf.addImage(stampImg.dataUrl, "PNG", mX, y, stampSize, stampSize);
             }
             catch (e) { }
-            y += stampSize + 6;
+            y += stampSize + 8;
         }
         else {
-            y += 24;
+            y += 30;
         }
         const preparedByName = (staffNames && inv.createdBy && staffNames[inv.createdBy]) || (inv.createdBy ? inv.createdBy.split("@")[0] : "");
         const preparedByPhone = (staffPhones && inv.createdBy && staffPhones[inv.createdBy]) || "";
@@ -5863,18 +5882,15 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         pdf.setFontSize(10.5);
         pdf.setTextColor(51, 51, 51);
         if (preparedByName) {
-            pdf.text(preparedByName, rightX, y, { align: "right" });
-            y += 12;
+            pdf.text("(" + preparedByName + ")", mX, y);
+            y += 13;
         }
         if (preparedByPhone) {
             pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9.5);
             pdf.setTextColor(102, 102, 102);
-            pdf.text(preparedByPhone, rightX, y, { align: "right" });
-            y += 12;
+            pdf.text(preparedByPhone, mX, y);
         }
-        pdf.setFontSize(9);
-        pdf.setTextColor(153, 153, 153);
-        pdf.text("Authorised Signatory", rightX, y, { align: "right" });
         return pdf.output("blob");
     };
     const generatePdfBlob = async (allowMultiPage) => {
