@@ -370,10 +370,10 @@ function waitForImages(node) {
     }));
 }
 function catalogFromDb(r) {
-    return { key: r.item_key, name: r.item_name, hsn: r.hsn || "", cost: Number(r.cost) || 0, sellingRate: Number(r.selling_rate) || 0, gst: Number(r.gst) || 18, unit: r.unit || "NOS", stock: Number(r.stock) || 0 };
+    return { key: r.item_key, name: r.item_name, hsn: r.hsn || "", cost: Number(r.cost) || 0, sellingRate: Number(r.selling_rate) || 0, gst: Number(r.gst) || 18, unit: r.unit || "NOS", stock: Number(r.stock) || 0, description: r.description || "" };
 }
 function catalogToDb(it) {
-    return { item_key: it.key, item_name: it.name, hsn: it.hsn || null, cost: it.cost || 0, selling_rate: it.sellingRate || 0, gst: it.gst || 18, unit: it.unit || "NOS", stock: it.stock || 0, updated_at: new Date().toISOString() };
+    return { item_key: it.key, item_name: it.name, hsn: it.hsn || null, cost: it.cost || 0, selling_rate: it.sellingRate || 0, gst: it.gst || 18, unit: it.unit || "NOS", stock: it.stock || 0, description: it.description || null, updated_at: new Date().toISOString() };
 }
 const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Internet/Phone", "Salaries", "Transport", "Office Supplies", "Marketing", "Maintenance", "Professional Fees", "Bank Charges", "Other"];
 function expenseFromDb(r) {
@@ -772,6 +772,28 @@ function BillingApp({ session, perms }) {
         return acc;
     }, { sales: 0, purchases: 0, outstanding: 0, received: 0 });
     const previewInv = invoices.find((i) => i.id === previewId);
+    const syncItemDescriptions = async (inv) => {
+        const withDesc = (inv.items || []).filter((it) => it.name && it.description && it.description.trim());
+        if (withDesc.length === 0)
+            return;
+        const updates = withDesc.map((it) => {
+            const existing = itemCatalog.find((c) => c.key === itemKey(it.name));
+            return catalogToDb(Object.assign(Object.assign({}, (existing || { key: itemKey(it.name), name: it.name.trim(), cost: 0, sellingRate: 0, gst: Number(it.gst) || 18, unit: it.unit || "NOS" })), { description: it.description.trim() }));
+        });
+        const { error } = await sb.from("grasp_item_costs").upsert(updates);
+        if (!error) {
+            const next = [...itemCatalog];
+            updates.forEach((u) => {
+                const idx = next.findIndex((c) => c.key === u.item_key);
+                const mapped = catalogFromDb(u);
+                if (idx >= 0)
+                    next[idx] = mapped;
+                else
+                    next.push(mapped);
+            });
+            setItemCatalog(next);
+        }
+    };
     const updateItemCostsFromPurchase = async (inv) => {
         const updates = (inv.items || []).filter((it) => it.name && Number(it.rate) > 0).map((it) => {
             const existing = itemCatalog.find((c) => c.key === itemKey(it.name));
@@ -779,6 +801,7 @@ function BillingApp({ session, perms }) {
                 key: itemKey(it.name), name: it.name.trim(), cost: Number(it.rate),
                 hsn: it.hsn || (existing ? existing.hsn : ""), sellingRate: existing ? existing.sellingRate : 0, gst: Number(it.gst) || (existing ? existing.gst : 18),
                 unit: it.unit || (existing ? existing.unit : "NOS"),
+                description: (it.description && it.description.trim()) ? it.description.trim() : (existing ? existing.description : ""),
             });
         });
         if (updates.length === 0)
@@ -871,6 +894,8 @@ function BillingApp({ session, perms }) {
                 setPreviewId(data.id);
                 if (data.docType === "purchase")
                     updateItemCostsFromPurchase(data);
+                else
+                    syncItemDescriptions(data);
                 updateStockForInvoice(data, oldInv);
                 if (oldInv)
                     logAudit(session, "invoice_edit", data.docType, data.invoiceNo, { total: oldInv.total, party: oldInv.party, paidAmount: oldInv.paidAmount }, { total: data.total, party: data.party, paidAmount: data.paidAmount });
@@ -901,6 +926,8 @@ function BillingApp({ session, perms }) {
                 setPreviewId(full.id);
                 if (full.docType === "purchase")
                     updateItemCostsFromPurchase(full);
+                else
+                    syncItemDescriptions(full);
                 updateStockForInvoice(full, null);
                 logAudit(session, "invoice_create", full.docType, full.invoiceNo, null, { total: full.total, party: full.party });
             }
@@ -1414,10 +1441,10 @@ function CreateInvoice({ parties, invoices, profile, existing, perms, itemCatalo
         const found = itemCatalog.find((c) => c.key === itemKey(val));
         if (found) {
             if (docType === "purchase") {
-                setItems((prev) => prev.map((it) => (it.id === id ? Object.assign(Object.assign({}, it), { name: val, hsn: found.hsn || it.hsn, unit: found.unit || it.unit || "NOS", gst: found.gst || it.gst, rate: found.cost || it.rate }) : it)));
+                setItems((prev) => prev.map((it) => (it.id === id ? Object.assign(Object.assign({}, it), { name: val, hsn: found.hsn || it.hsn, unit: found.unit || it.unit || "NOS", gst: found.gst || it.gst, rate: found.cost || it.rate, description: (it.description && it.description.trim()) ? it.description : (found.description || it.description) }) : it)));
             }
             else {
-                setItems((prev) => prev.map((it) => (it.id === id ? Object.assign(Object.assign({}, it), { name: val, hsn: found.hsn || it.hsn, rate: found.sellingRate || it.rate, gst: found.gst || it.gst, unit: found.unit || it.unit || "NOS" }) : it)));
+                setItems((prev) => prev.map((it) => (it.id === id ? Object.assign(Object.assign({}, it), { name: val, hsn: found.hsn || it.hsn, rate: found.sellingRate || it.rate, gst: found.gst || it.gst, unit: found.unit || it.unit || "NOS", description: (it.description && it.description.trim()) ? it.description : (found.description || it.description) }) : it)));
             }
         }
     };
@@ -5378,7 +5405,8 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
         React.createElement("thead", null,
             React.createElement("tr", null, [
                 React.createElement("th", { key: "h0", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "S.No"),
-                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Item / Description"),
+                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Item"),
+                React.createElement("th", { key: "h1b", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Description"),
                 React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Rate"),
                 React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Qty"),
                 React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "GST%"),
@@ -5390,9 +5418,8 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
             const rowAmount = base * (1 + itGst / 100);
             return React.createElement("tr", { key: idx }, [
                 React.createElement("td", { key: "c0", style: { color: "#666", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", fontSize: 11 } }, idx + 1),
-                React.createElement("td", { key: "c1", style: { verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#1a1a2e", fontWeight: 600, fontSize: 11 } },
-                    React.createElement("div", null, it.name),
-                    it.description && React.createElement("div", { style: { color: "#666", fontWeight: 500, marginTop: 2, fontSize: 9.5, whiteSpace: "pre-wrap" } }, it.description)),
+                React.createElement("td", { key: "c1", style: { verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#1a1a2e", fontWeight: 600, fontSize: 11 } }, it.name),
+                React.createElement("td", { key: "c1b", style: { verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontWeight: 500, fontSize: 10.5, whiteSpace: "pre-wrap" } }, it.description || ""),
                 React.createElement("td", { key: "c2", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, "\u20B9" + fmt(it.rate)),
                 React.createElement("td", { key: "c3", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, it.qty + " " + (it.unit || "NOS")),
                 React.createElement("td", { key: "c4", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, itGst + "%"),
@@ -5401,7 +5428,7 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
         })),
         React.createElement("tfoot", null,
             React.createElement("tr", null,
-                React.createElement("td", { colSpan: 5, style: { textAlign: "right", padding: "10px 6px", fontWeight: 800, fontSize: 12.5, color: "#5B4FC7", borderTop: "2px solid #8B7FD6" } }, "Grand Total"),
+                React.createElement("td", { colSpan: 6, style: { textAlign: "right", padding: "10px 6px", fontWeight: 800, fontSize: 12.5, color: "#5B4FC7", borderTop: "2px solid #8B7FD6" } }, "Grand Total"),
                 React.createElement("td", { className: "num", style: { textAlign: "right", padding: "10px 8px 10px 6px", fontWeight: 800, fontSize: 13.5, color: "#5B4FC7", borderTop: "2px solid #8B7FD6" } }, "\u20B9" + fmt(inv.total)))));
     const breakupEl = React.createElement("div", { key: "breakup", style: { display: "flex", justifyContent: "flex-end", marginTop: 10 } },
         React.createElement("div", { style: { width: "55%", minWidth: 190, fontSize: 11 } }, [
@@ -5748,20 +5775,22 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         y += 14;
         pdf.text("With reference to your requirement, we are pleased to quote our rates as under:", mX, y, { maxWidth: rightX - mX });
         y += 22;
-        const col = { sr: mX, item: mX + 26, rate: rightX - 175, qty: rightX - 115, gstp: rightX - 65, amt: rightX };
+        const col = { sr: mX, item: mX + 26, desc: mX + 26 + 118, rate: rightX - 175, qty: rightX - 115, gstp: rightX - 65, amt: rightX };
         pdf.setFillColor(139, 127, 214);
         pdf.rect(mX, y - 11, rightX - mX, 18, "F");
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(8.5);
         pdf.setTextColor(255, 255, 255);
         pdf.text("S.No", col.sr + 2, y);
-        pdf.text("Item / Description", col.item, y);
+        pdf.text("Item", col.item, y);
+        pdf.text("Description", col.desc, y);
         pdf.text("Rate", col.rate, y, { align: "right" });
         pdf.text("Qty", col.qty, y, { align: "right" });
         pdf.text("GST%", col.gstp, y, { align: "right" });
         pdf.text("Amount", col.amt, y, { align: "right" });
         y += 18;
-        const itemColWidth = col.rate - col.item - 100;
+        const itemColWidth = col.desc - col.item - 8;
+        const descColWidth = col.rate - col.desc - 8;
         let grandTotalRows = 0;
         (inv.items || []).filter((it) => it.name).forEach((it, idx) => {
             const rowStartY = y;
@@ -5775,14 +5804,11 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             pdf.setTextColor(26, 26, 46);
             const nameLines = pdf.splitTextToSize(it.name, itemColWidth);
             nameLines.forEach((line, i) => pdf.text(line, col.item, y + i * 12));
-            let localY = y + nameLines.length * 12;
-            if (it.description) {
-                pdf.setFontSize(8);
-                pdf.setTextColor(102, 102, 102);
-                const descLines = pdf.splitTextToSize(it.description, itemColWidth);
-                descLines.forEach((line, i) => pdf.text(line, col.item, localY + 2 + i * 9));
-                localY += 2 + descLines.length * 9;
-            }
+            pdf.setFontSize(8.5);
+            pdf.setTextColor(85, 85, 85);
+            const descLines = it.description ? pdf.splitTextToSize(it.description, descColWidth) : [];
+            descLines.forEach((line, i) => pdf.text(line, col.desc, y + i * 11));
+            const localY = y + Math.max(nameLines.length * 12, descLines.length * 11);
             pdf.setFontSize(9.5);
             pdf.setTextColor(85, 85, 85);
             pdf.text(R(it.rate), col.rate, rowStartY, { align: "right" });
