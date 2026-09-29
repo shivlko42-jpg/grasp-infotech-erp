@@ -5389,9 +5389,11 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
     ]);
     const toBlockEl = React.createElement("div", { key: "to", style: { padding: "18px 30px 0", fontSize: 12, color: "#1a1a2e", lineHeight: 1.7 } }, [
         React.createElement("div", { key: "l1" }, "To,"),
-        React.createElement("div", { key: "l2", style: { fontWeight: 700 } }, inv.party || "-"),
-        inv.partyAddress && React.createElement("div", { key: "l3", style: { whiteSpace: "pre-line", color: "#444" } }, inv.partyAddress),
-        inv.partyPhone && React.createElement("div", { key: "l4", style: { color: "#444" } }, inv.partyPhone),
+        React.createElement("div", { key: "indent", style: { marginLeft: 28 } }, [
+            React.createElement("div", { key: "l2", style: { fontWeight: 700 } }, inv.party || "-"),
+            inv.partyAddress && React.createElement("div", { key: "l3", style: { whiteSpace: "pre-line", color: "#444" } }, inv.partyAddress),
+            inv.partyPhone && React.createElement("div", { key: "l4", style: { color: "#444" } }, inv.partyPhone),
+        ]),
     ]);
     const subjectEl = React.createElement("div", { key: "subj", style: { padding: "14px 30px 0", fontSize: 12, color: "#1a1a2e" } }, [
         React.createElement("span", { key: "l", style: { fontWeight: 700 } }, "Sub: "),
@@ -5752,17 +5754,18 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         y += 22;
         pdf.text("To,", mX, y);
         y += 14;
+        const indentX = mX + 28;
         pdf.setFont("helvetica", "bold");
-        pdf.text(inv.party || "-", mX, y);
+        pdf.text(inv.party || "-", indentX, y);
         y += 14;
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(68, 68, 68);
         if (inv.partyAddress) {
-            const lines = pdf.splitTextToSize(inv.partyAddress, rightX - mX);
-            lines.forEach((line) => { pdf.text(line, mX, y); y += 13; });
+            const lines = pdf.splitTextToSize(inv.partyAddress, rightX - indentX);
+            lines.forEach((line) => { pdf.text(line, indentX, y); y += 13; });
         }
         if (inv.partyPhone) {
-            pdf.text(inv.partyPhone, mX, y);
+            pdf.text(inv.partyPhone, indentX, y);
             y += 13;
         }
         y += 10;
