@@ -123,6 +123,8 @@
     .app-shell { max-width: none !important; background: #fff !important; min-height: 0 !important; }
     .app-main { padding: 0 !important; min-height: 0 !important; overflow: visible !important; }
     .print-area { box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; }
+    .quo-scale-wrap { height: auto !important; overflow: visible !important; }
+    .quo-scale-inner { transform: none !important; width: auto !important; }
     body { background: #fff !important; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
 
@@ -5365,6 +5367,20 @@ function Reports({ invoices, expenses, profile, staffNames, onBack }) {
             React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", lineHeight: 1.6, marginBottom: 10 } }, "Note: Quotations is report mein shamil nahi hain (wo actual transaction nahi hain). GST figures aapke har invoice/purchase mein diye gaye Place of Supply aur Business State ke hisaab se calculate hote hain."))));
 }
 function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, staffNames, staffPhones }) {
+    const DESIGN_WIDTH = 720;
+    const wrapRef = useRef(null);
+    const [scale, setScale] = useState(1);
+    useEffect(() => {
+        const fit = () => {
+            if (!wrapRef.current)
+                return;
+            const availableWidth = wrapRef.current.offsetWidth;
+            setScale(availableWidth > 0 ? Math.min(1, availableWidth / DESIGN_WIDTH) : 1);
+        };
+        fit();
+        window.addEventListener("resize", fit);
+        return () => window.removeEventListener("resize", fit);
+    }, []);
     const words = amountInWords(inv.total);
     const items = (inv.items || []).filter((it) => it.name);
     const preparedByName = (staffNames && inv.createdBy && staffNames[inv.createdBy]) || (inv.createdBy ? inv.createdBy.split("@")[0] : "");
@@ -5475,9 +5491,12 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
         preparedByName && React.createElement("div", { key: "sigstaff", style: { fontSize: 11.5, color: "#333", fontWeight: 700, marginTop: 6 } }, "(" + preparedByName + ")"),
         preparedByPhone && React.createElement("div", { key: "sigphone", style: { fontSize: 11, color: "#666", marginTop: 1 } }, preparedByPhone),
     ]);
-    return React.createElement("div", { ref: printRef, className: "print-area quo-area", style: { margin: "0 16px", background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", fontFamily: "Arial, Helvetica, sans-serif" } }, [
-        headerEl, refRowEl, toBlockEl, subjectEl, greetEl, itemsBlockEl, termsEl, footerEl,
-    ]);
+    const naturalHeight = printRef.current ? printRef.current.scrollHeight : 0;
+    return React.createElement("div", { className: "quo-scale-wrap", ref: wrapRef, style: { width: "100%", overflow: "hidden", height: naturalHeight ? Math.ceil(naturalHeight * scale) : "auto" } },
+        React.createElement("div", { className: "quo-scale-inner", style: { width: DESIGN_WIDTH, transform: "scale(" + scale + ")", transformOrigin: "top left" } },
+            React.createElement("div", { ref: printRef, className: "print-area quo-area", style: { margin: "0 16px", background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", fontFamily: "Arial, Helvetica, sans-serif" } }, [
+                headerEl, refRowEl, toBlockEl, subjectEl, greetEl, itemsBlockEl, termsEl, footerEl,
+            ])));
 }
 function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, onEdit, onDelete, onUpdatePayment, onConvert }) {
     var _a;
