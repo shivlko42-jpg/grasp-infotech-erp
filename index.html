@@ -5388,7 +5388,7 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
     const grossAmount = inv.subtotal + (Number(inv.discountAmount) || 0);
     const dateStr = new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
     const contactLine = [profile.phone && ("Telephone: " + profile.phone), profile.email && ("E-mail: " + profile.email)].filter(Boolean).join("  \u00B7  ");
-    const headerEl = React.createElement("div", { key: "hdr", style: { padding: "22px 30px 16px", textAlign: "left", background: "linear-gradient(180deg, #F5F3FF 0%, #ffffff 100%)", borderBottom: "3px solid #8B7FD6" } }, [
+    const headerEl = React.createElement("div", { key: "hdr", style: { padding: "22px 30px 16px", textAlign: "left", background: "#EDE9FE", borderBottom: "3px solid #8B7FD6" } }, [
         React.createElement("div", { key: "row", style: { display: "flex", alignItems: "center", gap: 14 } }, [
             React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 52, height: 52, objectFit: "contain", flexShrink: 0 } }),
             React.createElement("div", { key: "text", style: { textAlign: "left" } }, [
@@ -6113,10 +6113,10 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                 " par set karein \u2014 us PDF file ko phir WhatsApp/Email se seedha share kar sakte hain.")),
         inv.docType === "quotation" ? React.createElement(QuotationPrintLayout, { inv: inv, profile: profile, printRef: printRef, gstTotal: gstTotal, isInterstate: isInterstate, staffNames: staffNames, staffPhones: staffPhones }) :
         React.createElement("div", { ref: printRef, className: "print-area pv-fill-page", style: { margin: "0 16px", background: "#fff", border: "2px solid #333", borderTop: "5px solid #8B7FD6", borderRadius: 4, overflow: "hidden", display: "flex", flexDirection: "column" } },
-            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: "9px 10px", borderBottom: "1.5px solid #333" } },
-                React.createElement("div", { className: "pv-title", style: { fontWeight: 800, color: "#7C3AED", letterSpacing: 1.5 } }, meta.label.toUpperCase()),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: "9px 10px", borderBottom: "1.5px solid #333", background: "#EDE9FE" } },
+                React.createElement("div", { className: "pv-title", style: { fontWeight: 800, color: "#5B4FC7", letterSpacing: 1.5 } }, meta.label.toUpperCase()),
                 React.createElement("div", { className: "pv-copytag", style: { position: "absolute", right: 10, fontWeight: 700, color: "#333", letterSpacing: 0.4 } }, meta.copyTag)),
-            React.createElement("div", { style: { display: "flex", borderBottom: "1px solid #333" } },
+            React.createElement("div", { style: { display: "flex", borderBottom: "1px solid #333", background: "#EDE9FE" } },
                 React.createElement("div", { className: "pv-section", style: { flex: 1.3, borderRight: "1px solid #333" } },
                     React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "flex-start" } },
                         React.createElement("img", { src: "logo.webp", alt: "", style: { width: 34, height: 34, objectFit: "contain", flexShrink: 0 } }),
