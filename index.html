@@ -5372,8 +5372,8 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
     const grossAmount = inv.subtotal + (Number(inv.discountAmount) || 0);
     const dateStr = new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
     const contactLine = [profile.phone && ("Telephone: " + profile.phone), profile.email && ("E-mail: " + profile.email)].filter(Boolean).join("  \u00B7  ");
-    const headerEl = React.createElement("div", { key: "hdr", style: { padding: "24px 30px 16px", textAlign: "center", background: "linear-gradient(180deg, #F5F3FF 0%, #ffffff 100%)", borderBottom: "3px solid #8B7FD6" } }, [
-        React.createElement("div", { key: "row", style: { display: "inline-flex", alignItems: "center", gap: 14 } }, [
+    const headerEl = React.createElement("div", { key: "hdr", style: { padding: "22px 30px 16px", textAlign: "left", background: "linear-gradient(180deg, #F5F3FF 0%, #ffffff 100%)", borderBottom: "3px solid #8B7FD6" } }, [
+        React.createElement("div", { key: "row", style: { display: "flex", alignItems: "center", gap: 14 } }, [
             React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 52, height: 52, objectFit: "contain", flexShrink: 0 } }),
             React.createElement("div", { key: "text", style: { textAlign: "left" } }, [
                 React.createElement("div", { key: "cname", style: { fontFamily: "Arial, Helvetica, sans-serif", fontWeight: 700, fontSize: 19, color: "#5B4FC7", letterSpacing: 0.3 } }, (profile.name || "Grasp Infotech").toUpperCase()),
@@ -5403,35 +5403,36 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
         React.createElement("div", { key: "d" }, "Dear Sir/Madam,"),
         React.createElement("div", { key: "p" }, "With reference to your requirement, we are pleased to quote our rates as under:"),
     ]);
-    const tableEl = React.createElement("table", { key: "tbl", style: { width: "100%", borderCollapse: "collapse", marginTop: 14 } },
+    const gridBorder = "1px solid #C4B5FD";
+    const tableEl = React.createElement("table", { key: "tbl", style: { width: "100%", borderCollapse: "collapse", marginTop: 14, border: gridBorder } },
         React.createElement("thead", null,
             React.createElement("tr", null, [
-                React.createElement("th", { key: "h0", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "S.No"),
-                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Item"),
-                React.createElement("th", { key: "h1b", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Description"),
-                React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Rate"),
-                React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Qty"),
-                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "GST%"),
-                React.createElement("th", { key: "h5", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 8px 8px 6px" } }, "Amount"),
+                React.createElement("th", { key: "h0", style: { textAlign: "left", color: "#4C1D95", background: "#EDE9FE", fontWeight: 700, fontSize: 10, padding: "8px 6px", border: gridBorder } }, "S.No"),
+                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#4C1D95", background: "#EDE9FE", fontWeight: 700, fontSize: 10, padding: "8px 6px", border: gridBorder } }, "Item"),
+                React.createElement("th", { key: "h1b", style: { textAlign: "left", color: "#4C1D95", background: "#EDE9FE", fontWeight: 700, fontSize: 10, padding: "8px 6px", border: gridBorder } }, "Description"),
+                React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#4C1D95", background: "#EDE9FE", fontWeight: 700, fontSize: 10, padding: "8px 6px", border: gridBorder } }, "Rate"),
+                React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#4C1D95", background: "#EDE9FE", fontWeight: 700, fontSize: 10, padding: "8px 6px", border: gridBorder } }, "Qty"),
+                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#4C1D95", background: "#EDE9FE", fontWeight: 700, fontSize: 10, padding: "8px 6px", border: gridBorder } }, "GST%"),
+                React.createElement("th", { key: "h5", style: { textAlign: "right", color: "#4C1D95", background: "#EDE9FE", fontWeight: 700, fontSize: 10, padding: "8px 8px 8px 6px", border: gridBorder } }, "Amount"),
             ])),
         React.createElement("tbody", null, items.map((it, idx) => {
             const itGst = Number(it.gst) || 0;
             const base = (Number(it.qty) || 0) * (Number(it.rate) || 0);
             const rowAmount = base * (1 + itGst / 100);
             return React.createElement("tr", { key: idx }, [
-                React.createElement("td", { key: "c0", style: { color: "#666", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", fontSize: 11 } }, idx + 1),
-                React.createElement("td", { key: "c1", style: { verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#1a1a2e", fontWeight: 600, fontSize: 11 } }, it.name),
-                React.createElement("td", { key: "c1b", style: { verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontWeight: 500, fontSize: 10.5, whiteSpace: "pre-wrap" } }, it.description || ""),
-                React.createElement("td", { key: "c2", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, "\u20B9" + fmt(it.rate)),
-                React.createElement("td", { key: "c3", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, it.qty + " " + (it.unit || "NOS")),
-                React.createElement("td", { key: "c4", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", borderBottom: "1px solid #EDE9FE", color: "#555", fontSize: 11 } }, itGst + "%"),
-                React.createElement("td", { key: "c5", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 8px 8px 6px", borderBottom: "1px solid #EDE9FE", color: "#1a1a2e", fontWeight: 700, fontSize: 11 } }, "\u20B9" + fmt(rowAmount)),
+                React.createElement("td", { key: "c0", style: { color: "#666", verticalAlign: "top", padding: "8px 6px", border: gridBorder, fontSize: 11 } }, idx + 1),
+                React.createElement("td", { key: "c1", style: { verticalAlign: "top", padding: "8px 6px", border: gridBorder, color: "#1a1a2e", fontWeight: 600, fontSize: 11 } }, it.name),
+                React.createElement("td", { key: "c1b", style: { verticalAlign: "top", padding: "8px 6px", border: gridBorder, color: "#555", fontWeight: 500, fontSize: 10.5, whiteSpace: "pre-wrap" } }, it.description || ""),
+                React.createElement("td", { key: "c2", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", border: gridBorder, color: "#555", fontSize: 11 } }, "\u20B9" + fmt(it.rate)),
+                React.createElement("td", { key: "c3", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", border: gridBorder, color: "#555", fontSize: 11 } }, it.qty + " " + (it.unit || "NOS")),
+                React.createElement("td", { key: "c4", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 6px", border: gridBorder, color: "#555", fontSize: 11 } }, itGst + "%"),
+                React.createElement("td", { key: "c5", className: "num", style: { textAlign: "right", verticalAlign: "top", padding: "8px 8px 8px 6px", border: gridBorder, color: "#1a1a2e", fontWeight: 700, fontSize: 11 } }, "\u20B9" + fmt(rowAmount)),
             ]);
         })),
         React.createElement("tfoot", null,
             React.createElement("tr", null,
-                React.createElement("td", { colSpan: 6, style: { textAlign: "right", padding: "10px 6px", fontWeight: 800, fontSize: 12.5, color: "#5B4FC7", borderTop: "2px solid #8B7FD6" } }, "Grand Total"),
-                React.createElement("td", { className: "num", style: { textAlign: "right", padding: "10px 8px 10px 6px", fontWeight: 800, fontSize: 13.5, color: "#5B4FC7", borderTop: "2px solid #8B7FD6" } }, "\u20B9" + fmt(inv.total)))));
+                React.createElement("td", { colSpan: 6, style: { textAlign: "right", padding: "10px 6px", fontWeight: 800, fontSize: 12.5, color: "#5B4FC7", border: gridBorder } }, "Grand Total"),
+                React.createElement("td", { className: "num", style: { textAlign: "right", padding: "10px 8px 10px 6px", fontWeight: 800, fontSize: 13.5, color: "#5B4FC7", border: gridBorder } }, "\u20B9" + fmt(inv.total)))));
     const breakupEl = React.createElement("div", { key: "breakup", style: { display: "flex", justifyContent: "flex-end", marginTop: 10 } },
         React.createElement("div", { style: { width: "55%", minWidth: 190, fontSize: 11 } }, [
             (Number(inv.discountAmount) || 0) > 0 && React.createElement("div", { key: "amt", style: { display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#666" } }, [
