@@ -5376,7 +5376,7 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
         React.createElement("div", { key: "row", style: { display: "inline-flex", alignItems: "center", gap: 14 } }, [
             React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 52, height: 52, objectFit: "contain", flexShrink: 0 } }),
             React.createElement("div", { key: "text", style: { textAlign: "left" } }, [
-                React.createElement("div", { key: "cname", style: { fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 19, color: "#5B4FC7", letterSpacing: 0.3 } }, (profile.name || "Grasp Infotech").toUpperCase()),
+                React.createElement("div", { key: "cname", style: { fontFamily: "Arial, Helvetica, sans-serif", fontWeight: 700, fontSize: 19, color: "#5B4FC7", letterSpacing: 0.3 } }, (profile.name || "Grasp Infotech").toUpperCase()),
                 profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#666", marginTop: 4, fontSize: 10 } }, profile.address),
                 contactLine && React.createElement("div", { key: "ccontact", className: "quo-small", style: { color: "#666", marginTop: 2, fontSize: 10 } }, contactLine),
                 profile.gstin && React.createElement("div", { key: "cgst", className: "quo-small", style: { color: "#8B7FD6", marginTop: 2, fontSize: 10, fontWeight: 700 } }, "GSTIN: " + profile.gstin),
@@ -5472,7 +5472,7 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
         preparedByName && React.createElement("div", { key: "sigstaff", style: { fontSize: 11.5, color: "#333", fontWeight: 700, marginTop: 6 } }, "(" + preparedByName + ")"),
         preparedByPhone && React.createElement("div", { key: "sigphone", style: { fontSize: 11, color: "#666", marginTop: 1 } }, preparedByPhone),
     ]);
-    return React.createElement("div", { ref: printRef, className: "print-area quo-area", style: { margin: "0 16px", background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" } }, [
+    return React.createElement("div", { ref: printRef, className: "print-area quo-area", style: { margin: "0 16px", background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", fontFamily: "Arial, Helvetica, sans-serif" } }, [
         headerEl, refRowEl, toBlockEl, subjectEl, greetEl, itemsBlockEl, termsEl, footerEl,
     ]);
 }
