@@ -5924,9 +5924,6 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         return pdf.output("blob");
     };
     const generatePdfBlob = async (allowMultiPage) => {
-        if (inv.docType === "quotation") {
-            return await generateQuotationPdfNative();
-        }
         const canvas = await captureInvoiceCanvas();
         const { jsPDF } = window.jspdf;
         const pageWidthPt = 595.28; // A4 width in points
@@ -5980,7 +5977,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             await handleShare();
             return;
         }
-        const needsHtml2Canvas = inv.docType !== "quotation";
+        const needsHtml2Canvas = true;
         if ((needsHtml2Canvas && !window.html2canvas) || !window.jspdf) {
             // libraries failed to load (e.g. no internet) — fall back to text share
             setPdfBusy(false);
