@@ -5345,12 +5345,16 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
     const grossAmount = inv.subtotal + (Number(inv.discountAmount) || 0);
     const dateStr = new Date(inv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
     const contactLine = [profile.phone && ("Telephone: " + profile.phone), profile.email && ("E-mail: " + profile.email)].filter(Boolean).join("  \u00B7  ");
-    const headerEl = React.createElement("div", { key: "hdr", style: { padding: "22px 30px 14px", textAlign: "center", borderBottom: "3px solid #4F46E5" } }, [
-        React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 40, height: 40, objectFit: "contain", marginBottom: 6 } }),
-        React.createElement("div", { key: "cname", style: { fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 18, color: "#4F46E5" } }, (profile.name || "Grasp Infotech").toUpperCase()),
-        profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#555", marginTop: 4, fontSize: 10 } }, profile.address),
-        contactLine && React.createElement("div", { key: "ccontact", className: "quo-small", style: { color: "#555", marginTop: 2, fontSize: 10 } }, contactLine),
-        profile.gstin && React.createElement("div", { key: "cgst", className: "quo-small", style: { color: "#7C3AED", marginTop: 2, fontSize: 10, fontWeight: 700 } }, "GSTIN: " + profile.gstin),
+    const headerEl = React.createElement("div", { key: "hdr", style: { padding: "24px 30px 16px", textAlign: "center", background: "linear-gradient(180deg, #F5F3FF 0%, #ffffff 100%)", borderBottom: "3px solid #8B7FD6" } }, [
+        React.createElement("div", { key: "row", style: { display: "inline-flex", alignItems: "center", gap: 14 } }, [
+            React.createElement("img", { key: "logo", src: "logo.webp", alt: "", style: { width: 52, height: 52, objectFit: "contain", flexShrink: 0 } }),
+            React.createElement("div", { key: "text", style: { textAlign: "left" } }, [
+                React.createElement("div", { key: "cname", style: { fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 19, color: "#5B4FC7", letterSpacing: 0.3 } }, (profile.name || "Grasp Infotech").toUpperCase()),
+                profile.address && React.createElement("div", { key: "caddr", className: "quo-small", style: { color: "#666", marginTop: 4, fontSize: 10 } }, profile.address),
+                contactLine && React.createElement("div", { key: "ccontact", className: "quo-small", style: { color: "#666", marginTop: 2, fontSize: 10 } }, contactLine),
+                profile.gstin && React.createElement("div", { key: "cgst", className: "quo-small", style: { color: "#8B7FD6", marginTop: 2, fontSize: 10, fontWeight: 700 } }, "GSTIN: " + profile.gstin),
+            ]),
+        ]),
     ]);
     const refRowEl = React.createElement("div", { key: "refrow", style: { display: "flex", justifyContent: "space-between", padding: "14px 30px 0", fontSize: 11.5, color: "#333" } }, [
         React.createElement("div", { key: "l" }, inv.invoiceNo),
@@ -5373,12 +5377,12 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
     const tableEl = React.createElement("table", { key: "tbl", style: { width: "100%", borderCollapse: "collapse", marginTop: 14 } },
         React.createElement("thead", null,
             React.createElement("tr", null, [
-                React.createElement("th", { key: "h0", style: { textAlign: "left", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "S.No"),
-                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Item / Description"),
-                React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Rate"),
-                React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Qty"),
-                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "GST%"),
-                React.createElement("th", { key: "h5", style: { textAlign: "right", color: "#fff", background: "#4F46E5", fontWeight: 700, fontSize: 10, padding: "8px 8px 8px 6px" } }, "Amount"),
+                React.createElement("th", { key: "h0", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "S.No"),
+                React.createElement("th", { key: "h1", style: { textAlign: "left", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Item / Description"),
+                React.createElement("th", { key: "h2", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Rate"),
+                React.createElement("th", { key: "h3", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "Qty"),
+                React.createElement("th", { key: "h4", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 6px" } }, "GST%"),
+                React.createElement("th", { key: "h5", style: { textAlign: "right", color: "#fff", background: "#8B7FD6", fontWeight: 700, fontSize: 10, padding: "8px 8px 8px 6px" } }, "Amount"),
             ])),
         React.createElement("tbody", null, items.map((it, idx) => {
             const itGst = Number(it.gst) || 0;
@@ -5397,8 +5401,8 @@ function QuotationPrintLayout({ inv, profile, printRef, gstTotal, isInterstate, 
         })),
         React.createElement("tfoot", null,
             React.createElement("tr", null,
-                React.createElement("td", { colSpan: 5, style: { textAlign: "right", padding: "10px 6px", fontWeight: 800, fontSize: 12.5, color: "#4F46E5", borderTop: "2px solid #4F46E5" } }, "Grand Total"),
-                React.createElement("td", { className: "num", style: { textAlign: "right", padding: "10px 8px 10px 6px", fontWeight: 800, fontSize: 13.5, color: "#4F46E5", borderTop: "2px solid #4F46E5" } }, "\u20B9" + fmt(inv.total)))));
+                React.createElement("td", { colSpan: 5, style: { textAlign: "right", padding: "10px 6px", fontWeight: 800, fontSize: 12.5, color: "#5B4FC7", borderTop: "2px solid #8B7FD6" } }, "Grand Total"),
+                React.createElement("td", { className: "num", style: { textAlign: "right", padding: "10px 8px 10px 6px", fontWeight: 800, fontSize: 13.5, color: "#5B4FC7", borderTop: "2px solid #8B7FD6" } }, "\u20B9" + fmt(inv.total)))));
     const breakupEl = React.createElement("div", { key: "breakup", style: { display: "flex", justifyContent: "flex-end", marginTop: 10 } },
         React.createElement("div", { style: { width: "55%", minWidth: 190, fontSize: 11 } }, [
             (Number(inv.discountAmount) || 0) > 0 && React.createElement("div", { key: "amt", style: { display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#666" } }, [
@@ -5671,43 +5675,43 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         const mX = 42;
         const rightX = pageW - mX;
         const centerX = pageW / 2;
-        let y = 50;
+        let y = 54;
         const R = (n) => "Rs. " + fmt(n);
         const logoImg = await loadImageAsPngDataUrl("logo.webp");
+        const textX = logoImg ? mX + 46 : mX;
         if (logoImg) {
-            const logoSize = 30;
+            const logoSize = 38;
             try {
-                pdf.addImage(logoImg.dataUrl, "PNG", centerX - logoSize / 2, y - 22, logoSize, logoSize);
+                pdf.addImage(logoImg.dataUrl, "PNG", mX, y - 26, logoSize, logoSize);
             }
             catch (e) { }
-            y += 14;
         }
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(15);
-        pdf.setTextColor(79, 70, 229);
-        pdf.text((profile.name || "Grasp Infotech").toUpperCase(), centerX, y, { align: "center" });
-        y += 15;
+        pdf.setTextColor(91, 79, 199);
+        pdf.text((profile.name || "Grasp Infotech").toUpperCase(), textX, y - 8, { align: "left" });
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(9);
         pdf.setTextColor(85, 85, 85);
+        let hy = y + 6;
         if (profile.address) {
-            pdf.text(profile.address, centerX, y, { align: "center", maxWidth: rightX - mX });
-            y += 12;
+            pdf.text(profile.address, textX, hy, { align: "left", maxWidth: rightX - textX });
+            hy += 12;
         }
         const contactLine = [profile.phone && ("Telephone: " + profile.phone), profile.email && ("E-mail: " + profile.email)].filter(Boolean).join("   \u00B7   ");
         if (contactLine) {
-            pdf.text(contactLine, centerX, y, { align: "center" });
-            y += 12;
+            pdf.text(contactLine, textX, hy, { align: "left" });
+            hy += 12;
         }
         if (profile.gstin) {
             pdf.setFont("helvetica", "bold");
-            pdf.setTextColor(124, 58, 237);
-            pdf.text("GSTIN: " + profile.gstin, centerX, y, { align: "center" });
-            y += 12;
+            pdf.setTextColor(139, 127, 214);
+            pdf.text("GSTIN: " + profile.gstin, textX, hy, { align: "left" });
+            hy += 12;
         }
-        y += 6;
-        pdf.setDrawColor(79, 70, 229);
-        pdf.setLineWidth(2);
+        y = Math.max(hy, y + 20) + 6;
+        pdf.setDrawColor(139, 127, 214);
+        pdf.setLineWidth(2.5);
         pdf.line(mX, y, rightX, y);
         y += 22;
         pdf.setFont("helvetica", "normal");
@@ -5745,7 +5749,7 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
         pdf.text("With reference to your requirement, we are pleased to quote our rates as under:", mX, y, { maxWidth: rightX - mX });
         y += 22;
         const col = { sr: mX, item: mX + 26, rate: rightX - 175, qty: rightX - 115, gstp: rightX - 65, amt: rightX };
-        pdf.setFillColor(79, 70, 229);
+        pdf.setFillColor(139, 127, 214);
         pdf.rect(mX, y - 11, rightX - mX, 18, "F");
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(8.5);
@@ -5794,13 +5798,13 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             grandTotalRows++;
         });
         y += 4;
-        pdf.setDrawColor(79, 70, 229);
+        pdf.setDrawColor(139, 127, 214);
         pdf.setLineWidth(1.5);
         pdf.line(mX, y, rightX, y);
         y += 15;
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(11.5);
-        pdf.setTextColor(79, 70, 229);
+        pdf.setTextColor(91, 79, 199);
         pdf.text("Grand Total", col.gstp, y, { align: "right" });
         pdf.text(R(inv.total), col.amt, y, { align: "right" });
         y += 22;
@@ -6059,9 +6063,9 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
                 React.createElement("b", null, "\"Save as PDF\""),
                 " par set karein \u2014 us PDF file ko phir WhatsApp/Email se seedha share kar sakte hain.")),
         inv.docType === "quotation" ? React.createElement(QuotationPrintLayout, { inv: inv, profile: profile, printRef: printRef, gstTotal: gstTotal, isInterstate: isInterstate, staffNames: staffNames, staffPhones: staffPhones }) :
-        React.createElement("div", { ref: printRef, className: "print-area pv-fill-page", style: { margin: "0 16px", background: "#fff", border: "2px solid #333", borderRadius: 4, overflow: "hidden", display: "flex", flexDirection: "column" } },
+        React.createElement("div", { ref: printRef, className: "print-area pv-fill-page", style: { margin: "0 16px", background: "#fff", border: "2px solid #333", borderTop: "5px solid #8B7FD6", borderRadius: 4, overflow: "hidden", display: "flex", flexDirection: "column" } },
             React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: "9px 10px", borderBottom: "1.5px solid #333" } },
-                React.createElement("div", { className: "pv-title", style: { fontWeight: 800, color: "#1D4ED8", letterSpacing: 1.5 } }, meta.label.toUpperCase()),
+                React.createElement("div", { className: "pv-title", style: { fontWeight: 800, color: "#7C3AED", letterSpacing: 1.5 } }, meta.label.toUpperCase()),
                 React.createElement("div", { className: "pv-copytag", style: { position: "absolute", right: 10, fontWeight: 700, color: "#333", letterSpacing: 0.4 } }, meta.copyTag)),
             React.createElement("div", { style: { display: "flex", borderBottom: "1px solid #333" } },
                 React.createElement("div", { className: "pv-section", style: { flex: 1.3, borderRight: "1px solid #333" } },
@@ -6132,13 +6136,13 @@ function InvoicePreview({ inv, profile, perms, staffNames, staffPhones, onBack, 
             inv.docType === "sale" ? (React.createElement("table", { className: "pv-sales-table", style: { width: "100%", borderCollapse: "collapse", borderBottom: "1px solid #333" } },
                 React.createElement("thead", null,
                     React.createElement("tr", null, [
-                        React.createElement("th", { key: "sn", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "#"),
-                        React.createElement("th", { key: "desc", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Product / Description"),
-                        React.createElement("th", { key: "hsn", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "HSN/SAC"),
-                        React.createElement("th", { key: "rate", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Rate"),
-                        React.createElement("th", { key: "qty", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Qty"),
-                        React.createElement("th", { key: "tax", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Tax"),
-                        React.createElement("th", { key: "total", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, borderBottom: "1px solid #333" } }, "Amount"),
+                        React.createElement("th", { key: "sn", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, background: "#EDE9FE", borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "#"),
+                        React.createElement("th", { key: "desc", className: "pv-th pv-cell", style: { textAlign: "left", color: "#111", fontWeight: 800, background: "#EDE9FE", borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Product / Description"),
+                        React.createElement("th", { key: "hsn", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, background: "#EDE9FE", borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "HSN/SAC"),
+                        React.createElement("th", { key: "rate", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, background: "#EDE9FE", borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Rate"),
+                        React.createElement("th", { key: "qty", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, background: "#EDE9FE", borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Qty"),
+                        React.createElement("th", { key: "tax", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, background: "#EDE9FE", borderBottom: "1px solid #333", borderRight: "1px solid #333" } }, "Tax"),
+                        React.createElement("th", { key: "total", className: "pv-th pv-cell", style: { textAlign: "right", color: "#111", fontWeight: 800, background: "#EDE9FE", borderBottom: "1px solid #333" } }, "Amount"),
                     ])),
                 React.createElement("tbody", null, [
                     ...visibleItems.map((it, i) => {
