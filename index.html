@@ -331,6 +331,7 @@ const DEFAULT_PROFILE = {
     name: "Grasp Infotech", address: "", state: "", gstin: "", pan: "", phone: "", email: "",
     bankName: "", accountNumber: "", ifsc: "", branch: "", upiId: "", openingBalance: 0, officeStartTime: "09:30",
     terms: "Thanks for doing business with us!\n1. All disputes are subject to home jurisdiction only.\n2. Any complaint regarding this invoice must be made within 7 days.\n3. Goods once sold will not be taken back.\n4. Interest @ 2% will be applicable post due date.",
+    dailyInsightEnabled: true,
 };
 // ---- db <-> app mappers ----
 function invFromDb(r) {
@@ -392,7 +393,7 @@ function profFromDb(r) {
         pan: r.pan || "", phone: r.phone || "", email: r.email || "", bankName: r.bank_name || "",
         accountNumber: r.account_number || "", ifsc: r.ifsc || "", branch: r.branch || "", upiId: r.upi_id || "",
         openingBalance: Number(r.opening_balance) || 0, officeStartTime: r.office_start_time || "09:30",
-        terms: r.terms || DEFAULT_PROFILE.terms,
+        terms: r.terms || DEFAULT_PROFILE.terms, dailyInsightEnabled: r.daily_insight_enabled !== false,
     };
 }
 function profToDb(p) {
@@ -400,6 +401,7 @@ function profToDb(p) {
         id: "main", name: p.name, address: p.address, state: p.state, gstin: p.gstin, pan: p.pan, phone: p.phone,
         email: p.email, bank_name: p.bankName, account_number: p.accountNumber, ifsc: p.ifsc, branch: p.branch,
         upi_id: p.upiId, opening_balance: Number(p.openingBalance) || 0, office_start_time: p.officeStartTime || "09:30", terms: p.terms,
+        daily_insight_enabled: p.dailyInsightEnabled !== false,
     };
 }
 function getStatus(inv) {
@@ -1029,7 +1031,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, staffNames: staffNames })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (o) => { setEditingInv({ docType: "sale", party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "leave" ? (React.createElement(LeaveManagement, { session: session, perms: perms, onBack: () => setView("home") })) : view === "holidays" ? (React.createElement(HolidayCalendar, { perms: perms, session: session, onBack: () => setView("home") })) : view === "dailyactivity" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(DailyActivity, { invoices: invoices, onBack: () => setView("managementdash") })) : view === "managementdash" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home"), onOpenDailyActivity: () => setView("dailyactivity") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports"), onPnlReport: () => setView("pnlreport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "pnlreport" && perms.isAdmin ? (React.createElement(CompanyPnlReport, { onBack: () => setView("settings") })) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, profile: profile, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), staffNames: staffNames })) : view === "businessoverview" && perms.isAdmin ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (o) => { setEditingInv({ docType: "sale", party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "leave" ? (React.createElement(LeaveManagement, { session: session, perms: perms, onBack: () => setView("home") })) : view === "holidays" ? (React.createElement(HolidayCalendar, { perms: perms, session: session, onBack: () => setView("home") })) : view === "dailyactivity" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(DailyActivity, { invoices: invoices, onBack: () => setView("managementdash") })) : view === "managementdash" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home"), onOpenDailyActivity: () => setView("dailyactivity") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports"), onPnlReport: () => setView("pnlreport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "pnlreport" && perms.isAdmin ? (React.createElement(CompanyPnlReport, { onBack: () => setView("settings") })) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, profile: profile, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
                 error && React.createElement("div", { className: "no-print", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error)),
             view !== "preview" && React.createElement("div", { className: "no-print" },
                 React.createElement(BottomNav, { view: view, setView: setView, perms: perms }))),
@@ -1222,7 +1224,7 @@ function DailyGoalWidget({ session, perms, invoices }) {
                 fmt(monthRemaining),
                 " aur chahiye is mahine ke target ke liye"))));
 }
-function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenGemTenders, onOpenServiceTickets, onOpenLeave, onOpenHolidays, onOpenMyDocuments, staffNames }) {
+function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenGemTenders, onOpenServiceTickets, onOpenLeave, onOpenHolidays, onOpenMyDocuments, onOpenBusinessOverview, staffNames }) {
     const recent = invoices.slice(0, 4);
     const hasFullView = perms.isAdmin || perms.canViewAllSales;
     const achievementPct = perms.targetAmount > 0 ? Math.min(100, Math.round((totals.sales / perms.targetAmount) * 100)) : null;
@@ -1275,6 +1277,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                 React.createElement("button", { key: "act", onClick: onOpenManagementDashboard, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83D\uDCCB Daily Activity"),
                 React.createElement("button", { key: "leave", onClick: onOpenLeave, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83C\uDFD6\uFE0F Leave Approvals"),
                 React.createElement("button", { key: "notice", onClick: onOpenNotices, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83D\uDCE2 Send Notice"),
+                React.createElement("button", { key: "bizov", onClick: onOpenBusinessOverview, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83C\uDFE2 Business Overview"),
             ]),
         ]),
         React.createElement(AttendanceWidget, { session: session, profile: profile }),
@@ -2911,6 +2914,109 @@ function AuditLog({ onBack }) {
                     l.new_value && React.createElement("div", { key: "new" }, "Baad: " + JSON.stringify(l.new_value)),
                 ]),
             ])))));
+}
+function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState("");
+    const [installCount, setInstallCount] = useState(null);
+    const [insight, setInsight] = useState("");
+    const [insightLoading, setInsightLoading] = useState(profile.dailyInsightEnabled !== false);
+    const [toggleBusy, setToggleBusy] = useState(false);
+    useEffect(() => {
+        (async () => {
+            sb.from("grasp_app_install_events").select("id", { count: "exact", head: true }).then(({ count }) => setInstallCount(count || 0));
+            let graspionData = null;
+            try {
+                const res = await fetch("https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/business-summary");
+                if (!res.ok)
+                    throw new Error("Server se response nahi mila");
+                graspionData = await res.json();
+                setData(graspionData);
+            }
+            catch (e) {
+                setErrorMsg("Graspion/Routix ka data abhi load nahi ho saka. Grasp Infotech ka data neeche hai.");
+            }
+            setLoading(false);
+            if (profile.dailyInsightEnabled === false) {
+                setInsightLoading(false);
+                return;
+            }
+            // Daily AI insight — cached, only generated once per calendar day across all users
+            try {
+                const today = todayISO();
+                const { data: cached } = await sb.from("grasp_daily_insight").select("insight_text").eq("insight_date", today).maybeSingle();
+                if (cached && cached.insight_text) {
+                    setInsight(cached.insight_text);
+                }
+                else if (graspionData) {
+                    const numbers = { grasp_infotech: totals, graspion: graspionData.graspion, routix: graspionData.routix };
+                    const aiRes = await fetch("https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/daily-business-insight", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ numbers }),
+                    });
+                    const aiJson = await aiRes.json();
+                    if (aiJson && aiJson.insight) {
+                        setInsight(aiJson.insight);
+                        await sb.from("grasp_daily_insight").upsert({ insight_date: today, insight_text: aiJson.insight });
+                    }
+                }
+            }
+            catch (e) { }
+            setInsightLoading(false);
+        })();
+    }, [profile.dailyInsightEnabled]);
+    const toggleInsight = async () => {
+        setToggleBusy(true);
+        await onSaveProfile(Object.assign(Object.assign({}, profile), { dailyInsightEnabled: !profile.dailyInsightEnabled }));
+        setToggleBusy(false);
+    };
+    const numCard = (label, value, color) => React.createElement("div", { key: label, style: { flex: "1 1 45%", minWidth: 110, background: "#F5F2FE", borderRadius: 12, padding: "12px 10px" } },
+        React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted, fontWeight: 700, marginBottom: 4 } }, label),
+        React.createElement("div", { className: "num", style: { fontSize: 17, fontWeight: 800, color: color || "#1E1B3A" } }, value));
+    const companyBlock = (title, emoji, cards) => React.createElement("div", { key: title, className: "card", style: { padding: 14, marginBottom: 14 } }, [
+        React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 14, marginBottom: 10, fontFamily: "'Sora', sans-serif" } }, emoji + " " + title),
+        React.createElement("div", { key: "g", style: { display: "flex", flexWrap: "wrap", gap: 8 } }, cards),
+    ]);
+    return React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Business Overview", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } }, [
+            profile.dailyInsightEnabled !== false ? React.createElement("div", { key: "insight", style: { padding: "12px 14px", borderRadius: 12, background: "linear-gradient(120deg, #4F46E5, #7C3AED)", marginBottom: 14, display: "flex", gap: 10, alignItems: "flex-start" } }, [
+                React.createElement("div", { key: "ic", style: { fontSize: 16 } }, "\u2728"),
+                React.createElement("div", { key: "txt", style: { color: "#fff", fontSize: 12.5, fontWeight: 600, lineHeight: 1.5, flex: 1 } }, insightLoading ? "Aaj ka summary taiyar ho raha hai\u2026" : insight),
+                React.createElement("button", { key: "off", onClick: toggleInsight, disabled: toggleBusy, title: "AI Summary band karein", style: { background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, color: "#fff", fontSize: 9.5, fontWeight: 700, padding: "4px 8px", flexShrink: 0 } }, "OFF"),
+            ]) : React.createElement("div", { key: "insight-off", style: { padding: "10px 14px", borderRadius: 12, background: "#F5F2FE", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between" } }, [
+                React.createElement("div", { key: "txt", style: { color: COLORS.muted, fontSize: 12, fontWeight: 600 } }, "AI Daily Summary band hai"),
+                React.createElement("button", { key: "on", onClick: toggleInsight, disabled: toggleBusy, style: { background: COLORS.indigo, border: "none", borderRadius: 8, color: "#fff", fontSize: 10.5, fontWeight: 700, padding: "5px 10px" } }, "ON Karein"),
+            ]),
+            React.createElement("div", { key: "note", style: { fontSize: 11.5, color: COLORS.muted, marginBottom: 14, lineHeight: 1.6 } }, "Teeno business ka ek-nazar summary \u2014 har business apna alag login/system use karta hai, ye sirf dekhne ke liye hai."),
+            companyBlock("Grasp Infotech (ERP)", "\uD83C\uDFE2", [
+                numCard("Is FY Sales", "\u20B9" + fmt(totals.sales)),
+                numCard("Is FY Purchase", "\u20B9" + fmt(totals.purchases)),
+                numCard("Outstanding", "\u20B9" + fmt(totals.outstanding), COLORS.rose),
+                numCard("Received", "\u20B9" + fmt(totals.received), COLORS.emerald),
+                numCard("App Installs", installCount === null ? "\u2026" : installCount),
+            ]),
+            loading ? React.createElement("div", { key: "load", style: { textAlign: "center", padding: "20px 0", color: COLORS.muted, fontSize: 13 } }, "Graspion/Routix ka data la rahe hain\u2026")
+                : data ? React.createElement("div", { key: "rest" }, [
+                    companyBlock("Graspion (Marketplace)", "\uD83D\uDED2", [
+                        numCard("Orders (is mahine)", data.graspion.orders_this_month),
+                        numCard("Total Orders", data.graspion.orders_total),
+                        numCard("Delivered", data.graspion.orders_delivered, COLORS.emerald),
+                        numCard("Active Vendors", data.graspion.active_vendors),
+                        numCard("Sales (is mahine)", "\u20B9" + fmt(data.graspion.sales_this_month), COLORS.emerald),
+                    ]),
+                    companyBlock("Routix (Delivery)", "\uD83C\uDFCD\uFE0F", [
+                        numCard("Jobs (is mahine)", data.routix.jobs_this_month),
+                        numCard("Total Jobs", data.routix.jobs_total),
+                        numCard("Delivered", data.routix.jobs_delivered, COLORS.emerald),
+                        numCard("Active Riders", data.routix.active_riders),
+                        numCard("Revenue (is mahine)", "\u20B9" + fmt(data.routix.revenue_this_month), COLORS.emerald),
+                    ]),
+                ])
+                : errorMsg && React.createElement("div", { key: "err", style: { padding: 14, background: "#FEF3DD", borderRadius: 12, color: "#8A5A00", fontSize: 12.5 } }, errorMsg),
+        ]));
 }
 function ManagementDashboard({ invoices, expenses, profile, onBack, onOpenDailyActivity }) {
     const [staffList, setStaffList] = useState([]);
@@ -4665,6 +4771,19 @@ function AdminPanel({ session, profile, onBack, onOpenDocuments }) {
     const [newStaff, setNewStaff] = useState({ full_name: "", email: "", password: "" });
     const [addStaffBusy, setAddStaffBusy] = useState(false);
     const [addStaffMsg, setAddStaffMsg] = useState("");
+    const shareInviteLink = async () => {
+        const appUrl = "https://shivlko42-jpg.github.io/grasp-infotech-erp/";
+        const text = "Grasp Infotech ERP mein aapka account banana hai. Ye link kholiye aur \"Sign Up\" se apna account bana lijiye: " + appUrl;
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: "Grasp Infotech ERP \u2014 Staff Sign Up", text: text, url: appUrl });
+            }
+            catch (e) { }
+        }
+        else {
+            window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+        }
+    };
     const handleAddStaff = async () => {
         setAddStaffMsg("");
         if (!newStaff.full_name.trim() || !newStaff.email.trim() || !newStaff.password.trim()) {
@@ -4880,7 +4999,8 @@ function AdminPanel({ session, profile, onBack, onOpenDocuments }) {
     return (React.createElement("div", null,
         React.createElement(SubHeader, { title: "Manage Staff", onBack: onBack }),
         React.createElement("div", { style: { padding: "0 16px", marginBottom: 14 } }, [
-            React.createElement("button", { key: "toggle", onClick: () => { setShowAddStaff(!showAddStaff); setAddStaffMsg(""); }, style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg, #4F46E5, #7C3AED)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: showAddStaff ? 10 : 0 } }, showAddStaff ? "\u2715 Cancel" : "+ Add New Staff"),
+            React.createElement("button", { key: "toggle", onClick: () => { setShowAddStaff(!showAddStaff); setAddStaffMsg(""); }, style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg, #4F46E5, #7C3AED)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 8 } }, showAddStaff ? "\u2715 Cancel" : "+ Add New Staff"),
+            !showAddStaff && React.createElement("button", { key: "share", onClick: shareInviteLink, style: { width: "100%", padding: "12px", borderRadius: 12, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 13.5 } }, "\uD83D\uDD17 Share Invite Link (WhatsApp)"),
             showAddStaff && React.createElement("div", { key: "form", className: "card", style: { padding: 14 } }, [
                 React.createElement("label", { key: "l1", style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Full Name"),
                 React.createElement("input", { key: "i1", value: newStaff.full_name, onChange: (e) => setNewStaff(Object.assign(Object.assign({}, newStaff), { full_name: e.target.value })), placeholder: "e.g. Ramesh Kumar", style: { width: "100%", padding: "10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 10 } }),
@@ -6441,6 +6561,13 @@ function BottomNav({ view, setView, perms }) {
         React.createElement(Icon, { size: 19 }, icon),
         React.createElement("span", { className: "app-nav-label", style: { fontSize: 10.5, fontWeight: view === id ? 800 : 500 } }, label))))));
 }
+window.addEventListener("appinstalled", () => {
+    try {
+        const platform = /android/i.test(navigator.userAgent) ? "android" : /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "desktop";
+        sb.from("grasp_app_install_events").insert({ platform: platform });
+    }
+    catch (e) { }
+});
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(React.createElement(Root, null));
 
