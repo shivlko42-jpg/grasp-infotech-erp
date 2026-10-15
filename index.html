@@ -558,6 +558,7 @@ function Root() {
     const [perms, setPerms] = useState(DEFAULT_PERMS);
     const [configMissing] = useState(!sb);
     const [inactiveBlock, setInactiveBlock] = useState(false);
+    const [pendingApprovalBlock, setPendingApprovalBlock] = useState(false);
     useEffect(() => {
         if (!sb) {
             setSession(null);
@@ -574,6 +575,11 @@ function Root() {
             .then(({ data }) => {
             if (data && data.is_active === false) {
                 setInactiveBlock(true);
+                sb.auth.signOut();
+                return;
+            }
+            if (data && data.is_approved === false) {
+                setPendingApprovalBlock(true);
                 sb.auth.signOut();
                 return;
             }
@@ -600,6 +606,14 @@ function Root() {
                 React.createElement("div", { style: { fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 16, marginBottom: 8 } }, "Ye account deactivate ho chuka hai"),
                 React.createElement("div", { style: { fontSize: 13.5, color: COLORS.muted, lineHeight: 1.6, marginBottom: 16 } }, "Kripya apne Admin se sampark karein."),
                 React.createElement("button", { onClick: () => { setInactiveBlock(false); setSession(null); }, style: { padding: "10px 20px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, "Back to Login"))));
+    }
+    if (pendingApprovalBlock) {
+        return (React.createElement("div", { style: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 } },
+            React.createElement("div", { className: "card", style: { maxWidth: 380, padding: 24, textAlign: "center" } },
+                React.createElement("div", { style: { fontSize: 30, marginBottom: 10 } }, "\u23F3"),
+                React.createElement("div", { style: { fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 16, marginBottom: 8 } }, "Approval ka wait ho raha hai"),
+                React.createElement("div", { style: { fontSize: 13.5, color: COLORS.muted, lineHeight: 1.6, marginBottom: 16 } }, "Aapka account ban gaya hai. Admin jab aapka role set karke approve karenge, tab aap app use kar payenge."),
+                React.createElement("button", { onClick: () => { setPendingApprovalBlock(false); setSession(null); }, style: { padding: "10px 20px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, "Back to Login"))));
     }
     if (session === undefined) {
         return React.createElement("div", { className: "splash-wrap", style: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, color: COLORS.muted, overflow: "hidden" } },
@@ -4886,6 +4900,20 @@ function AdminPanel({ session, profile, onBack, onOpenDocuments }) {
         }
         setBusyId(null);
     };
+    const approveStaff = async (u) => {
+        setBusyId(u.id);
+        setError("");
+        const { error: err } = await sb.from("grasp_users").update({ is_approved: true }).eq("id", u.id);
+        if (err) {
+            setError(err.message);
+        }
+        else {
+            setUsers(users.map((x) => (x.id === u.id ? Object.assign(Object.assign({}, x), { is_approved: true }) : x)));
+            setDrafts(Object.assign(Object.assign({}, drafts), { [u.id]: Object.assign(Object.assign({}, drafts[u.id]), { is_approved: true }) }));
+            logAudit(session, "staff_approved", "staff", u.email, { is_approved: false }, { is_approved: true });
+        }
+        setBusyId(null);
+    };
     const savePerms = async (u) => {
         setBusyId(u.id);
         setError("");
@@ -5028,7 +5056,9 @@ function AdminPanel({ session, profile, onBack, onOpenDocuments }) {
                             u.full_name && React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, u.email),
                             React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" } },
                                 React.createElement("div", { style: { display: "inline-block", fontSize: 9.5, fontWeight: 800, color: u.is_admin ? COLORS.amber : COLORS.violet, background: u.is_admin ? "#FEF3DD" : "#F1ECFE", borderRadius: 6, padding: "1.5px 7px", textTransform: "uppercase" } }, u.is_admin ? "Admin" : u.designation),
-                                u.is_active === false && React.createElement("div", { style: { display: "inline-block", fontSize: 9.5, fontWeight: 800, color: COLORS.rose, background: "#FDE7EB", borderRadius: 6, padding: "1.5px 7px", textTransform: "uppercase" } }, "Inactive"))),
+                                u.is_active === false && React.createElement("div", { style: { display: "inline-block", fontSize: 9.5, fontWeight: 800, color: COLORS.rose, background: "#FDE7EB", borderRadius: 6, padding: "1.5px 7px", textTransform: "uppercase" } }, "Inactive"),
+                                u.is_approved === false && React.createElement("div", { style: { display: "inline-block", fontSize: 9.5, fontWeight: 800, color: "#B4530E", background: "#FEF3DD", borderRadius: 6, padding: "1.5px 7px", textTransform: "uppercase" } }, "Pending Approval"),
+                                u.is_approved === false && React.createElement("div", { style: { display: "inline-block", fontSize: 9.5, fontWeight: 800, color: "#8A5A00", background: "#FEF3DD", borderRadius: 6, padding: "1.5px 7px", textTransform: "uppercase", marginLeft: 6 } }, "Pending Approval"))),
                         React.createElement(Icon, { size: 16, style: { color: COLORS.muted } }, expanded ? "▲" : "▼")),
                     expanded && !u.is_admin && (React.createElement("div", { style: { marginTop: 14, paddingTop: 14, borderTop: "1px solid " + COLORS.border } },
                         React.createElement("div", { className: "card", style: { padding: 12, marginBottom: 14, background: "#FAF9FF" } },
@@ -5121,7 +5151,11 @@ function AdminPanel({ session, profile, onBack, onOpenDocuments }) {
                                 React.createElement("input", { type: "number", min: "0", value: d.incentive_rate, onChange: (e) => setDraft(u.id, "incentive_rate", e.target.value), className: "num", style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 13 } }))),
                         onOpenDocuments && React.createElement("button", { onClick: () => onOpenDocuments(u.id, u.email), style: { width: "100%", padding: "10px", borderRadius: 10, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.violet, fontWeight: 700, fontSize: 12.5, marginBottom: 8 } }, "\uD83D\uDCC1 Employee Documents"),
                         React.createElement("button", { onClick: () => generateJobLetter(u), style: { width: "100%", padding: "10px", borderRadius: 10, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 12.5, marginBottom: 8 } }, "\uD83D\uDCC4 Generate Job Letter (Role & Responsibilities)"),
-                        React.createElement("button", { onClick: () => savePerms(u), disabled: busyId === u.id, style: { width: "100%", padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, busyId === u.id ? "Saving…" : "Save Access")))));
+                        React.createElement("button", { onClick: () => savePerms(u), disabled: busyId === u.id, style: { width: "100%", padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, busyId === u.id ? "Saving…" : "Save Access"),
+                        u.is_approved === false && React.createElement("div", { style: { marginTop: 10 } }, [
+                            React.createElement("div", { key: "note", style: { fontSize: 10.5, color: "#B4530E", marginBottom: 6, fontWeight: 600 } }, "\u23F3 Ye naya staff hai, abhi app access nahi kar sakta. Pehle upar Designation/Department set karke \"Save Access\" dabaiye, phir yahan Approve kariye."),
+                            React.createElement("button", { key: "approve", onClick: () => approveStaff(u), disabled: busyId === u.id, style: { width: "100%", padding: "10px", borderRadius: 10, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 13 } }, busyId === u.id ? "Approving…" : "\u2713 Approve Karein (ab access milega)"),
+                        ])))));
             }))),
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error),
             React.createElement("div", { style: { marginTop: 16, fontSize: 11.5, color: "#B4AFD6", lineHeight: 1.6 } }, "Note: yahan se account poori tarah delete nahi ho sakta (sirf access badal sakta hai). Kisi ka login hamesha ke liye band karna ho to Supabase \u2192 Authentication \u2192 Users se karein."))));
