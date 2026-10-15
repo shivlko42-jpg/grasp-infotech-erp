@@ -3021,6 +3021,7 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
                         numCard("Delivered", data.graspion.orders_delivered, COLORS.emerald),
                         numCard("Active Vendors", data.graspion.active_vendors),
                         numCard("Sales (is mahine)", "\u20B9" + fmt(data.graspion.sales_this_month), COLORS.emerald),
+                        numCard("App Installs", data.graspion.app_installs),
                     ]),
                     companyBlock("Routix (Delivery)", "\uD83C\uDFCD\uFE0F", [
                         numCard("Jobs (is mahine)", data.routix.jobs_this_month),
@@ -3028,6 +3029,7 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
                         numCard("Delivered", data.routix.jobs_delivered, COLORS.emerald),
                         numCard("Active Riders", data.routix.active_riders),
                         numCard("Revenue (is mahine)", "\u20B9" + fmt(data.routix.revenue_this_month), COLORS.emerald),
+                        numCard("App Installs", data.routix.app_installs),
                     ]),
                 ])
                 : errorMsg && React.createElement("div", { key: "err", style: { padding: 14, background: "#FEF3DD", borderRadius: 12, color: "#8A5A00", fontSize: 12.5 } }, errorMsg),
