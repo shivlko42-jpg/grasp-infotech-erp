@@ -373,10 +373,10 @@ function waitForImages(node) {
     }));
 }
 function catalogFromDb(r) {
-    return { key: r.item_key, name: r.item_name, hsn: r.hsn || "", cost: Number(r.cost) || 0, sellingRate: Number(r.selling_rate) || 0, gst: Number(r.gst) || 18, unit: r.unit || "NOS", stock: Number(r.stock) || 0, description: r.description || "" };
+    return { key: r.item_key, name: r.item_name, hsn: r.hsn || "", cost: Number(r.cost) || 0, sellingRate: Number(r.selling_rate) || 0, gst: Number(r.gst) || 18, unit: r.unit || "NOS", stock: Number(r.stock) || 0, description: r.description || "", lowStockThreshold: r.low_stock_threshold === null || r.low_stock_threshold === undefined ? null : Number(r.low_stock_threshold) };
 }
 function catalogToDb(it) {
-    return { item_key: it.key, item_name: it.name, hsn: it.hsn || null, cost: it.cost || 0, selling_rate: it.sellingRate || 0, gst: it.gst || 18, unit: it.unit || "NOS", stock: it.stock || 0, description: it.description || null, updated_at: new Date().toISOString() };
+    return { item_key: it.key, item_name: it.name, hsn: it.hsn || null, cost: it.cost || 0, selling_rate: it.sellingRate || 0, gst: it.gst || 18, unit: it.unit || "NOS", stock: it.stock || 0, description: it.description || null, low_stock_threshold: (it.lowStockThreshold === "" || it.lowStockThreshold === null || it.lowStockThreshold === undefined) ? null : Number(it.lowStockThreshold), updated_at: new Date().toISOString() };
 }
 const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Internet/Phone", "Salaries", "Transport", "Office Supplies", "Marketing", "Maintenance", "Professional Fees", "Bank Charges", "Other"];
 function expenseFromDb(r) {
@@ -1045,7 +1045,30 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenRoutixJobs: () => setView("routixjobs"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), staffNames: staffNames })) : view === "businessoverview" && perms.isAdmin ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (o) => { setEditingInv({ docType: "sale", party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() }); setView("create"); } })) : view === "routixjobs" ? (React.createElement(RoutixJobs, { onBack: () => setView("home"), onCreateSaleInvoice: (j) => { sb.from("grasp_routix_invoiced").insert({ routix_job_id: j.id }); setEditingInv({ docType: "sale", party: j.client_name || "Routix Client", partyPhone: j.client_phone || "", partyAddress: j.client_address || "", items: [{ id: uid(), name: "Routix Delivery Service", description: j.route, qty: 1, rate: j.charge || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "leave" ? (React.createElement(LeaveManagement, { session: session, perms: perms, onBack: () => setView("home") })) : view === "holidays" ? (React.createElement(HolidayCalendar, { perms: perms, session: session, onBack: () => setView("home") })) : view === "dailyactivity" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(DailyActivity, { invoices: invoices, onBack: () => setView("managementdash") })) : view === "managementdash" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home"), onOpenDailyActivity: () => setView("dailyactivity") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports"), onPnlReport: () => setView("pnlreport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "pnlreport" && perms.isAdmin ? (React.createElement(CompanyPnlReport, { onBack: () => setView("settings") })) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, profile: profile, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenRoutixJobs: () => setView("routixjobs"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), onOpenLowStock: () => setView("items"), itemCatalog: itemCatalog, staffNames: staffNames })) : view === "businessoverview" && perms.isAdmin ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: async (o) => {
+    const rawOrderId = (o.id || "").replace(/^graspion_/, "");
+    let settlement = null;
+    try {
+        const res = await fetch("https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/get-order-settlement?order_id=" + encodeURIComponent(rawOrderId));
+        const json = await res.json();
+        if (json && json.found)
+            settlement = json;
+    }
+    catch (e) { }
+    if (!settlement) {
+        alert("Is order ki commission/settlement details abhi Graspion mein taiyar nahi hain (order shayad abhi settle nahi hua). Thodi der baad dobara try karein.");
+        return;
+    }
+    const gstPct = settlement.commission_amount > 0 ? Math.round((settlement.gst_on_commission / settlement.commission_amount) * 100) : 18;
+    setEditingInv({
+        docType: "sale",
+        party: settlement.vendor_name || "Vendor",
+        notes: "Marketplace commission \u2014 Order " + (o.order_id || "") + ". Vendor ko payable: \u20B9" + fmt(settlement.payable_amount) + ". TCS (alag se, is invoice mein shamil nahi): \u20B9" + fmt(settlement.tcs_amount) + ".",
+        items: [{ id: uid(), name: "Marketplace Commission", description: "Order " + (o.order_id || "") + " \u2014 Vendor: " + (settlement.vendor_name || ""), qty: 1, rate: settlement.commission_amount || 0, gst: gstPct }],
+        date: todayISO(),
+    });
+    setView("create");
+} })) : view === "routixjobs" ? (React.createElement(RoutixJobs, { onBack: () => setView("home"), onCreateSaleInvoice: (j) => { sb.from("grasp_routix_invoiced").insert({ routix_job_id: j.id }); setEditingInv({ docType: "sale", party: j.client_name || "Routix Client", partyPhone: j.client_phone || "", partyAddress: j.client_address || "", items: [{ id: uid(), name: "Routix Delivery Service", description: j.route, qty: 1, rate: j.charge || 0 }], date: todayISO() }); setView("create"); } })) : view === "gemtenders" ? (React.createElement(GemTenders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: (t) => { setEditingInv({ docType: "sale", party: t.buyer || t.department, items: [{ id: uid(), name: t.product || "", qty: 1, rate: t.order_value || t.tender_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "servicetickets" ? (React.createElement(ServiceTickets, { session: session, perms: perms, onBack: () => setView("home") })) : view === "leave" ? (React.createElement(LeaveManagement, { session: session, perms: perms, onBack: () => setView("home") })) : view === "holidays" ? (React.createElement(HolidayCalendar, { perms: perms, session: session, onBack: () => setView("home") })) : view === "dailyactivity" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(DailyActivity, { invoices: invoices, onBack: () => setView("managementdash") })) : view === "managementdash" && (perms.isAdmin || perms.canViewAllSales) ? (React.createElement(ManagementDashboard, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home"), onOpenDailyActivity: () => setView("dailyactivity") })) : view === "myperformance" ? (React.createElement(MyPerformance, { session: session, perms: perms, invoices: invoices, onBack: () => setView("home") })) : view === "leads" ? (React.createElement(Leads, { session: session, perms: perms, onBack: () => setView("home"), onCreateQuotation: (lead) => { setEditingInv({ docType: "quotation", party: lead.customer_name, partyPhone: lead.mobile, items: [{ id: uid(), name: lead.product || "", qty: 1, rate: lead.estimated_value || 0 }], date: todayISO() }); setView("create"); } })) : view === "create" ? (React.createElement(CreateInvoice, { parties: parties, invoices: invoices, profile: profile, existing: editingInv, perms: perms, itemCatalog: itemCatalog, itemCostMap: itemCostMap, session: session, onBack: () => { setEditingInv(null); setView(editingInv ? "preview" : "home"); }, onSave: upsertInvoice })) : view === "invoices" ? (React.createElement(InvoiceList, { invoices: invoices, fy: fy, fyOptions: fyOptions, setFy: setFy, initialFilter: folderFilter, key: folderFilter, onBack: () => setView("home"), onDelete: (id) => setConfirmDeleteId(id), onOpen: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "quotations" ? (React.createElement(QuotationTracker, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "attendance" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(AttendanceAdmin, { onBack: () => setView("home") })) : view === "guidelines" ? (React.createElement(Guidelines, { session: session, perms: perms, onBack: () => setView("home") })) : view === "notices" ? (React.createElement(Notices, { session: session, perms: perms, onBack: () => setView("home") })) : view === "parties" ? (React.createElement(Parties, { parties: parties, invoices: invoices, session: session, perms: perms, onAdd: (p) => saveParties([p, ...parties], p, null), onRemove: (id) => saveParties(parties.filter((x) => x.id !== id), null, id), onOpen: (p) => { setSelectedParty(p); setView("partyledger"); }, onBack: () => setView("home") })) : view === "partyledger" && selectedParty ? (React.createElement(PartyLedger, { party: selectedParty, invoices: invoices, onBack: () => setView("parties"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); }, staffNames: staffNames })) : view === "due" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(DuePayments, { invoices: invoices, onBack: () => setView("home"), onOpenInvoice: (id) => { setPreviewId(id); setView("preview"); } })) : view === "settings" ? ((perms.isAdmin || perms.canViewPurchases) ? (React.createElement(BusinessSettings, { profile: profile, session: session, perms: perms, onBack: () => setView("home"), onManageStaff: () => setView("staff"), onManageItems: () => setView("items"), onReports: () => setView("reports"), onEditBusiness: () => setView("editbusiness"), onExport: () => setView("dataexport"), onAnalytics: () => setView("analytics"), onIncentives: () => setView("incentives"), onAuditLog: () => setView("auditlog"), onAppraisal: () => setView("appraisal"), onKpi: () => setView("kpi"), onMgmtReports: () => setView("mgmtreports"), onPnlReport: () => setView("pnlreport"), onBankRecon: () => setView("bankrecon"), onCaExport: () => setView("caexport") })) : (React.createElement(StaffAccount, { session: session, perms: perms, onBack: () => setView("home") }))) : view === "pnlreport" && perms.isAdmin ? (React.createElement(CompanyPnlReport, { onBack: () => setView("settings") })) : view === "incentives" && perms.isAdmin ? (React.createElement(IncentiveManagement, { invoices: invoices, onBack: () => setView("settings") })) : view === "auditlog" && perms.isAdmin ? (React.createElement(AuditLog, { onBack: () => setView("settings") })) : view === "appraisal" && perms.isAdmin ? (React.createElement(AnnualAppraisal, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "kpi" && perms.isAdmin ? (React.createElement(KPIScoring, { session: session, invoices: invoices, onBack: () => setView("settings") })) : view === "mgmtreports" && perms.isAdmin ? (React.createElement(ManagementReports, { invoices: invoices, expenses: expenses, onBack: () => setView("settings") })) : view === "staff" && perms.isAdmin ? (React.createElement(AdminPanel, { session: session, profile: profile, onBack: () => setView("settings"), onOpenDocuments: (staffId, staffEmail) => { setDocsStaffTarget({ id: staffId, email: staffEmail }); setView("staffdocs"); } })) : view === "items" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ManageItems, { itemCatalog: itemCatalog, onSave: saveItem, onDelete: deleteItem, onBack: () => setView("settings") })) : view === "reports" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Reports, { invoices: invoices, expenses: expenses, profile: profile, staffNames: staffNames, onBack: () => setView("settings") })) : view === "analytics" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(Analytics, { invoices: invoices, onBack: () => setView("settings") })) : view === "expenses" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(ExpenseTracker, { expenses: expenses, onSave: saveExpense, onDelete: deleteExpense, onBack: () => setView("home") })) : view === "dataexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(DataExport, { invoices: invoices, parties: parties, expenses: expenses, profile: profile, onBack: () => setView("settings") })) : view === "cashbook" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(CashBook, { invoices: invoices, expenses: expenses, profile: profile, onBack: () => setView("home") })) : view === "bankrecon" && (perms.canConfirmPayments || perms.isAdmin) ? (React.createElement(BankReconciliation, { session: session, onOpenCashBook: () => setView("cashbook"), onBack: () => setView("settings") })) : view === "caexport" && (perms.canViewPurchases || perms.isAdmin) ? (React.createElement(CAExport, { invoices: invoices, profile: profile, onBack: () => setView("settings") })) : view === "payroll" && perms.isAdmin ? (React.createElement(Payroll, { invoices: invoices, onBack: () => setView("home") })) : view === "editbusiness" && perms.isAdmin ? (React.createElement(EditBusinessDetails, { profile: profile, onBack: () => setView("settings"), onSave: saveProfile })) : view === "preview" && previewInv ? (React.createElement(InvoicePreview, { inv: previewInv, profile: profile, perms: perms, staffNames: staffNames, staffPhones: staffPhones, onBack: () => setView("invoices"), onEdit: () => { setEditingInv(previewInv); setView("create"); }, onDelete: () => setConfirmDeleteId(previewInv.id), onUpdatePayment: (paidAmount, tdsAmount, paymentDate) => upsertInvoice(Object.assign(Object.assign({}, previewInv), { paidAmount, tdsAmount, paymentDate })), onConvert: () => convertToInvoice(previewInv, previewInv.docType === "purchase_order" ? "purchase" : "sale") })) : null,
                 error && React.createElement("div", { className: "no-print", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error)),
             view !== "preview" && React.createElement("div", { className: "no-print" },
                 React.createElement(BottomNav, { view: view, setView: setView, perms: perms }))),
@@ -1238,7 +1261,15 @@ function DailyGoalWidget({ session, perms, invoices }) {
                 fmt(monthRemaining),
                 " aur chahiye is mahine ke target ke liye"))));
 }
-function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenRoutixJobs, onOpenGemTenders, onOpenServiceTickets, onOpenLeave, onOpenHolidays, onOpenMyDocuments, onOpenBusinessOverview, staffNames }) {
+function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, itemCatalog, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenRoutixJobs, onOpenGemTenders, onOpenServiceTickets, onOpenLeave, onOpenHolidays, onOpenMyDocuments, onOpenBusinessOverview, onOpenLowStock, staffNames }) {
+    const [pendingEcomCount, setPendingEcomCount] = useState(0);
+    const lowStockCount = (itemCatalog || []).filter((it) => (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold)).length;
+    useEffect(() => {
+        if (!(perms.isAdmin || perms.canViewAllSales))
+            return;
+        sb.from("grasp_ecom_orders").select("id", { count: "exact", head: true }).ilike("status", "delivered").is("invoiced_at", null)
+            .then(({ count }) => setPendingEcomCount(count || 0));
+    }, []);
     const recent = invoices.slice(0, 4);
     const hasFullView = perms.isAdmin || perms.canViewAllSales;
     const achievementPct = perms.targetAmount > 0 ? Math.min(100, Math.round((totals.sales / perms.targetAmount) * 100)) : null;
@@ -1304,6 +1335,12 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                     overdueList.length > 0 ? `${overdueList.length} payment${overdueList.length > 1 ? "s" : ""} overdue!` : `${dueSoonList.length} payment${dueSoonList.length > 1 ? "s" : ""} due soon`),
                 React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, marginTop: 1 } }, "Tap to see details and follow up")),
             React.createElement(Icon, { size: 15, style: { color: COLORS.muted } }, "\u2192")),
+        (perms.isAdmin || perms.canViewPurchases) && lowStockCount > 0 && React.createElement("button", { onClick: onOpenLowStock, style: { width: "100%", textAlign: "left", background: "#FEF3DD", border: "1px solid #FBE3B0", borderRadius: 14, padding: "13px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 } },
+            React.createElement("div", { style: { fontSize: 22 } }, "\uD83D\uDCE6"),
+            React.createElement("div", { style: { flex: 1 } },
+                React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#8A5A00" } }, `${lowStockCount} item${lowStockCount > 1 ? "s" : ""} low ya out of stock`),
+                React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, marginTop: 1 } }, "Tap to see which items need restocking")),
+            React.createElement(Icon, { size: 15, style: { color: COLORS.muted } }, "\u2192")),
         React.createElement("button", { onClick: onCreate, style: { width: "100%", background: "linear-gradient(120deg, #4F46E5, #7C3AED)", color: "#fff", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Sora', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, boxShadow: "0 4px 14px rgba(124,58,237,0.35)" } },
             React.createElement(Icon, { size: 17 }, "\u2795"),
             " New Document"),
@@ -1333,7 +1370,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
             React.createElement(FolderButton, { icon: "\uD83D\uDCE2", label: "Notices", color: "#EA580C", bg: "#FFEDD5", onClick: onOpenNotices }),
             React.createElement(FolderButton, { icon: "\uD83C\uDFC6", label: "My Performance", color: "#7C3AED", bg: "#F1ECFE", onClick: onOpenMyPerformance }),
             (perms.isAdmin || perms.canViewAllSales) && React.createElement(FolderButton, { icon: "\uD83D\uDCCA", label: "Management Dashboard", color: "#0369A1", bg: "#E0F2FE", onClick: onOpenManagementDashboard }),
-            React.createElement(FolderButton, { icon: "\uD83D\uDED2", label: "E-commerce Orders", color: "#F59E0B", bg: "#FEF3DD", onClick: onOpenEcomOrders }),
+            React.createElement(FolderButton, { icon: "\uD83D\uDED2", label: "E-commerce Orders", color: "#F59E0B", bg: "#FEF3DD", onClick: onOpenEcomOrders, badge: pendingEcomCount }),
             React.createElement(FolderButton, { icon: "\uD83C\uDFCD\uFE0F", label: "Routix Jobs", color: "#EA580C", bg: "#FEF3DD", onClick: onOpenRoutixJobs }),
             React.createElement(FolderButton, { icon: "\uD83C\uDFDB\uFE0F", label: "GeM Tenders", color: "#0369A1", bg: "#E0F2FE", onClick: onOpenGemTenders }),
             React.createElement(FolderButton, { icon: "\uD83D\uDD27", label: "Service Tickets", color: "#0891B2", bg: "#CFFAFE", onClick: onOpenServiceTickets }),
@@ -1345,8 +1382,9 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
             invoices.length > 0 && React.createElement("button", { onClick: onView, style: { background: "none", border: "none", color: COLORS.violet, fontWeight: 700, fontSize: 13 } }, "View all")),
         recent.length === 0 ? (React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Is FY mein koi document nahi hai.")) : (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, recent.map((inv) => (React.createElement(InvoiceRow, { key: inv.id, inv: inv, onClick: () => onOpen(inv.id) })))))));
 }
-function FolderButton({ icon, label, color, bg, onClick }) {
-    return (React.createElement("button", { onClick: onClick, className: "card", style: { padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, border: "none", cursor: "pointer" } },
+function FolderButton({ icon, label, color, bg, onClick, badge }) {
+    return (React.createElement("button", { onClick: onClick, className: "card", style: { padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, border: "none", cursor: "pointer", position: "relative" } },
+        !!badge && React.createElement("div", { style: { position: "absolute", top: 8, right: 8, minWidth: 18, height: 18, borderRadius: 9, background: COLORS.rose, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px" } }, badge),
         React.createElement("div", { style: { width: 38, height: 38, borderRadius: 11, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center" } },
             React.createElement(Icon, { size: 19 }, icon)),
         React.createElement("div", { style: { fontSize: 12.5, fontWeight: 700, color: COLORS.ink, textAlign: "left" } }, label)));
@@ -2103,7 +2141,7 @@ function StaffAccount({ session, perms, onBack }) {
                 "Business/bank details Admin handle karta hai."),
             React.createElement("button", { onClick: () => sb.auth.signOut(), style: { width: "100%", padding: "13px", borderRadius: 14, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.rose, fontWeight: 700, fontSize: 14 } }, "Sign out"))));
 }
-function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onManageItems, onReports, onEditBusiness, onExport, onAnalytics, onIncentives, onAuditLog, onAppraisal, onKpi, onMgmtReports, onPnlReport }) {
+function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onManageItems, onReports, onEditBusiness, onExport, onAnalytics, onIncentives, onAuditLog, onAppraisal, onKpi, onMgmtReports, onPnlReport, onBankRecon, onCaExport }) {
     return (React.createElement("div", null,
         React.createElement(SubHeader, { title: "Business", onBack: onBack }),
         React.createElement("div", { style: { padding: "0 16px" } },
@@ -2148,6 +2186,16 @@ function BusinessSettings({ profile, session, perms, onBack, onManageStaff, onMa
                 React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
                     React.createElement(Icon, { size: 17 }, "\uD83D\uDCB9"),
                     " Company P&L Report"),
+                React.createElement(Icon, { size: 15 }, "\u2192"))),
+            (perms.canConfirmPayments || perms.isAdmin) && (React.createElement("button", { onClick: onBankRecon, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #0891B2, #155E75)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(8,145,178,0.3)" } },
+                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement(Icon, { size: 17 }, "\uD83C\uDFE6"),
+                    " Bank Reconciliation"),
+                React.createElement(Icon, { size: 15 }, "\u2192"))),
+            (perms.canViewPurchases || perms.isAdmin) && (React.createElement("button", { onClick: onCaExport, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #475569, #1E293B)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(71,85,105,0.3)" } },
+                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement(Icon, { size: 17 }, "\uD83D\uDCC4"),
+                    " CA Export (Sales/Purchase Register)"),
                 React.createElement(Icon, { size: 15 }, "\u2192"))),
             (perms.canViewPurchases || perms.isAdmin) && (React.createElement("button", { onClick: onManageItems, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "none", background: "linear-gradient(120deg, #10B981, #0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 10, boxShadow: "0 4px 14px rgba(16,185,129,0.3)" } },
                 React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
@@ -2935,12 +2983,16 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState("");
     const [installCount, setInstallCount] = useState(null);
+    const [pendingEcomCount, setPendingEcomCount] = useState(0);
+    const [pendingRoutixCount, setPendingRoutixCount] = useState(0);
     const [insight, setInsight] = useState("");
     const [insightLoading, setInsightLoading] = useState(profile.dailyInsightEnabled !== false);
     const [toggleBusy, setToggleBusy] = useState(false);
     useEffect(() => {
         (async () => {
             sb.from("grasp_app_install_events").select("id", { count: "exact", head: true }).then(({ count }) => setInstallCount(count || 0));
+            sb.from("grasp_ecom_orders").select("id", { count: "exact", head: true }).ilike("status", "delivered").is("invoiced_at", null)
+                .then(({ count }) => setPendingEcomCount(count || 0));
             let graspionData = null;
             try {
                 const res = await fetch("https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/business-summary");
@@ -2948,6 +3000,8 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
                     throw new Error("Server se response nahi mila");
                 graspionData = await res.json();
                 setData(graspionData);
+                const { count: routixInvoicedCount } = await sb.from("grasp_routix_invoiced").select("routix_job_id", { count: "exact", head: true });
+                setPendingRoutixCount(Math.max(0, (graspionData.routix.jobs_delivered || 0) - (routixInvoicedCount || 0)));
             }
             catch (e) {
                 setErrorMsg("Graspion/Routix ka data abhi load nahi ho saka. Grasp Infotech ka data neeche hai.");
@@ -3006,6 +3060,11 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
                 React.createElement("button", { key: "on", onClick: toggleInsight, disabled: toggleBusy, style: { background: COLORS.indigo, border: "none", borderRadius: 8, color: "#fff", fontSize: 10.5, fontWeight: 700, padding: "5px 10px" } }, "ON Karein"),
             ]),
             React.createElement("div", { key: "note", style: { fontSize: 11.5, color: COLORS.muted, marginBottom: 14, lineHeight: 1.6 } }, "Teeno business ka ek-nazar summary \u2014 har business apna alag login/system use karta hai, ye sirf dekhne ke liye hai."),
+            (pendingEcomCount > 0 || pendingRoutixCount > 0) && React.createElement("div", { key: "pending", style: { padding: "12px 14px", borderRadius: 12, background: "#FEF3DD", marginBottom: 14, border: "1px solid #FDE4B8" } }, [
+                React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 12.5, color: "#8A5A00", marginBottom: 2 } }, "\u26A0\uFE0F Invoice Banana Baaki Hai"),
+                pendingEcomCount > 0 && React.createElement("div", { key: "e", style: { fontSize: 12, color: "#7A5A00" } }, pendingEcomCount + " Graspion order" + (pendingEcomCount > 1 ? "s" : "") + " delivered hai, invoice nahi bani \u2014 \"E-commerce Orders\" mein jaake banaiye"),
+                pendingRoutixCount > 0 && React.createElement("div", { key: "r", style: { fontSize: 12, color: "#7A5A00", marginTop: 2 } }, pendingRoutixCount + " Routix job" + (pendingRoutixCount > 1 ? "s" : "") + " delivered hai, invoice nahi bani \u2014 \"Routix Jobs\" mein jaake banaiye"),
+            ]),
             companyBlock("Grasp Infotech (ERP)", "\uD83C\uDFE2", [
                 numCard("Is FY Sales", "\u20B9" + fmt(totals.sales)),
                 numCard("Is FY Purchase", "\u20B9" + fmt(totals.purchases)),
@@ -3472,6 +3531,12 @@ function EcomOrders({ session, perms, onBack, onCreateSaleInvoice }) {
             setOrders(orders.map((x) => (x.id === o.id ? Object.assign(Object.assign({}, x), { status: newStatus }) : x)));
         setBusyId(null);
     };
+    const handleConvert = (o) => {
+        const now = new Date().toISOString();
+        sb.from("grasp_ecom_orders").update({ invoiced_at: now }).eq("id", o.id);
+        setOrders(orders.map((x) => (x.id === o.id ? Object.assign(Object.assign({}, x), { invoiced_at: now }) : x)));
+        onCreateSaleInvoice(o);
+    };
     if (subView === "add")
         return (React.createElement("div", null,
             React.createElement(SubHeader, { title: "Naya E-commerce Order", onBack: () => setSubView("list") }),
@@ -3489,6 +3554,7 @@ function EcomOrders({ session, perms, onBack, onCreateSaleInvoice }) {
                         React.createElement("span", { key: "n", style: { fontWeight: 700, fontSize: 13 } }, o.marketplace + " \u00B7 " + o.order_id),
                         React.createElement("span", { key: "s", style: { fontSize: 9.5, fontWeight: 800, color: "#fff", background: meta.color, padding: "2px 8px", borderRadius: 6 } }, meta.label),
                     ]),
+                    o.invoiced_at && React.createElement("div", { key: "invbadge", style: { display: "inline-block", fontSize: 9, fontWeight: 800, color: COLORS.emerald, background: "#E3F8EF", borderRadius: 6, padding: "1.5px 7px", marginBottom: 4, textTransform: "uppercase" } }, "\u2713 Invoice Ban Chuki Hai"),
                     React.createElement("div", { key: "prod", style: { fontSize: 12, color: "#555", marginBottom: 4 } }, o.product + (o.customer_name ? " \u2014 " + o.customer_name : "")),
                     React.createElement("div", { key: "nums", className: "num", style: { fontSize: 11, color: COLORS.muted, marginBottom: 8 } },
                         "Net: \u20B9",
@@ -3496,7 +3562,7 @@ function EcomOrders({ session, perms, onBack, onCreateSaleInvoice }) {
                         " \u00B7 Profit: ",
                         React.createElement("span", { style: { color: profitOf(o) >= 0 ? COLORS.emerald : COLORS.rose, fontWeight: 700 } }, "\u20B9" + fmt(profitOf(o)))),
                     React.createElement("select", { key: "sel", value: normalizeEcomStatus(o.status), onChange: (e) => changeStatus(o, e.target.value), disabled: busyId === o.id, style: { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 12, marginBottom: normalizeEcomStatus(o.status) === "delivered" ? 8 : 0 } }, ECOM_STATUSES.map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
-                    normalizeEcomStatus(o.status) === "delivered" && onCreateSaleInvoice && React.createElement("button", { key: "inv", onClick: () => onCreateSaleInvoice(o), style: { width: "100%", padding: "8px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\uD83E\uDDFE Sale Invoice Banayein"),
+                    normalizeEcomStatus(o.status) === "delivered" && !o.invoiced_at && onCreateSaleInvoice && React.createElement("button", { key: "inv", onClick: () => handleConvert(o), style: { width: "100%", padding: "8px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\uD83E\uDDFE Sale Invoice Banayein (Commission)"),
                 ]);
             }),
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
@@ -5203,7 +5269,7 @@ function AdminPanel({ session, profile, onBack, onOpenDocuments }) {
             React.createElement("div", { style: { marginTop: 16, fontSize: 11.5, color: "#B4AFD6", lineHeight: 1.6 } }, "Note: yahan se account poori tarah delete nahi ho sakta (sirf access badal sakta hai). Kisi ka login hamesha ke liye band karna ho to Supabase \u2192 Authentication \u2192 Users se karein."))));
 }
 function ManageItems({ itemCatalog, onSave, onDelete, onBack }) {
-    const blank = { key: "", name: "", hsn: "", cost: 0, sellingRate: 0, gst: 18, unit: "NOS", stock: 0 };
+    const blank = { key: "", name: "", hsn: "", cost: 0, sellingRate: 0, gst: 18, unit: "NOS", stock: 0, lowStockThreshold: "" };
     const [form, setForm] = useState(blank);
     const [editingKey, setEditingKey] = useState(null);
     const [busy, setBusy] = useState(false);
@@ -5217,7 +5283,7 @@ function ManageItems({ itemCatalog, onSave, onDelete, onBack }) {
             return;
         setBusy(true);
         const key = editingKey === "__new__" ? itemKey(form.name) : editingKey;
-        const ok = await onSave(Object.assign(Object.assign({}, form), { key, name: form.name.trim(), cost: Number(form.cost) || 0, sellingRate: Number(form.sellingRate) || 0, gst: Number(form.gst) || 18, stock: Number(form.stock) || 0 }));
+        const ok = await onSave(Object.assign(Object.assign({}, form), { key, name: form.name.trim(), cost: Number(form.cost) || 0, sellingRate: Number(form.sellingRate) || 0, gst: Number(form.gst) || 18, stock: Number(form.stock) || 0, lowStockThreshold: form.lowStockThreshold === "" ? null : Number(form.lowStockThreshold) }));
         setBusy(false);
         if (ok)
             cancel();
@@ -5238,6 +5304,8 @@ function ManageItems({ itemCatalog, onSave, onDelete, onBack }) {
                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Current Stock (Available Qty)"),
                 React.createElement("input", { type: "number", value: form.stock, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { stock: e.target.value })), className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 4 }) }),
                 React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", marginBottom: 10 } }, "Purchase Bill save karne par ye apne aap badhta hai, Sale invoice par apne aap ghatta hai. Yahan sirf shuruaati/manual correction ke liye badlein."),
+                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Low Stock Alert (isse kam ho to alert dikhayein)"),
+                React.createElement("input", { type: "number", min: "0", value: form.lowStockThreshold, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { lowStockThreshold: e.target.value })), placeholder: "default 5", className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 10 }) }),
                 React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } },
                     React.createElement("div", { style: { flex: 1 } },
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Cost (\u20B9)"),
@@ -5261,7 +5329,7 @@ function ManageItems({ itemCatalog, onSave, onDelete, onBack }) {
                         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                             React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
                                 React.createElement("div", { style: { fontWeight: 600, fontSize: 13.5 } }, it.name),
-                                React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 7, background: (it.stock || 0) <= 0 ? "#FDE7EB" : (it.stock || 0) < 5 ? "#FEF3DD" : "#E3FBF1", color: (it.stock || 0) <= 0 ? COLORS.rose : (it.stock || 0) < 5 ? COLORS.amber : COLORS.emerald } },
+                                React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 7, background: (it.stock || 0) <= 0 ? "#FDE7EB" : (it.stock || 0) < (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold) ? "#FEF3DD" : "#E3FBF1", color: (it.stock || 0) <= 0 ? COLORS.rose : (it.stock || 0) < (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold) ? COLORS.amber : COLORS.emerald } },
                                     "Stock: ",
                                     fmt(it.stock || 0),
                                     " ",
@@ -5369,6 +5437,182 @@ function ExpenseTracker({ expenses, onSave, onDelete, onBack }) {
                     React.createElement("span", { style: { fontSize: 12, color: COLORS.muted, flex: 1, alignSelf: "center" } }, "Delete karein?"),
                     React.createElement("button", { onClick: () => setConfirmDelete(null), style: { padding: "6px 12px", borderRadius: 8, border: "1px solid " + COLORS.border, background: "#fff", fontSize: 12, fontWeight: 600 } }, "Cancel"),
                     React.createElement("button", { onClick: () => { onDelete(e.id); setConfirmDelete(null); }, style: { padding: "6px 12px", borderRadius: 8, border: "none", background: COLORS.rose, color: "#fff", fontSize: 12, fontWeight: 600 } }, "Delete")))))))))));
+}
+function CAExport({ invoices, profile, onBack }) {
+    const today = todayISO();
+    const monthStart = today.slice(0, 8) + "01";
+    const [fromDate, setFromDate] = useState(monthStart);
+    const [toDate, setToDate] = useState(today);
+    const [tcsData, setTcsData] = useState(null);
+    const [tcsLoading, setTcsLoading] = useState(false);
+    const inRange = (d) => { const dd = (d || "").slice(0, 10); return dd >= fromDate && dd <= toDate; };
+    const sales = invoices.filter((i) => i.docType === "sale" && inRange(i.date));
+    const purchases = invoices.filter((i) => i.docType === "purchase" && inRange(i.date));
+    const sumField = (arr, f) => arr.reduce((s, i) => s + (Number(i[f]) || 0), 0);
+    const gstAmountOf = (i) => (Number(i.total) || 0) - (Number(i.subtotal) || 0) + (Number(i.tdsAmount) || 0) - (Number(i.roundOff) || 0);
+    const salesTaxable = sumField(sales, "subtotal");
+    const salesTotal = sumField(sales, "total");
+    const salesGst = sales.reduce((s, i) => s + gstAmountOf(i), 0);
+    const purchTaxable = sumField(purchases, "subtotal");
+    const purchTotal = sumField(purchases, "total");
+    const purchGst = purchases.reduce((s, i) => s + gstAmountOf(i), 0);
+    const netGst = salesGst - purchGst;
+    const loadTcs = async () => {
+        setTcsLoading(true);
+        try {
+            const res = await fetch("https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/tcs-summary?from=" + fromDate + "&to=" + toDate);
+            const json = await res.json();
+            setTcsData(json);
+        }
+        catch (e) {
+            setTcsData({ error: true });
+        }
+        setTcsLoading(false);
+    };
+    const exportSalesRegister = () => {
+        downloadCSV("Sales-Register_" + fromDate + "_to_" + toDate + ".csv", ["Date", "Invoice No", "Party", "GSTIN", "Taxable Value", "GST", "Total", "Status"], sales.map((i) => [new Date(i.date).toLocaleDateString("en-IN"), i.invoiceNo, i.party || "", i.partyGstin || "", (Number(i.subtotal) || 0).toFixed(2), gstAmountOf(i).toFixed(2), (Number(i.total) || 0).toFixed(2), getStatus(i)]));
+    };
+    const exportPurchaseRegister = () => {
+        downloadCSV("Purchase-Register_" + fromDate + "_to_" + toDate + ".csv", ["Date", "Bill No", "Party", "GSTIN", "Taxable Value", "GST", "Total", "Status"], purchases.map((i) => [new Date(i.date).toLocaleDateString("en-IN"), i.invoiceNo, i.party || "", i.partyGstin || "", (Number(i.subtotal) || 0).toFixed(2), gstAmountOf(i).toFixed(2), (Number(i.total) || 0).toFixed(2), getStatus(i)]));
+    };
+    const statCard = (label, value, color) => React.createElement("div", { key: label, style: { flex: "1 1 45%", minWidth: 120, background: "#F5F2FE", borderRadius: 12, padding: "12px 10px" } },
+        React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted, fontWeight: 700, marginBottom: 4 } }, label),
+        React.createElement("div", { className: "num", style: { fontSize: 15.5, fontWeight: 800, color: color || "#1E1B3A" } }, "\u20B9" + fmt(value)));
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "CA Export", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } }, [
+            React.createElement("div", { key: "info", className: "card", style: { padding: 14, marginBottom: 14, fontSize: 12, color: COLORS.muted, lineHeight: 1.6 } }, "Date-range chuniye, phir Sales Register aur Purchase Register CSV mein download karke seedha apne CA ko bhej dijiye."),
+            React.createElement("div", { key: "dates", className: "card", style: { padding: 14, marginBottom: 14 } }, [
+                React.createElement("div", { key: "row", style: { display: "flex", gap: 8, marginBottom: 4 } }, [
+                    React.createElement("div", { key: "f", style: { flex: 1 } },
+                        React.createElement("label", { style: { fontSize: 10.5, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "From"),
+                        React.createElement("input", { type: "date", value: fromDate, onChange: (e) => setFromDate(e.target.value), style: { width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13 } })),
+                    React.createElement("div", { key: "t", style: { flex: 1 } },
+                        React.createElement("label", { style: { fontSize: 10.5, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "To"),
+                        React.createElement("input", { type: "date", value: toDate, onChange: (e) => setToDate(e.target.value), style: { width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13 } })),
+                ]),
+            ]),
+            React.createElement("div", { key: "stats", style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 } }, [
+                statCard("Sales (Taxable Value)", salesTaxable),
+                statCard("Sales GST Collected", salesGst, COLORS.emerald),
+                statCard("Purchase (Taxable Value)", purchTaxable),
+                statCard("Purchase GST Paid", purchGst, COLORS.rose),
+                statCard("Net GST Payable", netGst, netGst >= 0 ? COLORS.rose : COLORS.emerald),
+            ]),
+            React.createElement("button", { key: "sr", onClick: exportSalesRegister, disabled: sales.length === 0, style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 10, opacity: sales.length === 0 ? 0.5 : 1 } }, "\u2B07\uFE0F Sales Register (" + sales.length + ") \u2014 CSV"),
+            React.createElement("button", { key: "pr", onClick: exportPurchaseRegister, disabled: purchases.length === 0, style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: COLORS.violet, color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14, opacity: purchases.length === 0 ? 0.5 : 1 } }, "\u2B07\uFE0F Purchase Register (" + purchases.length + ") \u2014 CSV"),
+            React.createElement("div", { key: "tcsCard", className: "card", style: { padding: 14, marginBottom: 14 } }, [
+                React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 13, marginBottom: 6 } }, "Graspion TCS Summary (GSTR-8 ke liye)"),
+                React.createElement("div", { key: "d", style: { fontSize: 11.5, color: COLORS.muted, marginBottom: 10, lineHeight: 1.6 } }, "Ye alag hai \u2014 e-commerce operator hone ki wajah se jo TCS Graspion vendors se collect karta hai, uska summary. Sales/Purchase Register mein ye shamil nahi hai."),
+                !tcsData && React.createElement("button", { key: "load", onClick: loadTcs, disabled: tcsLoading, style: { width: "100%", padding: "10px", borderRadius: 9, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 12.5 } }, tcsLoading ? "Load ho raha hai\u2026" : "TCS Summary Laayein"),
+                tcsData && tcsData.error && React.createElement("div", { key: "err", style: { fontSize: 12, color: COLORS.rose } }, "Abhi load nahi ho saka."),
+                tcsData && !tcsData.error && React.createElement("div", { key: "ok" }, [
+                    React.createElement("div", { key: "r1", style: { display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 } }, [
+                        React.createElement("span", { key: "l" }, "Total TCS Collected"),
+                        React.createElement("span", { key: "v", className: "num", style: { fontWeight: 700 } }, "\u20B9" + fmt(tcsData.total_tcs || 0)),
+                    ]),
+                    React.createElement("div", { key: "r2", style: { display: "flex", justifyContent: "space-between", fontSize: 13 } }, [
+                        React.createElement("span", { key: "l" }, "Orders Count"),
+                        React.createElement("span", { key: "v", className: "num", style: { fontWeight: 700 } }, tcsData.order_count || 0),
+                    ]),
+                ]),
+            ]),
+        ])));
+}
+function BankReconciliation({ session, onOpenCashBook, onBack }) {
+    const [entries, setEntries] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [error, setError] = useState("");
+    const [showAdd, setShowAdd] = useState(false);
+    const [newType, setNewType] = useState("in");
+    const [newAmount, setNewAmount] = useState("");
+    const [newDate, setNewDate] = useState(todayISO());
+    const [newDesc, setNewDesc] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [filter, setFilter] = useState("pending");
+    useEffect(() => {
+        sb.from("grasp_bank_statement").select("*").order("date", { ascending: false }).then(({ data, error }) => {
+            if (error)
+                setError(error.message);
+            setEntries(data || []);
+            setLoaded(true);
+        });
+    }, []);
+    const addEntry = async () => {
+        const amt = Number(newAmount) || 0;
+        if (amt <= 0 || !newDate)
+            return;
+        setBusy(true);
+        const record = { date: newDate, description: newDesc.trim() || null, amount: amt, type: newType, created_by: session.user.email };
+        const { data, error } = await sb.from("grasp_bank_statement").insert(record).select().single();
+        if (error)
+            setError(error.message);
+        else {
+            setEntries([data, ...entries]);
+            setNewAmount("");
+            setNewDesc("");
+            setShowAdd(false);
+        }
+        setBusy(false);
+    };
+    const toggleReconciled = async (e) => {
+        setBusy(true);
+        const { error } = await sb.from("grasp_bank_statement").update({ reconciled: !e.reconciled }).eq("id", e.id);
+        if (!error)
+            setEntries(entries.map((x) => (x.id === e.id ? Object.assign(Object.assign({}, x), { reconciled: !e.reconciled }) : x)));
+        setBusy(false);
+    };
+    const deleteEntry = async (id) => {
+        setBusy(true);
+        const { error } = await sb.from("grasp_bank_statement").delete().eq("id", id);
+        if (!error)
+            setEntries(entries.filter((x) => x.id !== id));
+        setBusy(false);
+    };
+    const totalBank = entries.reduce((s, e) => s + (e.type === "in" ? Number(e.amount) : -Number(e.amount)), 0);
+    const pendingCount = entries.filter((e) => !e.reconciled).length;
+    const filteredEntries = filter === "all" ? entries : filter === "pending" ? entries.filter((e) => !e.reconciled) : entries.filter((e) => e.reconciled);
+    return (React.createElement("div", null,
+        React.createElement(SubHeader, { title: "Bank Reconciliation", onBack: onBack }),
+        React.createElement("div", { style: { padding: "0 16px" } }, [
+            React.createElement("div", { key: "info", className: "card", style: { padding: 14, marginBottom: 14, fontSize: 12, color: COLORS.muted, lineHeight: 1.6 } }, "Apne bank statement ki entries yahan daliye. Har entry ko Cash/Bank Book se match karke \"\u2713 Reconciled\" mark kariye. Jo entries kaafi din se Pending hain, unhe zaroor check kariye \u2014 kahin koi payment ERP mein likhna to nahi bhoole."),
+            React.createElement("div", { key: "summary", className: "card", style: { padding: 16, marginBottom: 14 } }, [
+                React.createElement("div", { key: "l", style: { fontSize: 11, color: COLORS.muted, fontWeight: 700 } }, "Bank Statement ke hisaab se Net"),
+                React.createElement("div", { key: "v", className: "num", style: { fontSize: 22, fontWeight: 800, color: totalBank >= 0 ? COLORS.emerald : COLORS.rose, marginBottom: 10 } }, "\u20B9" + fmt(Math.abs(totalBank)) + (totalBank < 0 ? " (deficit)" : "")),
+                pendingCount > 0 && React.createElement("div", { key: "p", style: { fontSize: 12, fontWeight: 700, color: "#8A5A00", marginBottom: 10 } }, "\u26A0\uFE0F " + pendingCount + " entries abhi tak Reconciled nahi hain"),
+                onOpenCashBook && React.createElement("button", { key: "cb", onClick: onOpenCashBook, style: { width: "100%", padding: "9px", borderRadius: 9, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 12 } }, "Cash/Bank Book Dekhein (compare karne ke liye)"),
+            ]),
+            React.createElement("button", { key: "toggle", onClick: () => setShowAdd(!showAdd), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(120deg, #4F46E5, #7C3AED)", color: "#fff", fontWeight: 700, fontSize: 13.5, marginBottom: 14 } }, showAdd ? "\u2715 Cancel" : "+ Bank Entry Add Karein"),
+            showAdd && React.createElement("div", { key: "form", className: "card", style: { padding: 14, marginBottom: 14 } }, [
+                React.createElement("div", { key: "typerow", style: { display: "flex", gap: 8, marginBottom: 10 } }, [
+                    React.createElement("button", { key: "in", onClick: () => setNewType("in"), style: { flex: 1, padding: "9px", borderRadius: 9, border: "none", background: newType === "in" ? COLORS.emerald : "#F1ECFE", color: newType === "in" ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 12.5 } }, "Bank Mein Aaya (In)"),
+                    React.createElement("button", { key: "out", onClick: () => setNewType("out"), style: { flex: 1, padding: "9px", borderRadius: 9, border: "none", background: newType === "out" ? COLORS.rose : "#F1ECFE", color: newType === "out" ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 12.5 } }, "Bank Se Gaya (Out)"),
+                ]),
+                React.createElement("input", { key: "date", type: "date", value: newDate, onChange: (e) => setNewDate(e.target.value), style: { width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 10 } }),
+                React.createElement("input", { key: "amt", type: "number", min: "0", value: newAmount, onChange: (e) => setNewAmount(e.target.value), placeholder: "Amount \u20B9", className: "num", style: { width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 10 } }),
+                React.createElement("input", { key: "desc", value: newDesc, onChange: (e) => setNewDesc(e.target.value), placeholder: "Description (jaise bank statement mein likha hai)", style: { width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 10 } }),
+                React.createElement("button", { key: "save", onClick: addEntry, disabled: busy, style: { width: "100%", padding: "10px", borderRadius: 9, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13 } }, busy ? "Saving\u2026" : "Save Entry"),
+            ]),
+            React.createElement("div", { key: "filters", style: { display: "flex", gap: 6, marginBottom: 14 } }, [
+                React.createElement("button", { key: "pend", onClick: () => setFilter("pending"), style: { flex: 1, padding: "8px", borderRadius: 9, border: "none", background: filter === "pending" ? COLORS.indigo : "#F1ECFE", color: filter === "pending" ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 11.5 } }, "Pending"),
+                React.createElement("button", { key: "rec", onClick: () => setFilter("reconciled"), style: { flex: 1, padding: "8px", borderRadius: 9, border: "none", background: filter === "reconciled" ? COLORS.indigo : "#F1ECFE", color: filter === "reconciled" ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 11.5 } }, "Reconciled"),
+                React.createElement("button", { key: "all", onClick: () => setFilter("all"), style: { flex: 1, padding: "8px", borderRadius: 9, border: "none", background: filter === "all" ? COLORS.indigo : "#F1ECFE", color: filter === "all" ? "#fff" : COLORS.violet, fontWeight: 700, fontSize: 11.5 } }, "Sabhi"),
+            ]),
+            !loaded ? React.createElement("div", { key: "load", style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026")
+                : filteredEntries.length === 0 ? React.createElement("div", { key: "empty", className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Koi entry nahi hai.")
+                    : filteredEntries.map((e) => React.createElement("div", { key: e.id, className: "card", style: { padding: 12, marginBottom: 8, opacity: e.reconciled ? 0.75 : 1 } }, [
+                        React.createElement("div", { key: "row1", style: { display: "flex", justifyContent: "space-between", marginBottom: 2 } }, [
+                            React.createElement("span", { key: "d", style: { fontSize: 11, color: COLORS.muted } }, new Date(e.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })),
+                            React.createElement("span", { key: "a", className: "num", style: { fontWeight: 800, fontSize: 13.5, color: e.type === "in" ? COLORS.emerald : COLORS.rose } }, (e.type === "in" ? "+\u20B9" : "\u2212\u20B9") + fmt(e.amount)),
+                        ]),
+                        e.description && React.createElement("div", { key: "desc", style: { fontSize: 12.5, color: "#444", marginBottom: 8 } }, e.description),
+                        React.createElement("div", { key: "actions", style: { display: "flex", gap: 8 } }, [
+                            React.createElement("button", { key: "tog", onClick: () => toggleReconciled(e), disabled: busy, style: { flex: 1, padding: "7px", borderRadius: 8, border: "1px solid " + (e.reconciled ? COLORS.border : COLORS.emerald), background: e.reconciled ? "#fff" : "#E3FBF1", color: e.reconciled ? COLORS.muted : COLORS.emerald, fontWeight: 700, fontSize: 11.5 } }, e.reconciled ? "\u2713 Reconciled" : "Mark Reconciled"),
+                            React.createElement("button", { key: "del", onClick: () => deleteEntry(e.id), disabled: busy, style: { padding: "7px 10px", borderRadius: 8, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.rose, fontWeight: 700, fontSize: 11.5 } }, "\uD83D\uDDD1\uFE0F"),
+                        ]),
+                    ])),
+            error && React.createElement("div", { key: "err", style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error),
+        ])));
 }
 function CashBook({ invoices, expenses, profile, onBack }) {
     const [payrollPaid, setPayrollPaid] = useState([]);
