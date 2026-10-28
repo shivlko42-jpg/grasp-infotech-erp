@@ -3049,9 +3049,11 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
         await onSaveProfile(Object.assign(Object.assign({}, profile), { dailyInsightEnabled: !profile.dailyInsightEnabled }));
         setToggleBusy(false);
     };
-    const numCard = (label, value, color) => React.createElement("div", { key: label, style: { flex: "1 1 45%", minWidth: 110, background: "#F5F2FE", borderRadius: 12, padding: "12px 10px" } },
-        React.createElement("div", { style: { fontSize: 10.5, color: COLORS.muted, fontWeight: 700, marginBottom: 4 } }, label),
-        React.createElement("div", { className: "num", style: { fontSize: 17, fontWeight: 800, color: color || "#1E1B3A" } }, value));
+    const numCard = (label, value, color, subnote) => React.createElement("div", { key: label, style: { flex: "1 1 45%", minWidth: 110, background: "#F5F2FE", borderRadius: 12, padding: "12px 10px" } }, [
+        React.createElement("div", { key: "l", style: { fontSize: 10.5, color: COLORS.muted, fontWeight: 700, marginBottom: 4 } }, label),
+        React.createElement("div", { key: "v", className: "num", style: { fontSize: 17, fontWeight: 800, color: color || "#1E1B3A" } }, value),
+        subnote && React.createElement("div", { key: "s", style: { fontSize: 9, color: COLORS.muted, marginTop: 3, lineHeight: 1.3 } }, subnote),
+    ]);
     const companyBlock = (title, emoji, cards) => React.createElement("div", { key: title, className: "card", style: { padding: 14, marginBottom: 14 } }, [
         React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 14, marginBottom: 10, fontFamily: "'Sora', sans-serif" } }, emoji + " " + title),
         React.createElement("div", { key: "g", style: { display: "flex", flexWrap: "wrap", gap: 8 } }, cards),
@@ -3076,9 +3078,9 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
             companyBlock("Grasp Infotech (ERP)", "\uD83C\uDFE2", [
                 numCard("Is FY Sales", "\u20B9" + fmt(totals.sales)),
                 numCard("Is FY Purchase", "\u20B9" + fmt(totals.purchases)),
-                numCard("Outstanding", "\u20B9" + fmt(totals.outstanding), COLORS.rose),
+                numCard("Outstanding", "\u20B9" + fmt(totals.outstanding), COLORS.rose, "Sale ho chuki, payment abhi pending hai"),
                 numCard("Received", "\u20B9" + fmt(totals.received), COLORS.emerald),
-                numCard("App Installs", installCount === null ? "\u2026" : installCount),
+                numCard("App Installs", installCount === null ? "\u2026" : installCount, null, "Sirf aaj se aage ke naye installs count honge"),
             ]),
             loading ? React.createElement("div", { key: "load", style: { textAlign: "center", padding: "20px 0", color: COLORS.muted, fontSize: 13 } }, "Graspion/Routix ka data la rahe hain\u2026")
                 : data ? React.createElement("div", { key: "rest" }, [
