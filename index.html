@@ -1263,6 +1263,18 @@ function DailyGoalWidget({ session, perms, invoices }) {
 }
 function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, itemCatalog, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenRoutixJobs, onOpenGemTenders, onOpenServiceTickets, onOpenLeave, onOpenHolidays, onOpenMyDocuments, onOpenBusinessOverview, onOpenLowStock, staffNames }) {
     const [pendingEcomCount, setPendingEcomCount] = useState(0);
+    const [payrollSummary, setPayrollSummary] = useState(null);
+    useEffect(() => {
+        if (!perms.isAdmin)
+            return;
+        const monthKey = new Date().toISOString().slice(0, 7);
+        sb.from("grasp_payroll").select("net_amount,paid").eq("month_key", monthKey).then(({ data }) => {
+            const rows = data || [];
+            const total = rows.reduce((s, r) => s + (Number(r.net_amount) || 0), 0);
+            const paid = rows.filter((r) => r.paid).reduce((s, r) => s + (Number(r.net_amount) || 0), 0);
+            setPayrollSummary({ total: total, paid: paid, pending: total - paid, count: rows.length });
+        });
+    }, []);
     const lowStockCount = (itemCatalog || []).filter((it) => (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold)).length;
     useEffect(() => {
         if (!(perms.isAdmin || perms.canViewAllSales))
@@ -1323,6 +1335,11 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                 React.createElement("button", { key: "leave", onClick: onOpenLeave, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83C\uDFD6\uFE0F Leave Approvals"),
                 React.createElement("button", { key: "notice", onClick: onOpenNotices, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83D\uDCE2 Send Notice"),
                 React.createElement("button", { key: "bizov", onClick: onOpenBusinessOverview, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83C\uDFE2 Business Overview"),
+                React.createElement("button", { key: "payroll", onClick: onOpenPayroll, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83D\uDCB0 Payroll"),
+            ]),
+            payrollSummary && payrollSummary.count > 0 && React.createElement("div", { key: "psum", style: { marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", justifyContent: "space-between", fontSize: 11 } }, [
+                React.createElement("span", { key: "l", style: { color: "rgba(255,255,255,0.75)" } }, "Is mahine ka Payroll"),
+                React.createElement("span", { key: "v", className: "num", style: { color: "#fff", fontWeight: 700 } }, "\u20B9" + fmt(payrollSummary.total) + (payrollSummary.pending > 0.5 ? " (\u20B9" + fmt(payrollSummary.pending) + " pending)" : " \u2713 Paid")),
             ]),
         ]),
         React.createElement(AttendanceWidget, { session: session, profile: profile }),
