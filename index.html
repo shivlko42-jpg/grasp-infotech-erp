@@ -1045,7 +1045,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenRoutixJobs: () => setView("routixjobs"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), onOpenLowStock: () => setView("items"), itemCatalog: itemCatalog, staffNames: staffNames })) : view === "businessoverview" && perms.isAdmin ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: async (o) => {
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenRoutixJobs: () => setView("routixjobs"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), onOpenLowStock: () => setView("items"), itemCatalog: itemCatalog, staffNames: staffNames })) : view === "businessoverview" && perms.isAdmin ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, invoices: invoices, itemCatalog: itemCatalog, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: async (o) => {
     const rawOrderId = (o.id || "").replace(/^graspion_/, "");
     let settlement = null;
     try {
@@ -2983,7 +2983,7 @@ function AuditLog({ onBack }) {
                 ]),
             ])))));
 }
-function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
+function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalog, onBack }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState("");
@@ -2993,6 +2993,90 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
     const [insight, setInsight] = useState("");
     const [insightLoading, setInsightLoading] = useState(profile.dailyInsightEnabled !== false);
     const [toggleBusy, setToggleBusy] = useState(false);
+    const [staffData, setStaffData] = useState(null);
+    useEffect(() => {
+        (async () => {
+            const today = todayISO();
+            const [usersRes, attRes, leaveApprovedRes, leavePendingRes, ticketsRes] = await Promise.all([
+                sb.from("grasp_users").select("id,email,full_name,target_amount,is_active,is_admin,designation").eq("is_active", true),
+                sb.from("grasp_attendance").select("staff_email").eq("date", today),
+                sb.from("grasp_leave_requests").select("staff_email").eq("status", "approved").lte("from_date", today).gte("to_date", today),
+                sb.from("grasp_leave_requests").select("staff_email,leave_type,from_date").eq("status", "pending"),
+                sb.from("grasp_service_tickets").select("ticket_no,customer_name,scheduled_date,status").not("status", "in", "(Resolved,Closed)"),
+            ]);
+            setStaffData({
+                users: (usersRes.data || []).filter((u) => !u.is_admin),
+                attendedToday: new Set((attRes.data || []).map((a) => a.staff_email)),
+                onLeaveToday: new Set((leaveApprovedRes.data || []).map((l) => l.staff_email)),
+                pendingLeaves: leavePendingRes.data || [],
+                openTickets: (ticketsRes.data || []).filter((t) => t.scheduled_date && t.scheduled_date < today),
+            });
+        })();
+    }, []);
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+    const todayStr = todayISO();
+    const salesInv = (invoices || []).filter((i) => i.docType === "sale");
+    const todaySales = salesInv.filter((i) => (i.date || "").slice(0, 10) === todayStr).reduce((s, i) => s + (Number(i.total) || 0), 0);
+    const last7DaysSales = [];
+    for (let d = 1; d <= 7; d++) {
+        const dt = new Date(today0); dt.setDate(dt.getDate() - d);
+        const dStr = dt.toISOString().slice(0, 10);
+        last7DaysSales.push(salesInv.filter((i) => (i.date || "").slice(0, 10) === dStr).reduce((s, i) => s + (Number(i.total) || 0), 0));
+    }
+    const avg7Day = last7DaysSales.reduce((s, v) => s + v, 0) / 7;
+    const overdueList = (invoices || []).filter((i) => i.docType === "sale" && i.dueDate && ((Number(i.total) || 0) - (Number(i.paidAmount) || 0)) > 0.5 && new Date(i.dueDate) < today0);
+    const lowStockItems = (itemCatalog || []).filter((it) => (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold));
+    const goodPoints = [];
+    const attentionPoints = [];
+    if (todaySales > 0) {
+        goodPoints.push("Aaj \u20B9" + fmt(todaySales) + " ki sale hui" + (avg7Day > 0 && todaySales > avg7Day ? " \u2014 pichhle 7 dino ke average (\u20B9" + fmt(avg7Day) + ") se zyada \uD83C\uDF89" : ""));
+    }
+    if (overdueList.length === 0) {
+        goodPoints.push("Koi bhi payment overdue nahi hai \u2014 bahut badhiya!");
+    }
+    if (lowStockItems.length === 0 && (itemCatalog || []).length > 0) {
+        goodPoints.push("Koi bhi item low stock mein nahi hai");
+    }
+    if (todaySales === 0 && avg7Day > 0) {
+        attentionPoints.push({ text: "Aaj abhi tak koi Sale Invoice nahi bani", tip: "Agar aaj business day hai, to check kar lijiye kahin koi bill likhna reh to nahi gaya." });
+    }
+    if (overdueList.length > 0) {
+        attentionPoints.push({ text: overdueList.length + " payment" + (overdueList.length > 1 ? "s" : "") + " overdue hai (\u20B9" + fmt(overdueList.reduce((s, i) => s + ((Number(i.total) || 0) - (Number(i.paidAmount) || 0)), 0)) + ")", tip: "In customers ko follow-up call/message kariye \u2014 \"Due Payments\" mein poori list milegi." });
+    }
+    if (lowStockItems.length > 0) {
+        attentionPoints.push({ text: lowStockItems.length + " item" + (lowStockItems.length > 1 ? "s" : "") + " low ya out of stock hai", tip: "Supplier se naya stock order kar dijiye, taaki sale miss na ho." });
+    }
+    if (staffData) {
+        const nameOf = (email) => { const u = staffData.users.find((x) => x.email === email); return (u && u.full_name) || email; };
+        const absentNames = staffData.users.filter((u) => !staffData.attendedToday.has(u.email) && !staffData.onLeaveToday.has(u.email)).map((u) => u.full_name || u.email);
+        if (absentNames.length > 0) {
+            attentionPoints.push({ text: absentNames.length + " staff aaj absent hai (bina leave ke): " + absentNames.join(", "), tip: "Inse check kar lijiye \u2014 kahin leave apply karna bhool to nahi gaye." });
+        }
+        else if (staffData.users.length > 0) {
+            goodPoints.push("Sab staff aaj present hain ya approved leave par hain");
+        }
+        if (staffData.pendingLeaves.length > 0) {
+            const names = staffData.pendingLeaves.map((l) => nameOf(l.staff_email)).join(", ");
+            attentionPoints.push({ text: staffData.pendingLeaves.length + " leave request" + (staffData.pendingLeaves.length > 1 ? "s" : "") + " approval ka wait kar rahi hai: " + names, tip: "\"Leave\" screen mein jaake approve/reject kar dijiye." });
+        }
+        if (staffData.openTickets.length > 0) {
+            attentionPoints.push({ text: staffData.openTickets.length + " service ticket overdue hai (scheduled date nikal chuki)", tip: "\"Service Tickets\" mein jaake status update kariye ya customer se contact kariye." });
+        }
+        const fyNow = currentFY();
+        const achievedByEmail = {};
+        (invoices || []).forEach((i) => {
+            if (i.docType === "sale" && getFY(i.date) === fyNow && i.createdBy) {
+                achievedByEmail[i.createdBy] = (achievedByEmail[i.createdBy] || 0) + (Number(i.total) || 0);
+            }
+        });
+        const behindStaff = staffData.users.filter((u) => (Number(u.target_amount) || 0) > 0).filter((u) => {
+            const achieved = achievedByEmail[u.email] || 0;
+            return achieved < (Number(u.target_amount) || 0) * 0.3;
+        }).map((u) => u.full_name || u.email);
+        if (behindStaff.length > 0) {
+            attentionPoints.push({ text: behindStaff.length + " staff ka target bahut peeche hai (30% se kam achieve hua): " + behindStaff.join(", "), tip: "In staff se baat kar lijiye \u2014 kya help chahiye target achieve karne mein." });
+        }
+    }
     useEffect(() => {
         (async () => {
             sb.from("grasp_app_install_events").select("id", { count: "exact", head: true }).then(({ count }) => setInstallCount(count || 0));
@@ -3074,6 +3158,20 @@ function BusinessOverview({ totals, profile, onSaveProfile, onBack }) {
                 React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 12.5, color: "#8A5A00", marginBottom: 2 } }, "\u26A0\uFE0F Invoice Banana Baaki Hai"),
                 pendingEcomCount > 0 && React.createElement("div", { key: "e", style: { fontSize: 12, color: "#7A5A00" } }, pendingEcomCount + " Graspion order" + (pendingEcomCount > 1 ? "s" : "") + " delivered hai, invoice nahi bani \u2014 \"E-commerce Orders\" mein jaake banaiye"),
                 pendingRoutixCount > 0 && React.createElement("div", { key: "r", style: { fontSize: 12, color: "#7A5A00", marginTop: 2 } }, pendingRoutixCount + " Routix job" + (pendingRoutixCount > 1 ? "s" : "") + " delivered hai, invoice nahi bani \u2014 \"Routix Jobs\" mein jaake banaiye"),
+            ]),
+            (goodPoints.length > 0 || attentionPoints.length > 0) && React.createElement("div", { key: "daycheck", className: "card", style: { padding: 14, marginBottom: 14 } }, [
+                React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 13.5, marginBottom: 10, fontFamily: "'Sora', sans-serif" } }, "\uD83D\uDCCB Aaj Ka Business Check"),
+                goodPoints.length > 0 && React.createElement("div", { key: "good", style: { marginBottom: attentionPoints.length > 0 ? 10 : 0 } }, [
+                    React.createElement("div", { key: "h", style: { fontSize: 10.5, fontWeight: 800, color: COLORS.emerald, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.3 } }, "\u2705 Achha Hua"),
+                    ...goodPoints.map((p, idx) => React.createElement("div", { key: idx, style: { fontSize: 12, color: "#1E1B3A", marginBottom: 3, lineHeight: 1.5 } }, "\u2022 " + p)),
+                ]),
+                attentionPoints.length > 0 && React.createElement("div", { key: "bad" }, [
+                    React.createElement("div", { key: "h", style: { fontSize: 10.5, fontWeight: 800, color: "#B4530E", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.3 } }, "\u26A0\uFE0F Dhyan Dene Wali Baatein"),
+                    ...attentionPoints.map((p, idx) => React.createElement("div", { key: idx, style: { marginBottom: 7 } }, [
+                        React.createElement("div", { key: "t", style: { fontSize: 12, color: "#1E1B3A", lineHeight: 1.5 } }, "\u2022 " + p.text),
+                        React.createElement("div", { key: "tip", style: { fontSize: 10.5, color: COLORS.muted, marginLeft: 12, marginTop: 1 } }, "\uD83D\uDCA1 " + p.tip),
+                    ])),
+                ]),
             ]),
             companyBlock("Grasp Infotech (ERP)", "\uD83C\uDFE2", [
                 numCard("Is FY Sales", "\u20B9" + fmt(totals.sales)),
