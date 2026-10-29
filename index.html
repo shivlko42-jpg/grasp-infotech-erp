@@ -373,11 +373,12 @@ function waitForImages(node) {
     }));
 }
 function catalogFromDb(r) {
-    return { key: r.item_key, name: r.item_name, hsn: r.hsn || "", cost: Number(r.cost) || 0, sellingRate: Number(r.selling_rate) || 0, gst: Number(r.gst) || 18, unit: r.unit || "NOS", stock: Number(r.stock) || 0, description: r.description || "", lowStockThreshold: r.low_stock_threshold === null || r.low_stock_threshold === undefined ? null : Number(r.low_stock_threshold) };
+    return { key: r.item_key, name: r.item_name, hsn: r.hsn || "", cost: Number(r.cost) || 0, sellingRate: Number(r.selling_rate) || 0, gst: Number(r.gst) || 18, unit: r.unit || "NOS", stock: Number(r.stock) || 0, description: r.description || "", lowStockThreshold: r.low_stock_threshold === null || r.low_stock_threshold === undefined ? null : Number(r.low_stock_threshold), isService: !!r.is_service };
 }
 function catalogToDb(it) {
-    return { item_key: it.key, item_name: it.name, hsn: it.hsn || null, cost: it.cost || 0, selling_rate: it.sellingRate || 0, gst: it.gst || 18, unit: it.unit || "NOS", stock: it.stock || 0, description: it.description || null, low_stock_threshold: (it.lowStockThreshold === "" || it.lowStockThreshold === null || it.lowStockThreshold === undefined) ? null : Number(it.lowStockThreshold), updated_at: new Date().toISOString() };
+    return { item_key: it.key, item_name: it.name, hsn: it.hsn || null, cost: it.cost || 0, selling_rate: it.sellingRate || 0, gst: it.gst || 18, unit: it.unit || "NOS", stock: it.stock || 0, description: it.description || null, low_stock_threshold: (it.lowStockThreshold === "" || it.lowStockThreshold === null || it.lowStockThreshold === undefined) ? null : Number(it.lowStockThreshold), is_service: !!it.isService, updated_at: new Date().toISOString() };
 }
+const SERVICE_ITEM_KEYS = ["routix delivery service", "marketplace commission"];
 const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Internet/Phone", "Salaries", "Transport", "Office Supplies", "Marketing", "Maintenance", "Professional Fees", "Bank Charges", "Other"];
 function expenseFromDb(r) {
     return { id: r.id, date: r.date, category: r.category || "Other", description: r.description || "", amount: Number(r.amount) || 0, paymentMethod: r.payment_method || "", createdBy: r.created_by || "", createdById: r.created_by_id || "" };
@@ -795,8 +796,10 @@ function BillingApp({ session, perms }) {
         if (withDesc.length === 0)
             return;
         const updates = withDesc.map((it) => {
-            const existing = itemCatalog.find((c) => c.key === itemKey(it.name));
-            return catalogToDb(Object.assign(Object.assign({}, (existing || { key: itemKey(it.name), name: it.name.trim(), cost: 0, sellingRate: 0, gst: Number(it.gst) || 18, unit: it.unit || "NOS" })), { description: it.description.trim() }));
+            const key = itemKey(it.name);
+            const existing = itemCatalog.find((c) => c.key === key);
+            const autoService = SERVICE_ITEM_KEYS.includes(key);
+            return catalogToDb(Object.assign(Object.assign({}, (existing || { key: key, name: it.name.trim(), cost: 0, sellingRate: 0, gst: Number(it.gst) || 18, unit: it.unit || "NOS" })), { description: it.description.trim(), isService: existing ? existing.isService : autoService }));
         });
         const { error } = await sb.from("grasp_item_costs").upsert(updates);
         if (!error) {
@@ -890,7 +893,7 @@ function BillingApp({ session, perms }) {
         const updates = [];
         keys.forEach((key) => {
             const idx = nextCatalog.findIndex((c) => c.key === key);
-            if (idx >= 0) {
+            if (idx >= 0 && !nextCatalog[idx].isService) {
                 nextCatalog[idx].stock = (Number(nextCatalog[idx].stock) || 0) + deltas[key];
                 updates.push(catalogToDb(nextCatalog[idx]));
             }
@@ -1281,7 +1284,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
     };
     const showGraspionLink = perms.isAdmin || perms.department === "E-commerce" || perms.department === "Operations";
     const showRoutixLink = perms.isAdmin || perms.department === "Routix" || perms.department === "Operations";
-    const lowStockCount = (itemCatalog || []).filter((it) => (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold)).length;
+    const lowStockCount = (itemCatalog || []).filter((it) => !it.isService && (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold)).length;
     useEffect(() => {
         if (!(perms.isAdmin || perms.canViewAllSales))
             return;
@@ -3057,7 +3060,7 @@ function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalo
     }
     const avg7Day = last7DaysSales.reduce((s, v) => s + v, 0) / 7;
     const overdueList = (invoices || []).filter((i) => i.docType === "sale" && i.dueDate && ((Number(i.total) || 0) - (Number(i.paidAmount) || 0)) > 0.5 && new Date(i.dueDate) < today0);
-    const lowStockItems = (itemCatalog || []).filter((it) => (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold));
+    const lowStockItems = (itemCatalog || []).filter((it) => !it.isService && (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold));
     const goodPoints = [];
     const attentionPoints = [];
     if (todaySales > 0) {
@@ -5419,7 +5422,7 @@ function AdminPanel({ session, profile, onBack, onOpenDocuments }) {
             React.createElement("div", { style: { marginTop: 16, fontSize: 11.5, color: "#B4AFD6", lineHeight: 1.6 } }, "Note: yahan se account poori tarah delete nahi ho sakta (sirf access badal sakta hai). Kisi ka login hamesha ke liye band karna ho to Supabase \u2192 Authentication \u2192 Users se karein."))));
 }
 function ManageItems({ itemCatalog, onSave, onDelete, onBack }) {
-    const blank = { key: "", name: "", hsn: "", cost: 0, sellingRate: 0, gst: 18, unit: "NOS", stock: 0, lowStockThreshold: "" };
+    const blank = { key: "", name: "", hsn: "", cost: 0, sellingRate: 0, gst: 18, unit: "NOS", stock: 0, lowStockThreshold: "", isService: false };
     const [form, setForm] = useState(blank);
     const [editingKey, setEditingKey] = useState(null);
     const [busy, setBusy] = useState(false);
@@ -5451,11 +5454,17 @@ function ManageItems({ itemCatalog, onSave, onDelete, onBack }) {
                 React.createElement("input", { value: form.hsn, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { hsn: e.target.value })), style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 10 }) }),
                 React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Unit"),
                 React.createElement("select", { value: form.unit || "NOS", onChange: (e) => setForm(Object.assign(Object.assign({}, form), { unit: e.target.value })), style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 10 }) }, UNITS.map((u) => (React.createElement("option", { key: u, value: u }, u)))),
-                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Current Stock (Available Qty)"),
-                React.createElement("input", { type: "number", value: form.stock, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { stock: e.target.value })), className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 4 }) }),
-                React.createElement("div", { style: { fontSize: 10.5, color: "#B4AFD6", marginBottom: 10 } }, "Purchase Bill save karne par ye apne aap badhta hai, Sale invoice par apne aap ghatta hai. Yahan sirf shuruaati/manual correction ke liye badlein."),
-                React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Low Stock Alert (isse kam ho to alert dikhayein)"),
-                React.createElement("input", { type: "number", min: "0", value: form.lowStockThreshold, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { lowStockThreshold: e.target.value })), placeholder: "default 5", className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 10 }) }),
+                React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10, cursor: "pointer" } }, [
+                    React.createElement("input", { key: "cb", type: "checkbox", checked: !!form.isService, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { isService: e.target.checked })) }),
+                    React.createElement("span", { key: "l", style: { fontSize: 12.5, fontWeight: 600 } }, "Ye ek Service hai (koi physical stock nahi \u2014 jaise delivery/commission)"),
+                ]),
+                !form.isService && React.createElement("div", { key: "stockfields" }, [
+                    React.createElement("label", { key: "l1", style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Current Stock (Available Qty)"),
+                    React.createElement("input", { key: "i1", type: "number", value: form.stock, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { stock: e.target.value })), className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 4 }) }),
+                    React.createElement("div", { key: "n1", style: { fontSize: 10.5, color: "#B4AFD6", marginBottom: 10 } }, "Purchase Bill save karne par ye apne aap badhta hai, Sale invoice par apne aap ghatta hai. Yahan sirf shuruaati/manual correction ke liye badlein."),
+                    React.createElement("label", { key: "l2", style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Low Stock Alert (isse kam ho to alert dikhayein)"),
+                    React.createElement("input", { key: "i2", type: "number", min: "0", value: form.lowStockThreshold, onChange: (e) => setForm(Object.assign(Object.assign({}, form), { lowStockThreshold: e.target.value })), placeholder: "default 5", className: "num", style: Object.assign(Object.assign({}, inputStyle), { marginBottom: 10 }) }),
+                ]),
                 React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } },
                     React.createElement("div", { style: { flex: 1 } },
                         React.createElement("label", { style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 4, display: "block" } }, "Cost (\u20B9)"),
@@ -5479,7 +5488,7 @@ function ManageItems({ itemCatalog, onSave, onDelete, onBack }) {
                         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                             React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
                                 React.createElement("div", { style: { fontWeight: 600, fontSize: 13.5 } }, it.name),
-                                React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 7, background: (it.stock || 0) <= 0 ? "#FDE7EB" : (it.stock || 0) < (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold) ? "#FEF3DD" : "#E3FBF1", color: (it.stock || 0) <= 0 ? COLORS.rose : (it.stock || 0) < (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold) ? COLORS.amber : COLORS.emerald } },
+                                it.isService ? React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 7, background: "#F1ECFE", color: COLORS.violet } }, "\uD83D\uDCCB Service") : React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 7, background: (it.stock || 0) <= 0 ? "#FDE7EB" : (it.stock || 0) < (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold) ? "#FEF3DD" : "#E3FBF1", color: (it.stock || 0) <= 0 ? COLORS.rose : (it.stock || 0) < (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold) ? COLORS.amber : COLORS.emerald } },
                                     "Stock: ",
                                     fmt(it.stock || 0),
                                     " ",
