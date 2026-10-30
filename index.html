@@ -1055,7 +1055,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenRoutixJobs: () => setView("routixjobs"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), onOpenLowStock: () => setView("items"), itemCatalog: itemCatalog, staffNames: staffNames })) : view === "businessoverview" && canUse(perms, "business_overview", perms.designation === "Accountant") ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, isAdmin: perms.isAdmin, invoices: invoices, itemCatalog: itemCatalog, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" && canUse(perms, "ecom_orders", legacyOrdersAccess(perms, "Graspion")) ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: async (o) => {
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenRoutixJobs: () => setView("routixjobs"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), onOpenLowStock: () => setView("items"), itemCatalog: itemCatalog, staffNames: staffNames })) : view === "businessoverview" && canUse(perms, "business_overview", perms.designation === "Accountant") ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, isAdmin: perms.isAdmin, session: session, perms: perms, invoices: invoices, itemCatalog: itemCatalog, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" && canUse(perms, "ecom_orders", legacyOrdersAccess(perms, "Graspion")) ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: async (o) => {
     if (!String(o.id || "").startsWith("graspion_")) {
         setEditingInv({ docType: "sale", business: defaultInvoiceBusiness(perms), party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() });
         setView("create");
@@ -1356,8 +1356,6 @@ function buildDailyMessage(c) {
         add("remind", "Aapke " + c.myOverdueCount + " grahak ka bhugtan samay se baaki hai (" + R(c.myOverdueAmount) + "); kripya follow-up karein.");
     if (c.ticketsOverdue > 0)
         add("remind", c.ticketsOverdue + " service ticket ki nirdharit tithi nikal chuki hai.");
-    if (c.reportPending && c.hour >= 17)
-        add("remind", "Aaj ka report abhi submit nahi hua hai.");
     if (items.length === 0)
         add("praise", "Aaj ke liye koi pending kaam darj nahi hai. Aapko shubhkamnayein.");
     return { greeting: dailyGreetingWord(c.hour) + ", " + c.name + ".", items: items };
@@ -1517,6 +1515,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
         sub && React.createElement("div", { style: { fontSize: 10, color: COLORS.muted, marginTop: 2 } }, sub)));
     return (React.createElement("div", null,
         !perms.isAdmin && React.createElement(DailyMessageCard, { session: session, perms: perms, profile: profile, invoices: invoices, pendingEcomCount: pendingEcomCount, lowStockCount: lowStockCount }),
+        perms.isAdmin && React.createElement(PSAssistant, { key: "ps", session: session, perms: perms, profile: profile, itemCatalog: itemCatalog, mode: "compact", onOpenFull: onOpenBusinessOverview }),
         perms.isAdmin && React.createElement("div", { className: "card", style: { padding: 18, marginBottom: 16 } },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
                 React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 } }, hasFullView ? "Overview" : "My Overview"),
@@ -3229,7 +3228,439 @@ function AuditLog({ onBack }) {
                 ]),
             ])))));
 }
-function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalog, isAdmin, onBack }) {
+// ---- Saarthi: Admin's personal secretary (rule based, private, no AI cost) ----
+let psCache = null;
+const psYmd = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+function psWorkDays(fromStr, toStr) {
+    let n = 0;
+    const d = new Date(fromStr + "T00:00:00");
+    const end = new Date(toStr + "T00:00:00");
+    while (d <= end) {
+        if (d.getDay() !== 0)
+            n++;
+        d.setDate(d.getDate() + 1);
+    }
+    return n;
+}
+function buildPSBrief(r) {
+    const R = dailyMoney;
+    const now = r.now, today = psYmd(now);
+    const Y = now.getFullYear(), M = now.getMonth(), dom = now.getDate(), hour = now.getHours(), weekday = now.getDay();
+    const dim = new Date(Y, M + 1, 0).getDate();
+    const monthStart = psYmd(new Date(Y, M, 1));
+    const prevStart = psYmd(new Date(Y, M - 1, 1));
+    const prevDim = new Date(Y, M, 0).getDate();
+    const prevSame = psYmd(new Date(Y, M - 1, Math.min(dom, prevDim)));
+    const GI = "Grasp Infotech", BIZ = [GI, "Graspion", "Routix"];
+    const names = {};
+    (r.users || []).forEach((u) => { names[u.email] = u.full_name || u.email.split("@")[0]; });
+    const who = (e) => names[e] || (e ? String(e).split("@")[0] : "koi");
+    const listNames = (arr) => (arr.length <= 3 ? arr.join(", ") : arr.slice(0, 3).join(", ") + " aur " + (arr.length - 3) + " anya");
+    const staff = (r.users || []).filter((u) => !u.is_admin && u.is_active !== false);
+    const inv = r.invoices2m || [];
+    const dOf = (i) => String(i.date || "").slice(0, 10);
+    const bizOf = (i) => i.business || GI;
+    // ---- three businesses
+    const biz = {};
+    BIZ.forEach((b) => { biz[b] = { sales: 0, prev: 0, purchase: 0, collected: 0, over: 0, overN: 0 }; });
+    inv.forEach((i) => {
+        const b = bizOf(i);
+        if (!biz[b])
+            return;
+        const t = Number(i.total) || 0, d = dOf(i);
+        if (i.doc_type === "sale") {
+            if (d >= monthStart) {
+                biz[b].sales += t;
+                biz[b].collected += Number(i.paid_amount) || 0;
+            }
+            else if (d >= prevStart && d <= prevSame)
+                biz[b].prev += t;
+        }
+        else if (i.doc_type === "purchase" && d >= monthStart)
+            biz[b].purchase += t;
+    });
+    const partyOver = {};
+    let totalOver = 0, totalOverN = 0;
+    (r.overdueSales || []).forEach((i) => {
+        const bal = (Number(i.total) || 0) - (Number(i.paid_amount) || 0);
+        if (bal > 0.5 && i.due_date && String(i.due_date).slice(0, 10) < today) {
+            const b = bizOf(i);
+            if (biz[b]) {
+                biz[b].over += bal;
+                biz[b].overN++;
+            }
+            totalOver += bal;
+            totalOverN++;
+            const p = i.party || "Party";
+            partyOver[p] = (partyOver[p] || 0) + bal;
+        }
+    });
+    const topParty = Object.keys(partyOver).sort((a, b) => partyOver[b] - partyOver[a])[0];
+    const q7 = psYmd(new Date(now.getTime() - 7 * 86400000));
+    const quotes = inv.filter((i) => i.doc_type === "quotation" && !i.converted_to && dOf(i) <= q7);
+    const quotesAmt = quotes.reduce((s, i) => s + (Number(i.total) || 0), 0);
+    // ---- team
+    const attBy = {};
+    (r.attMonth || []).forEach((a) => { (attBy[a.staff_email] = attBy[a.staff_email] || []).push(a); });
+    const leaveToday = new Set((r.leavesToday || []).map((l) => l.staff_email));
+    const salesBy = {};
+    inv.forEach((i) => { if (i.doc_type === "sale" && dOf(i) >= monthStart)
+        salesBy[i.created_by] = (salesBy[i.created_by] || 0) + (Number(i.total) || 0); });
+    const leadsBy = {}, tickBy = {}, repBy = {};
+    (r.leadsOverdue || []).forEach((l) => { leadsBy[l.assigned_email] = (leadsBy[l.assigned_email] || 0) + 1; });
+    (r.tickets || []).forEach((t) => { tickBy[t.assigned_email] = (tickBy[t.assigned_email] || 0) + 1; });
+    (r.reports7 || []).forEach((x) => { (repBy[x.staff_email] = repBy[x.staff_email] || new Set()).add(String(x.date).slice(0, 10)); });
+    const lastDays = [];
+    for (let k = 1; lastDays.length < 5 && k < 10; k++) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - k);
+        if (d.getDay() !== 0)
+            lastDays.push(psYmd(d));
+    }
+    const yest = new Date(now);
+    yest.setDate(yest.getDate() - 1);
+    const wdY = dom > 1 ? psWorkDays(monthStart, psYmd(yest)) : 0;
+    const rows = staff.map((u) => {
+        const own = attBy[u.email] || [];
+        const prior = own.filter((a) => String(a.date).slice(0, 10) < today);
+        const target = (Number(u.target_amount) || 0) / 12;
+        const sales = salesBy[u.email] || 0;
+        const special = MANAGER_DESIGNATIONS.includes(u.designation) || u.designation === "Accountant";
+        const reps = repBy[u.email] || new Set();
+        return {
+            email: u.email, name: who(u.email), target, sales,
+            pct: target > 0 ? sales / target : null,
+            pace: target > 0 && dom >= 5 && !special ? sales / (target * (dom / dim)) : null,
+            present: prior.filter((a) => a.status !== "absent").length,
+            late: prior.filter((a) => a.status === "late").length,
+            absentMarked: prior.filter((a) => a.status === "absent").length,
+            repMissing: lastDays.filter((d) => !reps.has(d)).length,
+            leads: leadsBy[u.email] || 0, tickets: tickBy[u.email] || 0,
+            checkedToday: own.some((a) => String(a.date).slice(0, 10) === today),
+            onLeave: leaveToday.has(u.email),
+        };
+    });
+    const good = [], watch = [];
+    rows.forEach((s) => {
+        if (s.target > 0 && s.pace !== null && s.sales >= s.target)
+            good.push({ w: 3, t: s.name + ": is mahine ka target poora kiya (" + Math.round(s.pct * 100) + "%). Sarahna yogya." });
+        else if (s.pace !== null && s.pace >= 1 && s.sales > 0)
+            good.push({ w: 2, t: s.name + ": target ka " + Math.round(s.pct * 100) + "% poora ho chuka hai, samay ke anusar aage." });
+        else if (dom >= 6 && wdY >= 4 && s.present >= wdY && s.late === 0 && s.absentMarked === 0)
+            good.push({ w: 1, t: s.name + ": is mahine abhi tak koi late ya absent nahi, niyamit upasthiti." });
+        const issues = [];
+        if (s.pace !== null && s.pace < 0.7)
+            issues.push((s.pct > 0 ? "target ka sirf " + Math.round(s.pct * 100) + "% poora hua" : "is mahine abhi tak koi sale darj nahi") + " (is samay tak lagbhag " + Math.round((dom / dim) * 100) + "% apekshit)");
+        if (s.late >= 3)
+            issues.push("is mahine " + s.late + " baar late check-in");
+        if (s.absentMarked >= 2)
+            issues.push(s.absentMarked + " din absent darj");
+        if (s.leads >= 3)
+            issues.push(s.leads + " leads ka follow-up samay se baaki");
+        if (s.tickets >= 2)
+            issues.push(s.tickets + " service tickets ki tithi nikal chuki");
+        if (issues.length)
+            watch.push({ w: issues.length, t: s.name + ": " + issues.slice(0, 2).join("; ") + "." });
+    });
+    good.sort((a, b) => b.w - a.w);
+    watch.sort((a, b) => b.w - a.w);
+    const absentToday = hour >= 11 && weekday !== 0 ? rows.filter((s) => !s.checkedToday && !s.onLeave).map((s) => s.name) : [];
+    const leaves = (r.leavesPending || []).map((l) => ({ name: who(l.staff_email), waited: Math.max(0, Math.floor((now - new Date(l.created_at)) / 86400000)) }));
+    // ---- things that look unusual
+    const odd = [];
+    const del = {};
+    (r.audit7 || []).forEach((a) => { if (/delet/i.test(a.action || ""))
+        del[a.actor_email] = (del[a.actor_email] || 0) + 1; });
+    Object.keys(del).forEach((e) => odd.push(who(e) + " ne pichhle 7 din me " + del[e] + " entry delete ki hai. Kya ye aapki jaankari me hai?"));
+    const back = {};
+    inv.forEach((i) => {
+        if (i.doc_type === "sale" && i.created_at) {
+            const gap = (new Date(i.created_at) - new Date(dOf(i) + "T00:00:00")) / 86400000;
+            if (gap > 7)
+                back[i.created_by] = (back[i.created_by] || 0) + 1;
+        }
+    });
+    Object.keys(back).forEach((e) => odd.push(who(e) + " ki " + back[e] + " sale invoice apni tithi se 7 din se zyada baad darj hui hai (pichhle 2 mahine). Kripya dekh lein."));
+    const seen = {};
+    let dup = 0;
+    const dupNos = [];
+    inv.forEach((i) => {
+        if (i.doc_type === "sale") {
+            const k = (i.party || "") + "|" + (Number(i.total) || 0) + "|" + dOf(i);
+            if (seen[k]) {
+                dup++;
+                if (dupNos.length < 2)
+                    dupNos.push(i.invoice_no);
+            }
+            else
+                seen[k] = 1;
+        }
+    });
+    if (dup > 0)
+        odd.push(dup + " sale invoice me same party, same raqam aur same din ki entry mili (jaise " + dupNos.join(", ") + "). Duplicate ho sakti hai.");
+    const ex = r.expensesFY || [];
+    const exOf = (e) => String(e.date).slice(0, 10);
+    const catAll = {}, catM = {}, catP = {};
+    ex.forEach((e) => {
+        const c = e.category || "Other", a = Number(e.amount) || 0;
+        (catAll[c] = catAll[c] || []).push(a);
+        if (exOf(e) >= monthStart)
+            catM[c] = (catM[c] || 0) + a;
+        else if (exOf(e) >= prevStart)
+            catP[c] = (catP[c] || 0) + a;
+    });
+    ex.forEach((e) => {
+        const c = e.category || "Other", a = Number(e.amount) || 0, arr = catAll[c];
+        if (exOf(e) >= monthStart && arr.length >= 5 && a >= 5000) {
+            const avg = (arr.reduce((s, x) => s + x, 0) - a) / (arr.length - 1);
+            if (a > avg * 3)
+                odd.push(who(e.created_by) + " ne " + c + " me " + R(a) + " ka kharch darj kiya, jabki is category ka aam kharch lagbhag " + R(avg) + " hai.");
+        }
+    });
+    Object.keys(catM).forEach((c) => {
+        if ((catP[c] || 0) > 0 && catM[c] > catP[c] * 1.5 && catM[c] - catP[c] >= 5000)
+            odd.push(c + " ka kharch pichhle mahine se " + (catM[c] / catP[c] >= 3 ? Math.round(catM[c] / catP[c]) + " guna" : Math.round((catM[c] / catP[c] - 1) * 100) + "% zyada") + " hai (" + R(catM[c]) + " bnam " + R(catP[c]) + ").");
+    });
+    (r.budgets || []).forEach((b) => {
+        const bud = Number(b.budget_amount) || 0;
+        if (b.category !== "Sales Target" && bud > 0) {
+            const act = ex.filter((e) => (e.category || "Other") === b.category).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+            if (act > bud)
+                odd.push(b.category + " ka kharch is saal ke budget se zyada ho gaya hai (" + R(act) + " / " + R(bud) + ").");
+        }
+    });
+    // ---- overall verdict
+    const totSales = BIZ.reduce((s, b) => s + biz[b].sales, 0);
+    const totPrev = BIZ.reduce((s, b) => s + biz[b].prev, 0);
+    const change = totPrev > 0 ? totSales / totPrev - 1 : null;
+    const overRatio = totSales > 0 ? totalOver / totSales : totalOver > 0 ? 1 : 0;
+    let label = "Santoshjanak", tone = "good";
+    if ((change !== null && change < -0.2) || overRatio > 0.6 || odd.length >= 3) {
+        label = "Dhyan dene yogya";
+        tone = "warn";
+    }
+    else if ((change !== null && change < 0) || overRatio > 0.3 || watch.length >= 2 || odd.length > 0) {
+        label = "Mishrit";
+        tone = "mid";
+    }
+    const verdict = { label, tone, text: "Is mahine ab tak teeno business milakar sale " + R(totSales) + (change !== null ? " rahi, jo pichhle mahine ki isi avadhi se " + (change >= 0 ? Math.round(change * 100) + "% zyada" : Math.round(-change * 100) + "% kam") + " hai" : " rahi") + ". Overdue vasooli " + R(totalOver) + "." };
+    // ---- priorities
+    const pr = [];
+    const addP = (score, text) => pr.push({ s: score, t: text });
+    if (dom >= 25 && !r.payrollProcessed)
+        addP(80, "Is mahine ka payroll abhi process nahi hua hai; kripya Payroll tayyar karein.");
+    else if (dom >= 28 && r.payrollUnpaid > 0)
+        addP(60, r.payrollUnpaid + " staff ka payroll process ho chuka hai par bhugtan darj nahi hua.");
+    if (odd.length > 0)
+        addP(75, odd.length + " baatein jaanch ke liye mili hain, kripya neeche \"Jo dhyan maange\" dekhein.");
+    if (totalOver > 0)
+        addP(70 + Math.min(25, totalOver / 10000), "Overdue vasooli " + R(totalOver) + " (" + totalOverN + " invoice). " + topParty + " (" + R(partyOver[topParty]) + ") se shuruaat karein.");
+    if (absentToday.length > 0)
+        addP(65, "Aaj " + absentToday.length + " staff ki check-in darj nahi hui: " + listNames(absentToday) + ". Leave par na hon to sampark karein.");
+    if (leaves.length > 0)
+        addP(50 + Math.min(15, Math.max(...leaves.map((l) => l.waited)) * 3), leaves.length + " leave request aapki swikriti ke liye pending hai (" + listNames(leaves.map((l) => l.name)) + ").");
+    const invPending = (r.ecomPending || 0) + (r.routixPending || 0);
+    if (invPending > 0)
+        addP(55 + Math.min(20, invPending * 3), invPending + " Graspion/Routix entry ki invoice banana baaki hai.");
+    if (quotes.length > 0)
+        addP(50, quotes.length + " quotation 7 din se zyada se pending hai (" + R(quotesAmt) + "); top 3 par aaj hi follow-up karein.");
+    if ((r.tickets || []).length > 0)
+        addP(52, (r.tickets || []).length + " service ticket ki tithi nikal chuki hai.");
+    if ((r.lowStock || []).length > 0)
+        addP(45, (r.lowStock || []).length + " item ka stock kam hai (" + listNames(r.lowStock) + ").");
+    if (r.bankPending > 0)
+        addP(40, r.bankPending + " bank entry reconcile hona baaki hai.");
+    if ((dom >= 7 && dom <= 11) || (dom >= 16 && dom <= 20))
+        addP(58, dom <= 11 ? "Agar aap mahine-wise GST file karte hain to GSTR-1 ki antim tithi 11 tarikh hoti hai; apne CA se tithi confirm kar lein." : "Agar aap mahine-wise GST file karte hain to GSTR-3B ki antim tithi 20 tarikh hoti hai; apne CA se tithi confirm kar lein.");
+    if (dom <= 5)
+        addP(54, "Pichhle mahine ka Sales/Purchase register CA ko bhejne ka samay hai (Settings me CA Export).");
+    if (dom >= dim - 2)
+        addP(62, "Mahine ke antim din hain: vasooli, payroll ki tayyari aur target ka review kar lein.");
+    pr.sort((a, b) => b.s - a.s);
+    const priorities = pr.map((x) => x.t);
+    if (priorities.length === 0)
+        priorities.push("Aaj koi vishesh pending kaam nahi hai.");
+    // ---- business rows
+    const bizRows = BIZ.map((b) => {
+        const x = biz[b];
+        let trend = "";
+        if (x.prev > 0) {
+            const c = x.sales / x.prev - 1;
+            trend = " (pichhle mahine ki isi avadhi se " + (c >= 0 ? Math.round(c * 100) + "% zyada" : Math.round(-c * 100) + "% kam") + ")";
+        }
+        const l2 = [x.sales > 0 ? Math.round((x.collected / x.sales) * 100) + "% vasooli" : "", x.over > 0 ? "overdue " + R(x.over) : ""].filter(Boolean).join(" \u00B7 ");
+        let ops = "";
+        if (b === "Graspion" && r.summary && r.summary.graspion)
+            ops = "Orders is mahine " + r.summary.graspion.orders_this_month + ", kul delivered " + r.summary.graspion.orders_delivered + ", active vendors " + r.summary.graspion.active_vendors + ", invoice baaki " + (r.ecomPending || 0);
+        if (b === "Routix" && r.summary && r.summary.routix)
+            ops = "Jobs is mahine " + r.summary.routix.jobs_this_month + ", active riders " + r.summary.routix.active_riders + ", invoice baaki " + (r.routixPending || 0);
+        if (b === GI)
+            ops = "7 din se purani pending quotation: " + quotes.length;
+        return { name: b, l1: "Is mahine sale " + R(x.sales) + trend, l2, ops };
+    });
+    // ---- improvement ideas
+    const ideas = [];
+    if (totalOver > 0 && topParty)
+        ideas.push("Vasooli: " + totalOverN + " invoice overdue hain (" + R(totalOver) + "). Sabse bada baaki " + topParty + " ka " + R(partyOver[topParty]) + " hai; aaj hi call ya WhatsApp reminder bhejein aur payment QR saath rakhein.");
+    BIZ.forEach((b) => {
+        const x = biz[b];
+        if (dom >= 7 && x.prev >= 5000 && x.sales < x.prev * 0.8)
+            ideas.push(b + " ki sale pichhle mahine ki isi avadhi se " + Math.round((1 - x.sales / x.prev) * 100) + "% kam hai. Pending leads aur quotations par follow-up badhayein aur dekhein ki kaunsa grahak ya vendor is baar nahi aaya.");
+    });
+    if (quotes.length >= 3)
+        ideas.push(quotes.length + " quotation (" + R(quotesAmt) + ") 7 din se zyada se bina nateeje ke pade hain. Inme se sabse badi 3 par aaj hi baat karna sabse tez sale la sakta hai.");
+    const byParty = {};
+    inv.forEach((i) => { if (i.doc_type === "sale" && dOf(i) >= monthStart) {
+        const p = i.party || "Party";
+        byParty[p] = (byParty[p] || 0) + (Number(i.total) || 0);
+    } });
+    const tp = Object.keys(byParty).sort((a, b) => byParty[b] - byParty[a])[0];
+    if (tp && totSales > 0 && byParty[tp] / totSales > 0.4 && Object.keys(byParty).length >= 3)
+        ideas.push("Is mahine ki " + Math.round((byParty[tp] / totSales) * 100) + "% sale ek hi party (" + tp + ") se hai. Ek grahak par itni nirbharta jokhim hai; naye grahak jodne par dhyan dein.");
+    if (r.summary && r.summary.graspion && r.summary.graspion.active_vendors < 5)
+        ideas.push("Graspion me abhi sirf " + r.summary.graspion.active_vendors + " active vendor hain. Har naya vendor commission ka naya zariya hai, isliye vendor jodne par dhyan dena sabse seedha vikas hai.");
+    if (r.summary && r.summary.routix && r.summary.routix.active_riders > 0) {
+        const per = r.summary.routix.jobs_this_month / r.summary.routix.active_riders;
+        if (per > 30)
+            ideas.push("Routix me ek rider par is mahine lagbhag " + Math.round(per) + " job aa rahe hain; delivery me deri se bachne ke liye rider badhane par vichar karein.");
+        else if (dom >= 10 && per < 3)
+            ideas.push("Routix me riders ke mukable jobs kam hain (ek rider par lagbhag " + Math.round(per) + "). Graspion aur dukanon se booking badhane par kaam karein.");
+    }
+    const noTarget = staff.filter((u) => !(Number(u.target_amount) > 0) && !MANAGER_DESIGNATIONS.includes(u.designation) && u.designation !== "Accountant");
+    if (noTarget.length > 0)
+        ideas.push(noTarget.length + " staff ka target set nahi hai (" + listNames(noTarget.map((u) => who(u.email))) + "); target tay karne se unka performance naapna aur sahi salah dena aasan hoga.");
+    if (biz[GI].purchase > biz[GI].sales && biz[GI].purchase > 0)
+        ideas.push("Grasp Infotech me is mahine kharid (" + R(biz[GI].purchase) + ") bikri (" + R(biz[GI].sales) + ") se zyada hai; stock aur kharid ki yojana ek baar dekh lein.");
+    // ---- time management
+    const time = [];
+    time.push(hour < 12 ? "Din ka pehla ghanta: upar ke pramukh kaam tay kar lein aur baaki kaam team ko saunp dein." : hour < 17 ? "Dopahar me ek ghanta vasooli aur leads ke follow-up ke liye surakshit rakhein." : "Din ke ant me aaj ka review dekhein aur kal ke 3 sabse zaroori kaam abhi tay kar lein.");
+    if (weekday === 5)
+        time.push("Aaj hafte ka antim karya-diwas hai: hafte ke target aur vasooli ka review kar lein.");
+    if (dom >= dim - 2)
+        time.push("Mahina khatam hone wala hai: targets, vasooli aur payroll ki tayyari ko aaj-kal me nipta lein.");
+    return {
+        greeting: dailyGreetingWord(hour) + ", " + r.name + ".",
+        dateLine: ["Ravivaar", "Somvaar", "Mangalvaar", "Budhvaar", "Guruvaar", "Shukravaar", "Shanivaar"][weekday] + ", " + now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+        verdict, priorities, bizRows,
+        good: good.map((x) => x.t).slice(0, 5), watch: watch.map((x) => x.t).slice(0, 6),
+        odd: odd.slice(0, 6), ideas: ideas.slice(0, 4), time,
+    };
+}
+function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull }) {
+    const [brief, setBrief] = useState(psCache && Date.now() - psCache.at < 300000 ? psCache.brief : null);
+    const [open, setOpen] = useState({ team: true, odd: true, ideas: false, time: false });
+    useEffect(() => {
+        if (brief)
+            return;
+        let alive = true;
+        (async () => {
+            const now = new Date();
+            const today = psYmd(now);
+            const monthStart = today.slice(0, 8) + "01";
+            const prevStart = psYmd(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+            const fyStart = (now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1) + "-04-01";
+            const d9 = psYmd(new Date(now.getTime() - 9 * 86400000));
+            const auditFrom = new Date(now.getTime() - 7 * 86400000).toISOString();
+            const E = { data: [], count: 0 };
+            const safe = async (p, fb) => { try { const x = await p; return x && x.error ? (fb === undefined ? E : fb) : x; } catch (e) { return fb === undefined ? E : fb; } };
+            const base = "https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/";
+            const [usersR, invR, overR, attR, lpR, ltR, leadR, repR, tickR, exR, bgR, bankR, auditR, ecomR, payR, sumR, rxJ, rxI] = await Promise.all([
+                safe(sb.from("grasp_users").select("email,full_name,business,target_amount,designation,is_admin,is_active")),
+                safe(sb.from("grasp_invoices").select("id,invoice_no,doc_type,date,created_at,created_by,party,total,paid_amount,due_date,business,converted_to").gte("date", prevStart)),
+                safe(sb.from("grasp_invoices").select("id,doc_type,party,total,paid_amount,due_date,business").eq("doc_type", "sale").lt("due_date", today)),
+                safe(sb.from("grasp_attendance").select("staff_email,date,status").gte("date", monthStart)),
+                safe(sb.from("grasp_leave_requests").select("staff_email,days,created_at").eq("status", "pending")),
+                safe(sb.from("grasp_leave_requests").select("staff_email").eq("status", "approved").lte("from_date", today).gte("to_date", today)),
+                safe(sb.from("grasp_leads").select("assigned_email").lte("next_followup_date", today).not("status", "in", "(won,lost)")),
+                safe(sb.from("grasp_daily_reports").select("staff_email,date").gte("date", d9)),
+                safe(sb.from("grasp_service_tickets").select("assigned_email").not("status", "in", "(resolved,closed,cancelled)").lt("scheduled_date", today)),
+                safe(sb.from("grasp_expenses").select("category,amount,date,created_by").gte("date", fyStart)),
+                safe(sb.from("grasp_fy_budget").select("category,budget_amount").eq("fy", currentFY())),
+                safe(sb.from("grasp_bank_statement").select("id", { count: "exact", head: true }).eq("reconciled", false)),
+                safe(sb.from("grasp_audit_log").select("actor_email,action,entity_type").gte("created_at", auditFrom).limit(500)),
+                safe(sb.from("grasp_ecom_orders").select("id", { count: "exact", head: true }).ilike("status", "delivered").is("invoiced_at", null)),
+                safe(sb.from("grasp_payroll").select("paid").eq("month_key", today.slice(0, 7))),
+                safe(fetch(base + "business-summary").then((x) => x.json()), null),
+                safe(fetch(base + "list-routix-jobs").then((x) => x.json()), null),
+                safe(sb.from("grasp_routix_invoiced").select("routix_job_id")),
+            ]);
+            const done = new Set((rxI.data || []).map((x) => x.routix_job_id));
+            const routixPending = ((rxJ && rxJ.jobs) || []).filter((j) => !done.has(j.id)).length;
+            const rawName = perms.fullName || session.user.email.split("@")[0];
+            const raw = {
+                now, name: rawName.charAt(0).toUpperCase() + rawName.slice(1),
+                users: usersR.data || [], invoices2m: invR.data || [], overdueSales: overR.data || [],
+                attMonth: attR.data || [], leavesPending: lpR.data || [], leavesToday: ltR.data || [],
+                leadsOverdue: leadR.data || [], reports7: repR.data || [], tickets: tickR.data || [],
+                expensesFY: exR.data || [], budgets: bgR.data || [], bankPending: bankR.count || 0,
+                audit7: auditR.data || [], ecomPending: ecomR.count || 0, routixPending,
+                payrollProcessed: (payR.data || []).length > 0, payrollUnpaid: (payR.data || []).filter((x) => !x.paid).length,
+                summary: sumR && sumR.graspion ? sumR : null,
+                lowStock: (itemCatalog || []).filter((it) => !it.isService && (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold)).map((it) => it.name),
+            };
+            const b = buildPSBrief(raw);
+            psCache = { at: Date.now(), brief: b };
+            if (alive)
+                setBrief(b);
+        })();
+        return () => { alive = false; };
+    }, []);
+    const compact = mode === "compact";
+    const box = (children) => React.createElement("div", { className: "card", style: { padding: "14px 16px", marginBottom: 16, borderLeft: "4px solid #8B7FD6" } }, children);
+    if (!brief)
+        return box([
+            React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 14.5, fontFamily: "'Sora', sans-serif" } }, "Saarthi \u2014 aapka PS"),
+            React.createElement("div", { key: "l", style: { fontSize: 12, color: COLORS.muted, marginTop: 4 } }, "Teeno business ka data dekha ja raha hai\u2026"),
+        ]);
+    const tone = { good: [COLORS.emerald, "#E3FBF1"], mid: ["#B4530E", "#FEF3DD"], warn: [COLORS.rose, "#FDE7EB"] }[brief.verdict.tone];
+    const bullet = (color, text, k) => React.createElement("div", { key: k, style: { display: "flex", gap: 8, fontSize: 12.5, lineHeight: 1.55, marginBottom: 5, color: "#1E1B3A" } }, [
+        React.createElement("span", { key: "d", style: { width: 6, height: 6, borderRadius: 3, background: color, marginTop: 7, flexShrink: 0 } }),
+        React.createElement("span", { key: "t" }, text),
+    ]);
+    const label = (text, k) => React.createElement("div", { key: k, style: { fontSize: 10.5, fontWeight: 800, color: COLORS.violet, textTransform: "uppercase", letterSpacing: 0.4, margin: "10px 0 5px" } }, text);
+    const section = (key, title, body) => React.createElement("div", { key: "s_" + key }, [
+        React.createElement("button", { key: "b", onClick: () => setOpen(Object.assign(Object.assign({}, open), { [key]: !open[key] })), style: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", background: "none", border: "none", borderTop: "1px solid " + COLORS.border, fontWeight: 800, fontSize: 12.5, color: "#1E1B3A" } }, [React.createElement("span", { key: "t" }, title), React.createElement("span", { key: "p", style: { color: COLORS.muted } }, open[key] ? "\u2212" : "+")]),
+        open[key] && React.createElement("div", { key: "c", style: { paddingBottom: 6 } }, body),
+    ]);
+    const head = [
+        React.createElement("div", { key: "h", style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 6 } }, [
+            React.createElement("div", { key: "n", style: { fontWeight: 800, fontSize: 14.5, fontFamily: "'Sora', sans-serif" } }, "Saarthi \u2014 aapka PS"),
+            React.createElement("span", { key: "v", style: { fontSize: 10.5, fontWeight: 800, color: tone[0], background: tone[1], borderRadius: 8, padding: "3px 9px", whiteSpace: "nowrap" } }, brief.verdict.label),
+        ]),
+        React.createElement("div", { key: "g", style: { fontWeight: 700, fontSize: 13.5 } }, brief.greeting),
+        React.createElement("div", { key: "d", style: { fontSize: 11, color: COLORS.muted, marginBottom: 6 } }, brief.dateLine),
+        React.createElement("div", { key: "vt", style: { fontSize: 12.5, lineHeight: 1.55, color: "#1E1B3A" } }, brief.verdict.text),
+        label("Aaj ke pramukh kaam", "lp"),
+        ...brief.priorities.slice(0, compact ? 3 : 6).map((t, i) => React.createElement("div", { key: "p" + i, style: { display: "flex", gap: 8, fontSize: 12.5, lineHeight: 1.55, marginBottom: 5, color: "#1E1B3A" } }, [
+            React.createElement("span", { key: "n", style: { fontWeight: 800, color: COLORS.violet, minWidth: 14 } }, (i + 1) + "."),
+            React.createElement("span", { key: "t" }, t),
+        ])),
+    ];
+    if (compact)
+        return box([...head, onOpenFull && React.createElement("button", { key: "more", onClick: onOpenFull, style: { width: "100%", marginTop: 8, padding: "9px", borderRadius: 9, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 12 } }, "Poori report dekhein (teeno business, team, sujhav)")]);
+    return box([
+        ...head,
+        label("Teeno business ek nazar me", "lb"),
+        ...brief.bizRows.map((b) => React.createElement("div", { key: "b_" + b.name, style: { background: "#F5F2FE", borderRadius: 10, padding: "9px 11px", marginBottom: 7 } }, [
+            React.createElement("div", { key: "n", style: { fontWeight: 800, fontSize: 12.5, marginBottom: 2 } }, b.name),
+            React.createElement("div", { key: "1", style: { fontSize: 12, lineHeight: 1.5 } }, b.l1),
+            b.l2 && React.createElement("div", { key: "2", style: { fontSize: 11.5, color: COLORS.muted } }, b.l2),
+            b.ops && React.createElement("div", { key: "3", style: { fontSize: 11.5, color: COLORS.muted } }, b.ops),
+        ])),
+        section("team", "Team ki samiksha", [
+            brief.good.length > 0 && label("Achha kaam", "lg"),
+            ...brief.good.map((t, i) => bullet(COLORS.emerald, t, "g" + i)),
+            brief.watch.length > 0 && label("Dhyan dene yogya", "lw"),
+            ...brief.watch.map((t, i) => bullet("#D97706", t, "w" + i)),
+            brief.good.length === 0 && brief.watch.length === 0 && bullet(COLORS.muted, "Abhi koi vishesh baat nahi; mahine me kuchh din hone par adhik spasht tasveer milegi.", "none"),
+        ]),
+        section("odd", "Jo dhyan maange (jaanch yogya)", brief.odd.length > 0 ? [...brief.odd.map((t, i) => bullet(COLORS.rose, t, "o" + i)), React.createElement("div", { key: "n", style: { fontSize: 10.5, color: COLORS.muted, marginTop: 4 } }, "Ye sirf sanket hain, zaroori nahi ki kuchh galat ho. Nishkarsh se pehle sambandhit vyakti se baat kar lein.")] : [bullet(COLORS.emerald, "Koi asaamanya gatividhi nahi mili.", "ok")]),
+        section("ideas", "Sujhav (sudhaar ke vichar)", brief.ideas.length > 0 ? brief.ideas.map((t, i) => bullet(COLORS.indigo, t, "i" + i)) : [bullet(COLORS.emerald, "Abhi koi vishesh sujhav nahi; sab kuchh niyantran me dikhta hai.", "ok")]),
+        section("time", "Samay prabandhan", brief.time.map((t, i) => bullet(COLORS.indigo, t, "t" + i))),
+        React.createElement("div", { key: "foot", style: { fontSize: 10, color: COLORS.muted, marginTop: 8, lineHeight: 1.5 } }, "Ye suchna ERP ke data par adharit hai. Attendance staff ke check-in par nirbhar karti hai."),
+    ]);
+}
+function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalog, isAdmin, session, perms, onBack }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState("");
@@ -3409,7 +3840,7 @@ function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalo
                 pendingEcomCount > 0 && React.createElement("div", { key: "e", style: { fontSize: 12, color: "#7A5A00" } }, pendingEcomCount + " Graspion order" + (pendingEcomCount > 1 ? "s" : "") + " delivered hai, invoice nahi bani \u2014 \"E-commerce Orders\" mein jaake banaiye"),
                 pendingRoutixCount > 0 && React.createElement("div", { key: "r", style: { fontSize: 12, color: "#7A5A00", marginTop: 2 } }, pendingRoutixCount + " Routix job" + (pendingRoutixCount > 1 ? "s" : "") + " delivered hai, invoice nahi bani \u2014 \"Routix Jobs\" mein jaake banaiye"),
             ]),
-            (goodPoints.length > 0 || attentionPoints.length > 0) && React.createElement("div", { key: "daycheck", className: "card", style: { padding: 14, marginBottom: 14 } }, [
+            isAdmin ? React.createElement(PSAssistant, { key: "ps", session: session, perms: perms, profile: profile, itemCatalog: itemCatalog, mode: "full" }) : (goodPoints.length > 0 || attentionPoints.length > 0) && React.createElement("div", { key: "daycheck", className: "card", style: { padding: 14, marginBottom: 14 } }, [
                 React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 13.5, marginBottom: 10, fontFamily: "'Sora', sans-serif" } }, "\uD83D\uDCCB Aaj Ka Business Check"),
                 goodPoints.length > 0 && React.createElement("div", { key: "good", style: { marginBottom: attentionPoints.length > 0 ? 10 : 0 } }, [
                     React.createElement("div", { key: "h", style: { fontSize: 10.5, fontWeight: 800, color: COLORS.emerald, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.3 } }, "\u2705 Achha Hua"),
