@@ -1277,6 +1277,192 @@ function DailyGoalWidget({ session, perms, invoices }) {
                 fmt(monthRemaining),
                 " aur chahiye is mahine ke target ke liye"))));
 }
+// ---- Daily personalised message (rule based, no AI, no cost) ----
+const dailyMoney = (n) => "\u20B9" + Math.round(Number(n) || 0).toLocaleString("en-IN");
+function dailyGreetingWord(hour) {
+    return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+function buildDailyMessage(c) {
+    const items = [];
+    const add = (kind, text) => items.push({ kind, text });
+    const R = dailyMoney;
+    const daysLeft = Math.max(1, c.daysInMonth - c.dayOfMonth + 1);
+    const expected = c.dayOfMonth / c.daysInMonth;
+    const names = (arr) => (arr.length <= 3 ? arr.join(", ") : arr.slice(0, 3).join(", ") + " aur " + (arr.length - 3) + " anya");
+    if (c.role === "staff") {
+        if (c.myMonthlyTarget > 0) {
+            const t = c.myMonthlyTarget, sales = c.mySales || 0, pct = Math.round((sales / t) * 100);
+            if (sales >= t) {
+                add("praise", "Aapne is mahine ka target (" + R(t) + ") poora kar liya hai. Is uplabdhi ke liye hardik badhai.");
+            }
+            else {
+                const perDay = (t - sales) / daysLeft;
+                if (sales / t >= expected * 0.9) {
+                    add("praise", "Is mahine ka target " + R(t) + " hai aur ab tak " + R(sales) + " (" + pct + "%) poora ho chuka hai. Aap sahi disha me hain. Shesh " + daysLeft + " din me lagbhag " + R(perDay) + " prati din ki sale se target poora ho jayega.");
+                }
+                else {
+                    add("advice", "Is mahine ka target " + R(t) + " hai; ab tak " + R(sales) + " (" + pct + "%) poora hua hai, jo samay ke anusar thoda peeche hai. Shesh " + daysLeft + " din me lagbhag " + R(perDay) + " prati din ki sale ka lakshya rakhne se target tak pahuncha ja sakta hai. Leads ka niyamit follow-up isme sahayak hoga.");
+                }
+            }
+        }
+        else if (c.mySales > 0) {
+            add("info", "Is mahine ab tak aapki sale " + R(c.mySales) + " rahi hai.");
+        }
+    }
+    if (c.role === "manager" && c.team) {
+        const tm = c.team;
+        if (tm.size === 0) {
+            add("info", "Aapki team me abhi koi sadasya darj nahi hai.");
+        }
+        else {
+            if (tm.monthTarget > 0) {
+                const pct = Math.round((tm.monthSales / tm.monthTarget) * 100);
+                const done = tm.monthSales >= tm.monthTarget;
+                const onTrack = tm.monthSales / tm.monthTarget >= expected * 0.9;
+                add(done || onTrack ? "praise" : "advice", "Aapki team ka is mahine ka lakshya " + R(tm.monthTarget) + " hai; ab tak " + R(tm.monthSales) + " (" + pct + "%) poora hua hai. " + (done ? "Team ne lakshya poora kar liya hai." : onTrack ? "Team sahi gati se aage badh rahi hai." : "Team samay ke anusar peeche hai."));
+            }
+            else if (tm.monthSales > 0) {
+                add("info", "Aapki team ki is mahine ki sale ab tak " + R(tm.monthSales) + " hai.");
+            }
+            if (tm.behind.length > 0)
+                add("advice", "Lakshya ke mukable in sadasyon ko aapke margdarshan ki zaroorat ho sakti hai: " + names(tm.behind) + ".");
+            if (tm.absent.length > 0 && c.lateForCheckin)
+                add("remind", "Aaj " + tm.absent.length + " sadasya ki attendance darj nahi hui hai: " + names(tm.absent) + ".");
+            if (tm.pendingLeaves > 0)
+                add("remind", tm.pendingLeaves + " leave request aapki swikriti ke liye pending hai.");
+        }
+        if (c.ecomPending > 0)
+            add("info", c.ecomPending + " Graspion order deliver ho chuke hain; unki invoice Accountant dwara banai jayegi.");
+        if (c.lowStock > 0)
+            add("remind", c.lowStock + " item ka stock kam hai; kripya restock ki yojana banayein.");
+    }
+    if (c.role === "accountant" && c.accountant) {
+        const a = c.accountant;
+        if (a.invoicePending > 0)
+            add("remind", a.invoicePending + " Graspion/Routix entry ki invoice banana baaki hai.");
+        if (a.overdueCount > 0)
+            add("remind", a.overdueCount + " invoice ka bhugtan samay se baaki hai (" + R(a.overdueAmount) + ").");
+        if (a.payrollPending)
+            add("remind", "Is mahine ka payroll abhi process nahi hua hai.");
+        if (a.bankPending > 0)
+            add("remind", a.bankPending + " bank entry reconcile hona baaki hai.");
+    }
+    // personal reminders (everyone)
+    if (c.checkedIn === false && c.lateForCheckin)
+        add("remind", "Aaj ki attendance (Check-in) abhi darj nahi hui hai.");
+    if (c.leadsDue > 0)
+        add("remind", c.leadsDue + " lead ka follow-up aaj ya pehle se baaki hai.");
+    if (c.myOverdueCount > 0)
+        add("remind", "Aapke " + c.myOverdueCount + " grahak ka bhugtan samay se baaki hai (" + R(c.myOverdueAmount) + "); kripya follow-up karein.");
+    if (c.ticketsOverdue > 0)
+        add("remind", c.ticketsOverdue + " service ticket ki nirdharit tithi nikal chuki hai.");
+    if (c.reportPending && c.hour >= 17)
+        add("remind", "Aaj ka report abhi submit nahi hua hai.");
+    if (items.length === 0)
+        add("praise", "Aaj ke liye koi pending kaam darj nahi hai. Aapko shubhkamnayein.");
+    return { greeting: dailyGreetingWord(c.hour) + ", " + c.name + ".", items: items };
+}
+function DailyMessageCard({ session, perms, profile, invoices, pendingEcomCount, lowStockCount }) {
+    const [msg, setMsg] = useState(null);
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            const me = session.user.email;
+            const today = todayISO();
+            const now = new Date();
+            const monthStart = today.slice(0, 8) + "01";
+            const rawName = perms.fullName || me.split("@")[0];
+            const c = { name: rawName.charAt(0).toUpperCase() + rawName.slice(1), hour: now.getHours(), dayOfMonth: now.getDate(), daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() };
+            const parts = String(profile.officeStartTime || "09:30").split(":").map(Number);
+            c.lateForCheckin = now.getHours() * 60 + now.getMinutes() >= (parts[0] || 9) * 60 + (parts[1] || 0) + 15;
+            const isMgr = MANAGER_DESIGNATIONS.includes(perms.designation);
+            const isAcc = perms.designation === "Accountant";
+            c.role = isAcc ? "accountant" : isMgr ? "manager" : "staff";
+            const safe = async (p, fallback) => { try { return await p; } catch (e) { return fallback; } };
+            const sales = (invoices || []).filter((i) => i.docType === "sale");
+            const mine = sales.filter((i) => i.createdBy === me);
+            c.mySales = mine.filter((i) => (i.date || "").slice(0, 10) >= monthStart).reduce((s, i) => s + (Number(i.total) || 0), 0);
+            c.myMonthlyTarget = (Number(perms.targetAmount) || 0) / 12;
+            const today0 = new Date();
+            today0.setHours(0, 0, 0, 0);
+            const overdue = (list) => list.filter((i) => i.dueDate && (Number(i.total) || 0) - (Number(i.paidAmount) || 0) > 0.5 && new Date(i.dueDate) < today0);
+            const balance = (list) => list.reduce((s, i) => s + ((Number(i.total) || 0) - (Number(i.paidAmount) || 0)), 0);
+            const myOver = overdue(mine);
+            c.myOverdueCount = myOver.length;
+            c.myOverdueAmount = balance(myOver);
+            const wantTickets = c.role === "staff" && canUse(perms, "service_tickets", true);
+            const [attR, repR, leadR, tickR] = await Promise.all([
+                safe(sb.from("grasp_attendance").select("id").eq("staff_email", me).eq("date", today).maybeSingle(), { error: true }),
+                safe(sb.from("grasp_daily_reports").select("id").eq("staff_email", me).eq("date", today).maybeSingle(), { error: true }),
+                safe(sb.from("grasp_leads").select("id").eq("assigned_email", me).lte("next_followup_date", today).not("status", "in", "(won,lost)"), { error: true }),
+                wantTickets ? safe(sb.from("grasp_service_tickets").select("id").not("status", "in", "(resolved,closed,cancelled)").lt("scheduled_date", today), { error: true }) : Promise.resolve({ data: [] }),
+            ]);
+            c.checkedIn = attR.error ? null : !!attR.data;
+            c.reportPending = repR.error ? false : !repR.data;
+            c.leadsDue = leadR.error ? 0 : (leadR.data || []).length;
+            c.ticketsOverdue = tickR.error ? 0 : (tickR.data || []).length;
+            if (isMgr) {
+                const scope = bizScopeFor(perms);
+                const [uR, aR, lvR, plR] = await Promise.all([
+                    safe(sb.from("grasp_users").select("email,full_name,business,target_amount,designation,is_admin,is_active"), { data: [] }),
+                    safe(sb.from("grasp_attendance").select("staff_email").eq("date", today), { data: [] }),
+                    safe(sb.from("grasp_leave_requests").select("staff_email").eq("status", "approved").lte("from_date", today).gte("to_date", today), { data: [] }),
+                    safe(sb.from("grasp_leave_requests").select("staff_email").eq("status", "pending"), { data: [] }),
+                ]);
+                const team = (uR.data || []).filter((u) => !u.is_admin && u.is_active !== false && u.email !== me && !MANAGER_DESIGNATIONS.includes(u.designation) && u.designation !== "Accountant" && (!scope || scope.includes(userBiz(u))));
+                const emails = new Set(team.map((u) => u.email));
+                const attSet = new Set((aR.data || []).map((x) => x.staff_email));
+                const leaveSet = new Set((lvR.data || []).map((x) => x.staff_email));
+                const salesBy = {};
+                sales.forEach((i) => { if ((i.date || "").slice(0, 10) >= monthStart)
+                    salesBy[i.createdBy] = (salesBy[i.createdBy] || 0) + (Number(i.total) || 0); });
+                const label = (u) => u.full_name || u.email.split("@")[0];
+                const expected = c.dayOfMonth / c.daysInMonth;
+                c.team = {
+                    size: team.length,
+                    monthTarget: team.reduce((s, u) => s + (Number(u.target_amount) || 0) / 12, 0),
+                    monthSales: team.reduce((s, u) => s + (salesBy[u.email] || 0), 0),
+                    behind: c.dayOfMonth < 5 ? [] : team.filter((u) => (Number(u.target_amount) || 0) > 0 && (salesBy[u.email] || 0) / ((Number(u.target_amount) || 0) / 12) < expected * 0.7).map(label),
+                    absent: team.filter((u) => !attSet.has(u.email) && !leaveSet.has(u.email)).map(label),
+                    pendingLeaves: (plR.data || []).filter((x) => emails.has(x.staff_email)).length,
+                };
+                c.ecomPending = (scope || []).includes("Graspion") ? pendingEcomCount || 0 : 0;
+                c.lowStock = perms.designation === "Inventory Manager" ? lowStockCount || 0 : 0;
+            }
+            if (isAcc) {
+                const od = overdue(sales);
+                const [pyR, bkR, rxJobs, rxInv] = await Promise.all([
+                    safe(sb.from("grasp_payroll").select("id", { count: "exact", head: true }).eq("month_key", today.slice(0, 7)), { count: null }),
+                    safe(sb.from("grasp_bank_statement").select("id", { count: "exact", head: true }).eq("reconciled", false), { count: 0 }),
+                    safe(fetch("https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/list-routix-jobs").then((r) => r.json()), { jobs: [] }),
+                    safe(sb.from("grasp_routix_invoiced").select("routix_job_id"), { data: [] }),
+                ]);
+                const done = new Set((rxInv.data || []).map((x) => x.routix_job_id));
+                const routixPending = ((rxJobs && rxJobs.jobs) || []).filter((j) => !done.has(j.id)).length;
+                c.accountant = {
+                    invoicePending: (pendingEcomCount || 0) + routixPending,
+                    overdueCount: od.length,
+                    overdueAmount: balance(od),
+                    payrollPending: c.dayOfMonth >= 25 && pyR.count === 0,
+                    bankPending: bkR.count || 0,
+                };
+            }
+            if (alive)
+                setMsg(buildDailyMessage(c));
+        })();
+        return () => { alive = false; };
+    }, []);
+    if (!msg)
+        return null;
+    const dot = { praise: COLORS.emerald, advice: COLORS.indigo, remind: "#D97706", info: COLORS.muted };
+    return React.createElement("div", { className: "card", style: { padding: "14px 16px", marginBottom: 16, borderLeft: "4px solid #8B7FD6" } }, [
+        React.createElement("div", { key: "g", style: { fontWeight: 800, fontSize: 14.5, marginBottom: 8, fontFamily: "'Sora', sans-serif" } }, msg.greeting),
+        ...msg.items.map((it, i) => React.createElement("div", { key: "i" + i, style: { display: "flex", gap: 8, fontSize: 12.5, lineHeight: 1.55, marginBottom: 5, color: "#1E1B3A" } }, [
+            React.createElement("span", { key: "d", style: { width: 6, height: 6, borderRadius: 3, background: dot[it.kind] || COLORS.muted, marginTop: 7, flexShrink: 0 } }),
+            React.createElement("span", { key: "t" }, it.text),
+        ])),
+    ]);
+}
 function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile, itemCatalog, onCreate, onView, onOpen, onOpenFolder, onOpenExpenses, onOpenPayroll, onOpenCashBook, onOpenDue, onOpenQuotations, onOpenAttendance, onOpenGuidelines, onOpenNotices, onOpenManagementDashboard, onOpenMyPerformance, onOpenLeads, onOpenEcomOrders, onOpenRoutixJobs, onOpenGemTenders, onOpenServiceTickets, onOpenLeave, onOpenHolidays, onOpenMyDocuments, onOpenBusinessOverview, onOpenLowStock, staffNames }) {
     const [pendingEcomCount, setPendingEcomCount] = useState(0);
     const [payrollSummary, setPayrollSummary] = useState(null);
@@ -1330,6 +1516,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
             fmt(value)),
         sub && React.createElement("div", { style: { fontSize: 10, color: COLORS.muted, marginTop: 2 } }, sub)));
     return (React.createElement("div", null,
+        !perms.isAdmin && React.createElement(DailyMessageCard, { session: session, perms: perms, profile: profile, invoices: invoices, pendingEcomCount: pendingEcomCount, lowStockCount: lowStockCount }),
         perms.isAdmin && React.createElement("div", { className: "card", style: { padding: 18, marginBottom: 16 } },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
                 React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 } }, hasFullView ? "Overview" : "My Overview"),
@@ -3065,7 +3252,7 @@ function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalo
                 sb.from("grasp_attendance").select("staff_email").eq("date", today),
                 sb.from("grasp_leave_requests").select("staff_email").eq("status", "approved").lte("from_date", today).gte("to_date", today),
                 sb.from("grasp_leave_requests").select("staff_email,leave_type,from_date").eq("status", "pending"),
-                sb.from("grasp_service_tickets").select("ticket_no,customer_name,scheduled_date,status").not("status", "in", "(Resolved,Closed)"),
+                sb.from("grasp_service_tickets").select("ticket_no,customer_name,scheduled_date,status").not("status", "in", "(resolved,closed,cancelled)"),
             ]);
             setStaffData({
                 users: (usersRes.data || []).filter((u) => !u.is_admin),
