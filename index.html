@@ -1305,6 +1305,9 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
     }).sort((a, b) => a.daysDiff - b.daysDiff) : [];
     const overdueList = dueList.filter((i) => i.daysDiff < 0);
     const dueSoonList = dueList.filter((i) => i.daysDiff >= 0 && i.daysDiff <= 7);
+    const mySaleInvoices = (invoices || []).filter((i) => i.docType === "sale" && i.createdBy === session.user.email);
+    const mySalesTotal = mySaleInvoices.reduce((s, i) => s + (Number(i.total) || 0), 0);
+    const myCollectionTotal = mySaleInvoices.reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
     const StatCard = ({ label, value, sub, color, bg }) => (React.createElement("div", { style: { flex: 1, background: bg, borderRadius: 14, padding: "12px 14px" } },
         React.createElement("div", { style: { fontSize: 12, color, fontWeight: 700, marginBottom: 4 } }, label),
         React.createElement("div", { className: "num", style: { fontSize: 17, fontWeight: 700, color: COLORS.ink } },
@@ -1312,7 +1315,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
             fmt(value)),
         sub && React.createElement("div", { style: { fontSize: 10, color: COLORS.muted, marginTop: 2 } }, sub)));
     return (React.createElement("div", null,
-        React.createElement("div", { className: "card", style: { padding: 18, marginBottom: 16 } },
+        perms.isAdmin && React.createElement("div", { className: "card", style: { padding: 18, marginBottom: 16 } },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
                 React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 } }, hasFullView ? "Overview" : "My Overview"),
                 React.createElement(FYSelect, { fy: fy, fyOptions: fyOptions, setFy: setFy })),
@@ -1325,6 +1328,13 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                     React.createElement(StatCard, { label: "Received", value: totals.received, sub: "this FY", color: COLORS.sky, bg: "#E3F3FD" })))) : (React.createElement("div", { className: "home-stats-row", style: { display: "flex", gap: 10 } },
                 React.createElement(StatCard, { label: "My Sales", value: totals.sales, color: COLORS.emerald, bg: "#E3FBF1" }),
                 React.createElement(StatCard, { label: "My Outstanding", value: totals.outstanding, sub: "from customers", color: COLORS.rose, bg: "#FDE7EB" })))),
+        !perms.isAdmin && React.createElement("div", { className: "card", style: { padding: 18, marginBottom: 16 } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
+                React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 } }, "My Overview"),
+                React.createElement(FYSelect, { fy: fy, fyOptions: fyOptions, setFy: setFy })),
+            React.createElement("div", { className: "home-stats-row", style: { display: "flex", gap: 10 } },
+                React.createElement(StatCard, { label: "My Sales", value: mySalesTotal, sub: mySaleInvoices.length + " invoice" + (mySaleInvoices.length === 1 ? "" : "s"), color: COLORS.emerald, bg: "#E3FBF1" }),
+                React.createElement(StatCard, { label: "My Collection", value: myCollectionTotal, sub: "Baaki \u20B9" + fmt(Math.max(0, mySalesTotal - myCollectionTotal)), color: COLORS.sky, bg: "#E3F3FD" }))),
         !hasFullView && perms.targetAmount > 0 && (React.createElement("div", { className: "card", style: { padding: 16, marginBottom: 16 } },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
                 React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 700 } }, "Target Achievement"),
@@ -1339,7 +1349,7 @@ function Home({ totals, invoices, fy, fyOptions, setFy, perms, session, profile,
                 " of \u20B9",
                 fmt(perms.targetAmount),
                 " target"))),
-        (perms.isAdmin || perms.canViewAllSales) && React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16, background: "linear-gradient(135deg,#1E293B,#334155)" } }, [
+        perms.isAdmin && React.createElement("div", { className: "card", style: { padding: 14, marginBottom: 16, background: "linear-gradient(135deg,#1E293B,#334155)" } }, [
             React.createElement("div", { key: "t", style: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: 800, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 } }, "\uD83D\uDC51 Admin Quick Access"),
             React.createElement("div", { key: "g", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, [
                 React.createElement("button", { key: "att", onClick: onOpenAttendance, style: { padding: "10px", borderRadius: 10, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", fontWeight: 700, fontSize: 11.5, textAlign: "left" } }, "\uD83D\uDCCD Staff Attendance"),
