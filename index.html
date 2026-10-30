@@ -3334,13 +3334,31 @@ function ManagementDashboard({ invoices: allInvoices, expenses, profile, perms, 
         const monthlyTarget = (Number(u.target_amount) || 0) / 12;
         const achieved = empSales[u.email] || 0;
         const pct = monthlyTarget > 0 ? Math.round((achieved / monthlyTarget) * 100) : 0;
-        return { email: u.email, name: u.full_name || u.email.split("@")[0], monthlyTarget, achieved, pct };
+        return { email: u.email, name: u.full_name || u.email.split("@")[0], biz: userBiz(u), monthlyTarget, achieved, pct };
     }).sort((a, b) => b.pct - a.pct);
     const bestPerformer = perfList.length > 0 ? perfList[0] : null;
     const belowTargetCount = perfList.filter((p) => p.monthlyTarget > 0 && p.pct < 100).length;
     const presentEmails = new Set(todayAttendance.filter((a) => a.status !== "absent").map((a) => a.staff_email));
     const presentCount = staffList.filter((u) => presentEmails.has(u.email)).length;
     const absentCount = staffList.length - presentCount;
+    const renderHR = () => {
+        const keys = scope ? scope : ["Grasp Infotech", "Graspion", "Routix"].concat(staffList.some((u) => userBiz(u) === "HR / Finance (All Businesses)") ? ["HR / Finance (All Businesses)"] : []);
+        return React.createElement(React.Fragment, { key: "hr" }, keys.map((biz) => {
+            const team = staffList.filter((u) => userBiz(u) === biz);
+            const emails = new Set(team.map((u) => u.email));
+            const bPerf = perfList.filter((p) => emails.has(p.email));
+            const best = bPerf.length > 0 && bPerf[0].achieved > 0 ? bPerf[0] : null;
+            const present = team.filter((u) => presentEmails.has(u.email)).length;
+            return React.createElement(React.Fragment, { key: "hr_" + biz }, [
+                sectionHeader("\uD83D\uDC65", "HR \u2014 " + biz),
+                React.createElement("div", { key: "g_" + biz, style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
+                    statCard("\uD83D\uDC64", "Total Staff", team.length, COLORS.ink, "#F1F5F9"),
+                    statCard("\u2705", "Present Today", present, COLORS.emerald, "#E3FBF1", (team.length - present) + " absent"),
+                    best && statCard("\uD83C\uDFC6", "Best Performer", best.name, COLORS.violet, "#F1ECFE", best.pct + "% of target"),
+                ]),
+            ]);
+        }));
+    };
     const heroStat = (icon, label, value, gradient) => React.createElement("div", { key: label, style: { background: gradient, borderRadius: 16, padding: "16px 14px", color: "#fff", boxShadow: "0 6px 16px rgba(0,0,0,0.12)" } },
         React.createElement("div", { style: { fontSize: 20, marginBottom: 8 } }, icon),
         React.createElement("div", { style: { fontSize: 10.5, opacity: 0.9, fontWeight: 700, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.3 } }, label),
@@ -3390,17 +3408,12 @@ function ManagementDashboard({ invoices: allInvoices, expenses, profile, perms, 
                 statCard("\uD83C\uDFC6", "Leads Won", leadsWonThisMonth, "#059669", "#D1FAE5"),
                 statCard("\u26A0\uFE0F", "Below Target", belowTargetCount, COLORS.amber, "#FEF3DD"),
             ]),
-            sectionHeader("\uD83D\uDC65", "HR"),
-            React.createElement("div", { key: "g3", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
-                statCard("\uD83D\uDC64", "Total Staff", staffList.length, COLORS.ink, "#F1F5F9"),
-                statCard("\u2705", "Present Today", presentCount, COLORS.emerald, "#E3FBF1", `${absentCount} absent`),
-                bestPerformer && statCard("\uD83C\uDFC6", "Best Performer", bestPerformer.name, COLORS.violet, "#F1ECFE", `${bestPerformer.pct}% of target`),
-            ]),
+            renderHR(),
             perfList.length > 0 && React.createElement(React.Fragment, { key: "perf" }, [
                 sectionHeader("\uD83D\uDCC9", "Employee-wise Sales (Is Mahine)"),
                 React.createElement("div", { key: "chart", className: "card", style: { padding: 16 } }, perfList.map((p) => React.createElement("div", { key: p.email, style: { marginBottom: 14 } }, [
                     React.createElement("div", { key: "row1", style: { display: "flex", justifyContent: "space-between", marginBottom: 5 } }, [
-                        React.createElement("span", { key: "n", style: { fontSize: 12.5, fontWeight: 700 } }, p.name),
+                        React.createElement("span", { key: "n", style: { fontSize: 12.5, fontWeight: 700 } }, p.name + (!scope || scope.length > 1 ? " \u00B7 " + p.biz : "")),
                         React.createElement("span", { key: "pct", className: "num", style: { fontSize: 11.5, fontWeight: 800, color: p.pct >= 100 ? COLORS.emerald : p.pct >= 60 ? COLORS.amber : COLORS.rose } }, p.monthlyTarget > 0 ? p.pct + "%" : "\u2014"),
                     ]),
                     React.createElement("div", { key: "bar", style: { height: 10, borderRadius: 5, background: "#F1ECFE", overflow: "hidden", marginBottom: 4 } },
