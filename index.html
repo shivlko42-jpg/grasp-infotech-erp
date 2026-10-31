@@ -2312,6 +2312,17 @@ function Notices({ session, perms, onBack }) {
     const [myReads, setMyReads] = useState({});
     const [staffCount, setStaffCount] = useState(0);
     const [readCounts, setReadCounts] = useState({});
+    const [staffRows, setStaffRows] = useState([]);
+    const audSize = (n) => {
+        const a = n.audience || "all";
+        if (a === "all")
+            return staffCount;
+        if (a.indexOf("staff:") === 0)
+            return 1;
+        const b = a.slice(4);
+        return staffRows.filter((u) => { const ub = u.business || "Grasp Infotech"; return ub === b || (ub === "Graspion + Routix" && (b === "Graspion" || b === "Routix")) || ub === "HR / Finance (All Businesses)"; }).length;
+    };
+    const audLabel = (n) => { const a = n.audience || "all"; return a === "all" ? "Sabko" : a.indexOf("staff:") === 0 ? "Ek staff ko" : a.slice(4); };
     useEffect(() => {
         (async () => {
             const nRes = await sb.from("grasp_notices").select("*").order("created_at", { ascending: false });
@@ -2322,10 +2333,11 @@ function Notices({ session, perms, onBack }) {
             setMyReads(myMap);
             if (perms.isAdmin) {
                 const [uRes, rRes] = await Promise.all([
-                    sb.from("grasp_users").select("email, is_admin"),
+                    sb.from("grasp_users").select("email, is_admin, business"),
                     sb.from("grasp_notice_reads").select("notice_id"),
                 ]);
                 setStaffCount((uRes.data || []).filter((u) => !u.is_admin).length);
+                setStaffRows((uRes.data || []).filter((u) => !u.is_admin));
                 const counts = {};
                 (rRes.data || []).forEach((r) => { counts[r.notice_id] = (counts[r.notice_id] || 0) + 1; });
                 setReadCounts(counts);
@@ -2388,7 +2400,8 @@ function Notices({ session, perms, onBack }) {
                 React.createElement("div", { key: "meta", style: { fontSize: 10.5, color: COLORS.muted, marginTop: 8 } }, new Date(n.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) + " \u00B7 " + n.created_by),
                 React.createElement("div", { key: "confirm", style: { marginTop: 10, paddingTop: 10, borderTop: "1px solid " + COLORS.border, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } }, [
                     myReads[n.id] ? React.createElement("span", { key: "done", style: { fontSize: 11.5, fontWeight: 700, color: COLORS.emerald, display: "flex", alignItems: "center", gap: 5 } }, [React.createElement(Icon, { key: "ic", size: 13 }, "\u2705"), "Seen"]) : React.createElement("button", { key: "btn", onClick: () => confirmRead(n.id), disabled: busy, style: { padding: "7px 14px", borderRadius: 9, border: "none", background: COLORS.emerald, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, "\u2713 Mark as Seen"),
-                    perms.isAdmin && staffCount > 0 && React.createElement("span", { key: "cnt", style: { fontSize: 10.5, fontWeight: 700, color: COLORS.muted } }, `${readCounts[n.id] || 0}/${staffCount} confirmed`),
+                    perms.isAdmin && n.audience && n.audience !== "all" && React.createElement("span", { key: "aud", style: { fontSize: 10.5, fontWeight: 700, color: COLORS.violet, marginRight: 8 } }, "\u2192 " + audLabel(n)),
+                    perms.isAdmin && staffCount > 0 && React.createElement("span", { key: "cnt", style: { fontSize: 10.5, fontWeight: 700, color: COLORS.muted } }, `${readCounts[n.id] || 0}/${audSize(n)} confirmed`),
                 ]),
             ])),
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
@@ -3354,7 +3367,7 @@ function buildPSBrief(r) {
         const special = MANAGER_DESIGNATIONS.includes(u.designation) || u.designation === "Accountant";
         const reps = repBy[u.email] || new Set();
         return {
-            email: u.email, name: who(u.email), target, sales,
+            email: u.email, name: who(u.email), biz: u.business || GI, target, sales,
             pct: target > 0 ? sales / target : null,
             pace: target > 0 && dom >= 5 && !special ? sales / (target * (dom / dim)) : null,
             present: prior.filter((a) => a.status !== "absent").length,
@@ -3567,14 +3580,143 @@ function buildPSBrief(r) {
     return {
         greeting: dailyGreetingWord(hour) + ", " + r.name + ".",
         dateLine: ["Ravivaar", "Somvaar", "Mangalvaar", "Budhvaar", "Guruvaar", "Shukravaar", "Shanivaar"][weekday] + ", " + now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-        verdict, priorities, bizRows,
+        verdict, priorities, bizRows, stats: { rows, biz, partyOver, totalOver, totalOverN, quotes, leaves },
         good: good.map((x) => x.t).slice(0, 5), watch: watch.map((x) => x.t).slice(0, 6),
         odd: odd.slice(0, 6), ideas: ideas.slice(0, 4), time,
     };
 }
+function psAudLabel(aud, users) {
+    if (!aud || aud === "all")
+        return "Sabko";
+    if (aud.indexOf("biz:") === 0)
+        return aud.slice(4);
+    const e = aud.slice(6);
+    const u = (users || []).find((x) => x.email === e);
+    return u ? u.full_name || e.split("@")[0] : e;
+}
+function psComposeNotice(type, f1, f2) {
+    const a = String(f1 || "").trim(), b = String(f2 || "").trim();
+    if (type === "holiday")
+        return { title: "Chhutti ki soochna", message: "Soochna: " + (b || "[tithi]") + " ko " + (a || "[avsar]") + " ke avsar par karyalay band rahega. Agle karya-diwas se kaam yathavat shuru hoga. Kripya apne lambit kaam ek din pehle poore kar lein." };
+    if (type === "meeting")
+        return { title: "Meeting ki soochna", message: "Aapko soochit kiya jata hai ki " + (a || "[din aur samay]") + " ko meeting rakhi gayi hai." + (b ? " Vishay/sthan: " + b + "." : "") + " Kripya samay par upasthit rahein." };
+    if (type === "reminder")
+        return { title: "Yaad dilane ke liye", message: "Yaad dilane ke liye: " + (a || "[kaam]") + ". Kripya is par aaj hi karyavahi karein aur apne reporting manager ko soochit karein." };
+    return { title: a || "Soochna", message: b };
+}
+// Rule based question answering over the data Saarthi already loaded. No AI, nothing leaves the ERP.
+function psAnswer(text, raw, brief) {
+    const q = " " + String(text || "").toLowerCase().replace(/[?.,!:;]/g, " ").replace(/\s+/g, " ").trim() + " ";
+    const has = (...w) => w.some((x) => q.includes(x));
+    const R = dailyMoney, st = brief.stats, rows = st.rows, L = [];
+    const now = raw.now, today = psYmd(now);
+    const monthStart = today.slice(0, 8) + "01";
+    const hit = rows.find((s) => { const full = s.name.toLowerCase(); return q.includes(" " + full + " ") || full.split(" ").some((t) => t.length >= 3 && q.includes(" " + t + " ")); });
+    const bz = has("graspion") ? "Graspion" : has("routix") ? "Routix" : has("infotech") ? "Grasp Infotech" : null;
+    const dOf = (i) => String(i.date || "").slice(0, 10);
+    if (has("notice", "sabko batao", "sabko bata", "message bhej", "yaad dila", "reminder")) {
+        const part = String(text).indexOf(":") >= 0 ? String(text).split(":").slice(1).join(":").trim() : "";
+        const reminder = has("yaad dila", "reminder");
+        const c = { type: reminder ? "reminder" : "general", aud: hit ? "staff" : bz ? "biz:" + bz : "all", staff: hit ? hit.email : "", f1: reminder ? part : "", f2: reminder ? "" : part };
+        if (!reminder && part)
+            c.f1 = "Soochna";
+        return { lines: ["Neeche notice banane ka form khol diya hai. Sandesh dekhkar \"Bhejein\" dabayenge tabhi jayega."], composer: c };
+    }
+    if (hit && !has("overdue", "stock", "quotation", "kharch", "expense")) {
+        const s = hit;
+        L.push(s.name + " (" + s.biz + ")");
+        L.push("Is mahine sale " + R(s.sales) + (s.target > 0 ? "; target " + R(s.target) + " ka " + Math.round(s.pct * 100) + "% poora." : "; target set nahi hai."));
+        L.push("Upasthiti: " + s.present + " din upasthit, " + s.late + " baar late, " + s.absentMarked + " din absent darj.");
+        L.push("Aaj: " + (s.onLeave ? "leave par hain." : s.checkedToday ? "check-in ho chuka hai." : "abhi check-in darj nahi hui."));
+        if (s.leads > 0)
+            L.push(s.leads + " leads ka follow-up baaki hai.");
+        if (s.tickets > 0)
+            L.push(s.tickets + " service ticket ki tithi nikal chuki hai.");
+        return { lines: L };
+    }
+    if (has("absent", "anupasthit", "check in", "checkin", "check-in", "kaun aaya", "aaj kaun")) {
+        const list = rows.filter((s) => !s.checkedToday && !s.onLeave).map((s) => s.name);
+        const lv = rows.filter((s) => s.onLeave).map((s) => s.name);
+        L.push(list.length ? "Aaj abhi tak check-in nahi hui: " + list.join(", ") + "." : "Sabhi staff ki check-in ho chuki hai ya wo leave par hain.");
+        if (lv.length)
+            L.push("Leave par: " + lv.join(", ") + ".");
+        if (now.getHours() < 11)
+            L.push("Abhi subah ka samay hai, kuchh log baad me aa sakte hain.");
+        return { lines: L };
+    }
+    if (has("late")) {
+        const l = rows.filter((s) => s.late > 0).sort((a, b) => b.late - a.late).slice(0, 5);
+        return { lines: l.length ? l.map((s) => s.name + ": is mahine " + s.late + " baar late.") : ["Is mahine abhi tak kisi ka late check-in darj nahi hai."] };
+    }
+    if (has("overdue", "vasooli", "udhaar", "outstanding", "baaki payment", "bhugtan")) {
+        if (st.totalOver <= 0)
+            return { lines: ["Koi overdue payment nahi hai."] };
+        L.push("Kul overdue " + R(st.totalOver) + " (" + st.totalOverN + " invoice).");
+        Object.keys(st.biz).filter((b) => st.biz[b].over > 0).forEach((b) => L.push(b + ": " + R(st.biz[b].over) + " (" + st.biz[b].overN + " invoice)."));
+        Object.keys(st.partyOver).sort((a, b) => st.partyOver[b] - st.partyOver[a]).slice(0, 5).forEach((p) => L.push(p + ": " + R(st.partyOver[p]) + " baaki."));
+        return { lines: L };
+    }
+    if (has("quotation", "quote")) {
+        if (st.quotes.length === 0)
+            return { lines: ["7 din se purani koi pending quotation nahi hai."] };
+        L.push(st.quotes.length + " quotation 7 din se zyada se pending hain (" + R(st.quotes.reduce((s, i) => s + (Number(i.total) || 0), 0)) + ").");
+        st.quotes.slice().sort((a, b) => (Number(b.total) || 0) - (Number(a.total) || 0)).slice(0, 3).forEach((i) => L.push((i.invoice_no || "Quotation") + " \u00B7 " + (i.party || "Party") + ": " + R(i.total)));
+        return { lines: L };
+    }
+    if (has("stock")) {
+        return { lines: (raw.lowStock || []).length ? ["Kam stock wale item (" + raw.lowStock.length + "): " + raw.lowStock.slice(0, 8).join(", ") + "."] : ["Koi item kam stock me nahi hai."] };
+    }
+    if (has("leave", "chhutti ki request")) {
+        const lv = st.leaves;
+        return { lines: lv.length ? lv.map((l) => l.name + ": " + l.waited + " din se pending.") : ["Koi leave request pending nahi hai."] };
+    }
+    if (has("payroll", "salary", "tankhwah", "vetan")) {
+        return { lines: [raw.payrollProcessed ? "Is mahine ka payroll process ho chuka hai." + (raw.payrollUnpaid > 0 ? " " + raw.payrollUnpaid + " staff ka bhugtan darj nahi hua." : " Sabka bhugtan darj hai.") : "Is mahine ka payroll abhi process nahi hua hai."] };
+    }
+    if (has("kharch", "expense")) {
+        const ex = raw.expensesFY || [];
+        const prevStart = psYmd(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+        const cat = {};
+        let m = 0, pv = 0;
+        ex.forEach((e) => { const d = String(e.date).slice(0, 10), a = Number(e.amount) || 0; if (d >= monthStart) {
+            m += a;
+            cat[e.category || "Other"] = (cat[e.category || "Other"] || 0) + a;
+        }
+        else if (d >= prevStart)
+            pv += a; });
+        L.push("Is mahine ka kharch " + R(m) + (pv > 0 ? " (pichhle poore mahine ka " + R(pv) + ")." : "."));
+        Object.keys(cat).sort((a, b) => cat[b] - cat[a]).slice(0, 3).forEach((c) => L.push(c + ": " + R(cat[c])));
+        return { lines: L };
+    }
+    if (has("sale", "bikri", "revenue")) {
+        if (has("aaj")) {
+            const t = (raw.invoices2m || []).filter((i) => i.doc_type === "sale" && dOf(i) === today && (!bz || (i.business || "Grasp Infotech") === bz)).reduce((s, i) => s + (Number(i.total) || 0), 0);
+            return { lines: ["Aaj ki sale" + (bz ? " (" + bz + ")" : "") + ": " + R(t) + "."] };
+        }
+        Object.keys(st.biz).filter((b) => !bz || b === bz).forEach((b) => { const x = st.biz[b]; L.push(b + ": is mahine " + R(x.sales) + (x.prev > 0 ? ", pichhle mahine ki isi avadhi me " + R(x.prev) : "") + (x.sales > 0 ? ", vasooli " + Math.round((x.collected / x.sales) * 100) + "%." : ".")); });
+        return { lines: L };
+    }
+    if (has("target", "performance", "kaisa kaam")) {
+        const w = rows.filter((s) => s.target > 0 && s.pct !== null).sort((a, b) => b.pct - a.pct);
+        if (w.length === 0)
+            return { lines: ["Kisi staff ka target set nahi hai."] };
+        return { lines: w.map((s) => s.name + ": target ka " + Math.round(s.pct * 100) + "% (" + R(s.sales) + " / " + R(s.target) + ")") };
+    }
+    if (has("kaam", "pending", "priority", "kya karna", "aaj kya")) {
+        return { lines: brief.priorities.slice(0, 5) };
+    }
+    return { lines: ["Ye sawal main abhi samajh nahi paya. Aap aise pooch sakte hain:", "\u2022 Aaj kaun absent hai?", "\u2022 Overdue kiska hai?", "\u2022 Is mahine ki sale (ya Graspion ki sale)", "\u2022 Rani ka target kitna hua?", "\u2022 Stock kam kya hai? / Leave pending? / Payroll?", "\u2022 Notice bhejo: ..."] };
+}
 function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull }) {
     const [brief, setBrief] = useState(psCache && Date.now() - psCache.at < 300000 ? psCache.brief : null);
-    const [open, setOpen] = useState({ team: true, odd: true, ideas: false, time: false });
+    const [rawData, setRawData] = useState(psCache && Date.now() - psCache.at < 300000 ? psCache.raw : null);
+    const [open, setOpen] = useState({ ask: true, team: true, odd: true, ideas: false, time: false });
+    const blankDesk = { open: false, type: "general", aud: "all", staff: "", f1: "", f2: "" };
+    const [askText, setAskText] = useState("");
+    const [qa, setQa] = useState([]);
+    const [desk, setDesk] = useState(blankDesk);
+    const [deskBusy, setDeskBusy] = useState(false);
+    const [deskMsg, setDeskMsg] = useState("");
     useEffect(() => {
         if (brief)
             return;
@@ -3625,9 +3767,11 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull })
                 lowStock: (itemCatalog || []).filter((it) => !it.isService && (it.stock || 0) <= (it.lowStockThreshold === null || it.lowStockThreshold === undefined ? 5 : it.lowStockThreshold)).map((it) => it.name),
             };
             const b = buildPSBrief(raw);
-            psCache = { at: Date.now(), brief: b };
-            if (alive)
+            psCache = { at: Date.now(), brief: b, raw: raw };
+            if (alive) {
                 setBrief(b);
+                setRawData(raw);
+            }
         })();
         return () => { alive = false; };
     }, []);
@@ -3662,10 +3806,79 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull })
             React.createElement("span", { key: "t" }, t),
         ])),
     ];
+    const users = (rawData && rawData.users ? rawData.users : []).filter((u) => !u.is_admin && u.is_active !== false);
+    const runAsk = (t) => {
+        const text = String(t || "").trim();
+        if (!text || !rawData)
+            return;
+        const res = psAnswer(text, rawData, brief);
+        if (res.composer) {
+            setDesk(Object.assign({}, blankDesk, res.composer, { open: true }));
+            setDeskMsg("");
+        }
+        setQa([{ q: text, lines: res.lines }].concat(qa).slice(0, 3));
+        setAskText("");
+    };
+    const preview = psComposeNotice(desk.type, desk.f1, desk.f2);
+    const audValue = desk.aud === "staff" ? "staff:" + desk.staff : desk.aud;
+    const canSend = !!desk.f1.trim() && (desk.type !== "general" || !!desk.f2.trim()) && (desk.aud !== "staff" || !!desk.staff);
+    const sendNotice = async () => {
+        if (!canSend || deskBusy)
+            return;
+        setDeskBusy(true);
+        setDeskMsg("");
+        const { error } = await sb.from("grasp_notices").insert({ id: uid(), title: preview.title, message: preview.message, audience: audValue, created_by: session.user.email, created_by_id: session.user.id, created_at: new Date().toISOString() });
+        setDeskBusy(false);
+        if (error)
+            setDeskMsg("Notice nahi bhej paya: " + error.message);
+        else {
+            setDeskMsg("Notice bhej diya gaya (" + psAudLabel(audValue, users) + ").");
+            setDesk(blankDesk);
+        }
+    };
+    const smallBtn = (k, text, onClick, primary) => React.createElement("button", { key: k, onClick: onClick, style: { padding: "7px 11px", borderRadius: 16, border: primary ? "none" : "1px solid " + COLORS.border, background: primary ? COLORS.indigo : "#fff", color: primary ? "#fff" : COLORS.indigo, fontWeight: 700, fontSize: 11.5 } }, text);
+    const inputStyle = { width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 8 };
+    const fieldLabels = { general: ["Vishay (title)", "Sandesh"], holiday: ["Avsar (jaise Diwali)", "Tithi (jaise 29 Oct)"], meeting: ["Din aur samay", "Vishay / jagah"], reminder: ["Kya yaad dilana hai", null] }[desk.type];
+    const composer = desk.open && React.createElement("div", { key: "composer", className: "card", style: { padding: 12, marginTop: 8, background: "#FAF9FF" } }, [
+        React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 12.5, marginBottom: 8 } }, "Notice banayein"),
+        React.createElement("select", { key: "ty", value: desk.type, onChange: (e) => setDesk(Object.assign({}, desk, { type: e.target.value, aud: e.target.value === "reminder" ? "staff" : desk.aud })), style: inputStyle }, [["general", "Samanya soochna"], ["holiday", "Chhutti ki soochna"], ["meeting", "Meeting ki soochna"], ["reminder", "Yaad dilana (ek staff ko)"]].map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
+        React.createElement("select", { key: "au", value: desk.aud, onChange: (e) => setDesk(Object.assign({}, desk, { aud: e.target.value })), style: inputStyle }, [["all", "Sabko"], ["biz:Grasp Infotech", "Sirf Grasp Infotech"], ["biz:Graspion", "Sirf Graspion"], ["biz:Routix", "Sirf Routix"], ["staff", "Ek staff ko"]].map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
+        desk.aud === "staff" && React.createElement("select", { key: "st", value: desk.staff, onChange: (e) => setDesk(Object.assign({}, desk, { staff: e.target.value })), style: inputStyle }, [React.createElement("option", { key: "x", value: "" }, "Staff chuniye\u2026")].concat(users.map((u) => React.createElement("option", { key: u.email, value: u.email }, u.full_name || u.email.split("@")[0])))),
+        React.createElement("input", { key: "f1", value: desk.f1, onChange: (e) => setDesk(Object.assign({}, desk, { f1: e.target.value })), placeholder: fieldLabels[0], style: inputStyle }),
+        fieldLabels[1] && React.createElement("textarea", { key: "f2", value: desk.f2, onChange: (e) => setDesk(Object.assign({}, desk, { f2: e.target.value })), placeholder: fieldLabels[1], rows: desk.type === "general" ? 4 : 2, style: Object.assign({}, inputStyle, { fontFamily: "inherit", resize: "vertical" }) }),
+        React.createElement("div", { key: "pv", style: { background: "#fff", border: "1px dashed " + COLORS.border, borderRadius: 9, padding: "9px 11px", marginBottom: 8 } }, [
+            React.createElement("div", { key: "h", style: { fontSize: 10.5, fontWeight: 800, color: COLORS.violet, textTransform: "uppercase", marginBottom: 4 } }, "Preview \u2192 " + psAudLabel(audValue, users)),
+            React.createElement("div", { key: "tt", style: { fontWeight: 700, fontSize: 12.5 } }, preview.title),
+            React.createElement("div", { key: "m", style: { fontSize: 12.5, lineHeight: 1.55, whiteSpace: "pre-wrap" } }, preview.message || "\u2026"),
+        ]),
+        React.createElement("div", { key: "bt", style: { display: "flex", gap: 8 } }, [
+            React.createElement("button", { key: "s", onClick: sendNotice, disabled: !canSend || deskBusy, style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13, opacity: canSend ? 1 : 0.5 } }, deskBusy ? "Bhej raha hai\u2026" : "Bhejein"),
+            React.createElement("button", { key: "c", onClick: () => setDesk(blankDesk), style: { padding: "10px 14px", borderRadius: 10, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13 } }, "Cancel"),
+        ]),
+    ]);
+    const askSection = section("ask", "Saarthi se poochhein / kaam dein", [
+        React.createElement("div", { key: "row", style: { display: "flex", gap: 6, marginBottom: 8 } }, [
+            React.createElement("input", { key: "i", value: askText, onChange: (e) => setAskText(e.target.value), onKeyDown: (e) => { if (e.key === "Enter")
+                    runAsk(askText); }, placeholder: "Jaise: aaj kaun absent hai?", style: { flex: 1, padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13 } }),
+            React.createElement("button", { key: "b", onClick: () => runAsk(askText), style: { padding: "9px 14px", borderRadius: 9, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, "Poochhein"),
+        ]),
+        React.createElement("div", { key: "chips", style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 } }, ["Aaj kaun absent hai?", "Overdue kiska hai?", "Is mahine ki sale", "Target ki sthiti", "Stock kam kya hai?", "Leave pending?"].map((t) => smallBtn(t, t, () => runAsk(t)))),
+        ...qa.map((x, i) => React.createElement("div", { key: "qa" + i, style: { background: "#F5F2FE", borderRadius: 10, padding: "9px 11px", marginBottom: 7 } }, [
+            React.createElement("div", { key: "q", style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 3 } }, "Aapne poochha: " + x.q),
+            ...x.lines.map((l, j) => React.createElement("div", { key: "l" + j, style: { fontSize: 12.5, lineHeight: 1.55 } }, l)),
+        ])),
+        React.createElement("div", { key: "tasks", style: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 } }, [
+            smallBtn("n", "Notice bhejein", () => { setDesk(Object.assign({}, blankDesk, { open: true })); setDeskMsg(""); }, true),
+            smallBtn("r", "Staff ko yaad dilayein", () => { setDesk(Object.assign({}, blankDesk, { open: true, type: "reminder", aud: "staff" })); setDeskMsg(""); }, true),
+        ]),
+        deskMsg && React.createElement("div", { key: "dm", style: { fontSize: 12, fontWeight: 700, color: deskMsg.indexOf("nahi") >= 0 ? COLORS.rose : COLORS.emerald, marginTop: 8 } }, deskMsg),
+        composer,
+    ]);
     if (compact)
         return box([...head, onOpenFull && React.createElement("button", { key: "more", onClick: onOpenFull, style: { width: "100%", marginTop: 8, padding: "9px", borderRadius: 9, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 12 } }, "Poori report dekhein (teeno business, team, sujhav)")]);
     return box([
         ...head,
+        askSection,
         label("Teeno business ek nazar me", "lb"),
         ...brief.bizRows.map((b) => React.createElement("div", { key: "b_" + b.name, style: { background: "#F5F2FE", borderRadius: 10, padding: "9px 11px", marginBottom: 7 } }, [
             React.createElement("div", { key: "n", style: { fontWeight: 800, fontSize: 12.5, marginBottom: 2 } }, b.name),
