@@ -3701,32 +3701,54 @@ function psAnswer(text, raw, brief) {
     return { lines: ["Ye sawal main abhi samajh nahi paya. Aap aise pooch sakte hain:", "\u2022 Aaj kaun absent hai?", "\u2022 Overdue kiska hai?", "\u2022 Is mahine ki sale (ya Graspion ki sale)", "\u2022 Rani ka target kitna hua?", "\u2022 Stock kam kya hai? / Leave pending? / Payroll?", "\u2022 Notice bhejo: ..."] };
 }
 const PS_FESTIVALS = { diwali: "Diwali", dipawali: "Diwali", deepawali: "Diwali", holi: "Holi", eid: "Eid", dussehra: "Dussehra", dusshera: "Dussehra", dashahara: "Dussehra", "raksha bandhan": "Raksha Bandhan", rakhi: "Raksha Bandhan", christmas: "Christmas", "independence day": "Independence Day", "republic day": "Republic Day", "gandhi jayanti": "Gandhi Jayanti", janmashtami: "Janmashtami", chhath: "Chhath", navratri: "Navratri", "makar sankranti": "Makar Sankranti", "guru nanak jayanti": "Guru Nanak Jayanti" };
-const PS_DAYS = [["ravivaar", "raviwar"], ["somvaar", "somwar"], ["mangalvaar", "mangalwar"], ["budhvaar", "budhwar"], ["guruvaar", "guruwar"], ["shukravaar", "shukrawar"], ["shanivaar", "shaniwar"]];
+const PS_DAYS = [["ravivaar", "raviwar", "sunday"], ["somvaar", "somwar", "monday"], ["mangalvaar", "mangalwar", "tuesday"], ["budhvaar", "budhwar", "wednesday"], ["guruvaar", "guruwar", "thursday"], ["shukravaar", "shukrawar", "friday"], ["shanivaar", "shaniwar", "saturday"]];
 const psFmtDay = (d) => ["Ravivaar", "Somvaar", "Mangalvaar", "Budhvaar", "Guruvaar", "Shukravaar", "Shanivaar"][d.getDay()] + ", " + d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 function psParseWhen(q, now) {
     const add = (n) => { const d = new Date(now); d.setDate(d.getDate() + n); return d; };
-    let when = "";
-    if (q.includes(" kal "))
+    const en = (d) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d.getDay()] + ", " + d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+    let when = "", whenEn = "";
+    if (q.includes(" kal ") || q.includes(" tomorrow ")) {
         when = "kal (" + psFmtDay(add(1)) + ")";
-    else if (q.includes(" parso "))
+        whenEn = "tomorrow (" + en(add(1)) + ")";
+    }
+    else if (q.includes(" parso ") || q.includes(" day after tomorrow ")) {
         when = "parso (" + psFmtDay(add(2)) + ")";
-    else if (q.includes(" aaj "))
+        whenEn = "the day after tomorrow (" + en(add(2)) + ")";
+    }
+    else if (q.includes(" aaj ") || q.includes(" today ")) {
         when = "aaj (" + psFmtDay(add(0)) + ")";
+        whenEn = "today (" + en(add(0)) + ")";
+    }
     else {
         PS_DAYS.forEach((names, i) => { if (!when && names.some((n) => q.includes(" " + n + " "))) {
             let diff = (i - now.getDay() + 7) % 7;
             if (diff === 0)
                 diff = 7;
             when = psFmtDay(add(diff));
+            whenEn = "on " + en(add(diff));
         } });
         if (!when) {
             const m = q.match(/(\d{1,2})\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/);
-            if (m)
+            if (m) {
                 when = m[1] + " " + m[2].charAt(0).toUpperCase() + m[2].slice(1);
+                whenEn = "on " + when;
+            }
         }
     }
     const t = q.match(/(subah|dopahar|shaam|sham|raat)?\s*(\d{1,2})(?::(\d{2}))?\s*baje/);
-    return { when, time: t ? (t[1] ? t[1] + " " : "") + t[2] + (t[3] ? ":" + t[3] : "") + " baje" : "" };
+    const t2 = q.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
+    let time = "", timeEn = "";
+    if (t) {
+        const h = Number(t[2]), mm = t[3] || "", per = t[1] || "";
+        time = (per ? per + " " : "") + t[2] + (mm ? ":" + mm : "") + " baje";
+        const ap = per === "subah" ? "AM" : (per === "shaam" || per === "sham" || per === "raat") ? "PM" : per === "dopahar" ? ((h >= 1 && h <= 5) || h === 12 ? "PM" : "AM") : "";
+        timeEn = h + ":" + (mm || "00") + (ap ? " " + ap : "");
+    }
+    else if (t2) {
+        time = t2[1] + (t2[2] ? ":" + t2[2] : "") + " " + t2[3];
+        timeEn = t2[1] + ":" + (t2[2] || "00") + " " + t2[3].toUpperCase();
+    }
+    return { when, whenEn, time, timeEn };
 }
 function psClean(original, extra) {
     let t = " " + String(original || "").replace(/[?!]/g, " ") + " ";
@@ -3738,15 +3760,15 @@ function psClean(original, extra) {
 function psStaffNudges(s, hour) {
     const a = [];
     if (s.leads > 0)
-        a.push(s.leads + " leads ka follow-up");
+        a.push({ hi: s.leads + " leads ka follow-up", en: "follow-up on " + s.leads + " leads" });
     if (s.tickets > 0)
-        a.push(s.tickets + " service ticket ki tithi");
+        a.push({ hi: s.tickets + " service ticket ki tithi", en: s.tickets + " overdue service ticket(s)" });
     if (s.pace !== null && s.pace < 0.7)
-        a.push("target ke liye sale badhana");
+        a.push({ hi: "target ke liye sale badhana", en: "increasing sales towards the target" });
     if (s.late >= 3)
-        a.push("samay par check-in");
+        a.push({ hi: "samay par check-in", en: "checking in on time" });
     if (!s.checkedToday && !s.onLeave && hour >= 11)
-        a.push("aaj ki check-in darj karna");
+        a.push({ hi: "aaj ki check-in darj karna", en: "marking today's check-in" });
     return a;
 }
 // Reads a typed situation and writes the notice for it. Returns null when the line is a question, not a task.
@@ -3780,7 +3802,7 @@ function psDraft(text, raw, brief) {
         type = "monthend";
     else if (has("yaad dila", "reminder"))
         type = "reminder";
-    else if (has("notice", "sabko batao", "sabko bata", "sabhi ko", "soochit", "announce", "message bhej", "bhejo", "bhej do"))
+    else if (has("notice", "sabko batao", "sabko bata", "sabhi ko", "soochit", "announce", " inform ", "message bhej", "bhejo", "bhej do"))
         type = "general";
     if (!type)
         return null;
@@ -3795,70 +3817,82 @@ function psDraft(text, raw, brief) {
     const colon = original.indexOf(":") >= 0 ? original.split(":").slice(1).join(":").trim() : "";
     if (colon && ["collection", "target", "attendance", "entries", "monthend"].includes(type))
         type = has("yaad dila", "reminder") ? "reminder" : "general";
-    let title = "Soochna", message = "", note = "";
+    let hi = { title: "Soochna", message: "" }, en = { title: "Notice", message: "" }, note = "", typed = false;
     if (type === "holiday") {
         const occ = festival ? PS_FESTIVALS[festival] : "";
-        title = "Chhutti ki soochna";
-        message = "Soochna: " + (w.when || "[tithi]") + " ko " + (occ ? occ + " ke avsar par " : "") + "karyalay band rahega. Agle karya-diwas se kaam yathavat shuru hoga. Kripya apne lambit kaam ek din pehle poore kar lein.";
+        hi = { title: "Chhutti ki soochna", message: "Soochna: " + (w.when || "[tithi]") + " ko " + (occ ? occ + " ke avsar par " : "") + "karyalay band rahega. Agle karya-diwas se kaam yathavat shuru hoga. Kripya apne lambit kaam ek din pehle poore kar lein." };
+        en = { title: "Holiday Notice", message: "Notice: The office will remain closed " + (w.whenEn || "[date]") + (occ ? " on the occasion of " + occ : "") + ". Work will resume normally from the next working day. Please complete your pending tasks a day in advance." };
         if (!w.when)
-            note = "Tithi nahi mili, kripya [tithi] ki jagah bhar dein.";
+            note = "Tithi nahi mili, kripya [tithi] / [date] ki jagah bhar dein.";
     }
     else if (type === "meeting") {
-        title = "Meeting ki soochna";
-        const topic = has("target") ? " Vishay: target review." : has("review") ? " Vishay: review." : "";
-        message = "Aapko soochit kiya jata hai ki " + (w.when ? w.when + (w.time ? " " + w.time : "") : "[din aur samay]") + " ko meeting rakhi gayi hai." + topic + " Kripya samay par upasthit rahein.";
+        hi = { title: "Meeting ki soochna", message: "Aapko soochit kiya jata hai ki " + (w.when ? w.when + (w.time ? " " + w.time : "") : "[din aur samay]") + " ko meeting rakhi gayi hai." + (has("target") ? " Vishay: target review." : has("review") ? " Vishay: review." : "") + " Kripya samay par upasthit rahein." };
+        en = { title: "Meeting Notice", message: "You are informed that a meeting has been scheduled " + (w.whenEn ? w.whenEn + (w.timeEn ? " at " + w.timeEn : "") : "[day and time]") + "." + (has("target") ? " Subject: target review." : has("review") ? " Subject: review." : "") + " Please attend on time." };
         if (!w.when)
-            note = "Din/samay nahi mila, kripya [din aur samay] ki jagah bhar dein.";
+            note = "Din/samay nahi mila, kripya [din aur samay] / [day and time] ki jagah bhar dein.";
     }
     else if (type === "system") {
-        title = "System ki soochna";
-        message = "Soochna: " + (w.when ? w.when + " ko " : "") + "ERP/system me maintenance ya update kiya jayega, jiske dauran kuchh samay ke liye access band ho sakta hai. Kripya apna kaam samay se pehle ERP me save kar lein.";
+        hi = { title: "System ki soochna", message: "Soochna: " + (w.when ? w.when + " ko " : "") + "ERP/system me maintenance ya update kiya jayega, jiske dauran kuchh samay ke liye access band ho sakta hai. Kripya apna kaam samay se pehle ERP me save kar lein." };
+        en = { title: "System Notice", message: "Notice: ERP/system maintenance or an update will take place " + (w.whenEn ? w.whenEn : "soon") + ", during which access may be unavailable for some time. Please save your work in ERP before then." };
     }
     else if (type === "reminder") {
-        title = "Yaad dilane ke liye";
-        let task = colon || psClean(original, extras);
-        if (!task && hit) {
+        let taskHi = colon || psClean(original, extras), taskEn = taskHi;
+        typed = !!taskHi;
+        if (!taskHi && hit) {
             const n = psStaffNudges(hit, now.getHours());
-            if (n.length)
-                task = n.join(", ");
+            if (n.length) {
+                taskHi = n.map((x) => x.hi).join(", ");
+                taskEn = n.map((x) => x.en).join(", ");
+            }
         }
-        if (!task) {
-            task = "[kya yaad dilana hai]";
+        if (!taskHi) {
+            taskHi = taskEn = "[kya yaad dilana hai]";
             note = "Kya yaad dilana hai, ye likh dijiye.";
         }
-        message = "Yaad dilane ke liye: " + task + ". Kripya is par aaj hi karyavahi karein aur apne reporting manager ko soochit karein.";
+        hi = { title: "Yaad dilane ke liye", message: "Yaad dilane ke liye: " + taskHi + ". Kripya is par aaj hi karyavahi karein aur apne reporting manager ko soochit karein." };
+        en = { title: "Reminder", message: "Reminder: " + taskEn + ". Please act on this today and inform your reporting manager." };
     }
     else if (type === "collection") {
-        title = "Vasooli ki yaad";
-        message = st.totalOver > 0 ? "Overdue vasooli " + R(st.totalOver) + " (" + st.totalOverN + " invoice) baaki hai. Kripya apne grahakon se payment follow-up karein aur ERP me update darj karein." : "Sabhi bhugtan abhi samay par hain. Niyamit follow-up jaari rakhein aur ERP me update darj karte rahein.";
+        hi = { title: "Vasooli ki yaad", message: st.totalOver > 0 ? "Overdue vasooli " + R(st.totalOver) + " (" + st.totalOverN + " invoice) baaki hai. Kripya apne grahakon se payment follow-up karein aur ERP me update darj karein." : "Sabhi bhugtan abhi samay par hain. Niyamit follow-up jaari rakhein aur ERP me update darj karte rahein." };
+        en = { title: "Collection Reminder", message: st.totalOver > 0 ? "Overdue collection of " + R(st.totalOver) + " (" + st.totalOverN + " invoice" + (st.totalOverN === 1 ? "" : "s") + ") is pending. Please follow up with your customers for payment and update ERP." : "All payments are currently on time. Please continue regular follow-ups and keep ERP updated." };
     }
     else if (type === "target") {
-        title = "Lakshya ki yaad";
         const sc = rows.filter((x) => x.target > 0 && (hit ? x.email === hit.email : bz ? x.biz === bz : true));
         const tT = sc.reduce((a, x) => a + x.target, 0), tS = sc.reduce((a, x) => a + x.sales, 0);
-        const exp = Math.round((dom / dim) * 100);
-        message = tT > 0 ? (hit ? "Is mahine aapka target " + R(tT) + " hai aur ab tak " + Math.round((tS / tT) * 100) + "% poora hua hai" : "Is mahine ab tak " + (bz ? bz + " team" : "team") + " ka lakshya " + Math.round((tS / tT) * 100) + "% poora hua hai") + " (is samay tak lagbhag " + exp + "% apekshit). Shesh " + (dim - dom + 1) + " din me niyamit follow-up aur pending quotations par baat karke lakshya tak pahunchne ka prayas karein. Aapke sahyog ke liye dhanyavaad." : "Is mahine ke lakshya ko dhyan me rakhte hue niyamit follow-up aur pending quotations par baat karein. Aapke sahyog ke liye dhanyavaad.";
+        const exp = Math.round((dom / dim) * 100), left = dim - dom + 1;
+        if (tT > 0) {
+            const pc = Math.round((tS / tT) * 100);
+            hi = { title: "Lakshya ki yaad", message: (hit ? "Is mahine aapka target " + R(tT) + " hai aur ab tak " + pc + "% poora hua hai" : "Is mahine ab tak " + (bz ? bz + " team" : "team") + " ka lakshya " + pc + "% poora hua hai") + " (is samay tak lagbhag " + exp + "% apekshit). Shesh " + left + " din me niyamit follow-up aur pending quotations par baat karke lakshya tak pahunchne ka prayas karein. Aapke sahyog ke liye dhanyavaad." };
+            en = { title: "Target Reminder", message: (hit ? "Your target this month is " + R(tT) + " and " + pc + "% is complete" : "So far this month, the " + (bz ? bz + " team has" : "team has") + " achieved " + pc + "% of its target") + " (about " + exp + "% expected by now). With " + left + " day(s) left, please follow up regularly and talk to pending quotations to reach the target. Thank you for your support." };
+        }
+        else {
+            hi = { title: "Lakshya ki yaad", message: "Is mahine ke lakshya ko dhyan me rakhte hue niyamit follow-up aur pending quotations par baat karein. Aapke sahyog ke liye dhanyavaad." };
+            en = { title: "Target Reminder", message: "Keeping this month's target in mind, please follow up regularly and talk to pending quotations. Thank you for your support." };
+        }
     }
     else if (type === "attendance") {
-        title = "Attendance ki yaad";
-        message = "Sabhi se anurodh hai ki karyalay ke nirdharit samay par ERP me check-in darj karein. Baar-baar late check-in ya bina soochna ke anupasthiti ka asar performance par pad sakta hai.";
+        hi = { title: "Attendance ki yaad", message: "Sabhi se anurodh hai ki karyalay ke nirdharit samay par ERP me check-in darj karein. Baar-baar late check-in ya bina soochna ke anupasthiti ka asar performance par pad sakta hai." };
+        en = { title: "Attendance Reminder", message: "All staff are requested to mark their check-in in ERP at the prescribed time. Repeated late check-ins or unreported absence may affect performance." };
     }
     else if (type === "entries") {
-        title = "ERP update ki yaad";
-        message = "Sabhi se anurodh hai ki apne lenden, leads, orders aur follow-up aaj hi ERP me sahi roop se update karein. Adhoori ya galat entry se hisaab me dikkat aati hai.";
+        hi = { title: "ERP update ki yaad", message: "Sabhi se anurodh hai ki apne lenden, leads, orders aur follow-up aaj hi ERP me sahi roop se update karein. Adhoori ya galat entry se hisaab me dikkat aati hai." };
+        en = { title: "ERP Update Reminder", message: "All staff are requested to update their transactions, leads, orders and follow-ups in ERP today. Incomplete or incorrect entries cause problems in the accounts." };
     }
     else if (type === "monthend") {
-        title = "Mahine ke ant ki soochna";
-        message = "Mahina khatam hone wala hai. Kripya vasooli, pending entries, attendance aur target ka kaam is hafte poora karein.";
+        hi = { title: "Mahine ke ant ki soochna", message: "Mahina khatam hone wala hai. Kripya vasooli, pending entries, attendance aur target ka kaam is hafte poora karein." };
+        en = { title: "Month-End Notice", message: "The month is about to end. Please complete collections, pending entries, attendance and target-related work this week." };
     }
     else {
         const body = colon || psClean(original, extras);
-        title = "Soochna";
-        message = body ? "Soochna: " + body + (/[.!]$/.test(body) ? "" : ".") + " Kripya dhyan dein." : "[sandesh likhein]";
+        typed = !!body;
+        hi = { title: "Soochna", message: body ? "Soochna: " + body + (/[.!]$/.test(body) ? "" : ".") + " Kripya dhyan dein." : "[sandesh likhein]" };
+        en = { title: "Notice", message: body ? "Notice: " + body + (/[.!]$/.test(body) ? "" : ".") + " Kindly take note." : "[write the message]" };
         if (!body)
             note = "Sandesh likh dijiye.";
     }
-    return { type, title, message, aud, staff: hit ? hit.email : "", note };
+    if (typed && !note)
+        note = "Jo aapne likha hai wo har bhasha me waise hi jayega (translate nahi hota). Poora English chahiye to English me likhein.";
+    return { type, title: hi.title, message: hi.message, aud, staff: hit ? hit.email : "", note, variants: { hi, en }, lang: "hi" };
 }
 function psRulesPlan(text, raw, brief) {
     const q = " " + String(text || "").toLowerCase().replace(/[?.,!;:]/g, " ").replace(/\s+/g, " ").trim() + " ";
@@ -4138,6 +4172,19 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull, o
         }
     };
     const setD = (patch) => setDraft(Object.assign({}, draft, patch));
+    const applyLang = (l) => {
+        if (!draft || !draft.variants || draft.lang === l)
+            return;
+        if (draft.edited && !window.confirm("Aapka badla hua text hat jayega. Jaari rakhein?"))
+            return;
+        const v = draft.variants;
+        const t = l === "en" ? v.en : l === "both" ? { title: v.en.title + " / " + v.hi.title, message: v.en.message + "\n\n" + v.hi.message } : v.hi;
+        setDraft(Object.assign({}, draft, { lang: l, title: t.title, message: t.message, edited: false }));
+    };
+    const langRow = draft && draft.variants && React.createElement("div", { key: "lang", style: { display: "flex", gap: 6, marginBottom: 6, alignItems: "center" } }, [
+        React.createElement("span", { key: "l", style: { fontSize: 10.5, fontWeight: 800, color: COLORS.violet, textTransform: "uppercase" } }, "Bhasha"),
+        ...[["hi", "Hindi"], ["en", "English"], ["both", "Dono"]].map(([k, l]) => React.createElement("button", { key: k, onClick: () => applyLang(k), style: { padding: "4px 11px", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 11.5, background: draft.lang === k ? COLORS.indigo : "#F1ECFE", color: draft.lang === k ? "#fff" : COLORS.violet } }, l)),
+    ]);
     const fld = { width: "100%", padding: "8px 9px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 12.5, marginBottom: 6 };
     const chip = (t) => React.createElement("button", { key: t, onClick: () => runAsk(t), style: { padding: "6px 10px", borderRadius: 14, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 11 } }, t);
     const openTarget = (t) => {
@@ -4168,8 +4215,9 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull, o
             React.createElement("select", { key: "a", value: draft.aud, onChange: (e) => setD({ aud: e.target.value }), style: { flex: 1, padding: "5px 6px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 12 } }, [["all", "Sabko"], ["biz:Grasp Infotech", "Grasp Infotech"], ["biz:Graspion", "Graspion"], ["biz:Routix", "Routix"], ["staff", "Ek staff"]].map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
             draft.aud === "staff" && React.createElement("select", { key: "s", value: draft.staff, onChange: (e) => setD({ staff: e.target.value }), style: { flex: 1, padding: "5px 6px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 12 } }, [React.createElement("option", { key: "x", value: "" }, "Staff chuniye\u2026")].concat(users.map((u) => React.createElement("option", { key: u.email, value: u.email }, u.full_name || u.email.split("@")[0])))),
         ]),
-        React.createElement("input", { key: "t", value: draft.title, onChange: (e) => setD({ title: e.target.value }), style: Object.assign({}, fld, { fontWeight: 700 }) }),
-        React.createElement("textarea", { key: "m", value: draft.message, onChange: (e) => setD({ message: e.target.value }), rows: 4, style: Object.assign({}, fld, { fontFamily: "inherit", resize: "vertical", lineHeight: 1.5 }) }),
+        langRow,
+        React.createElement("input", { key: "t", value: draft.title, onChange: (e) => setD({ title: e.target.value, edited: true }), style: Object.assign({}, fld, { fontWeight: 700 }) }),
+        React.createElement("textarea", { key: "m", value: draft.message, onChange: (e) => setD({ message: e.target.value, edited: true }), rows: 4, style: Object.assign({}, fld, { fontFamily: "inherit", resize: "vertical", lineHeight: 1.5 }) }),
         draft.note && React.createElement("div", { key: "n", style: { fontSize: 11, color: "#B4530E", marginBottom: 6 } }, draft.note),
         React.createElement("div", { key: "bt", style: { display: "flex", gap: 8 } }, [
             React.createElement("button", { key: "s", onClick: sendNotice, disabled: !canSend || deskBusy, style: { flex: 1, padding: "9px", borderRadius: 9, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5, opacity: canSend ? 1 : 0.5 } }, deskBusy ? "Bhej raha hai\u2026" : "Bhejein"),
