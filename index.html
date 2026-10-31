@@ -3594,16 +3594,6 @@ function psAudLabel(aud, users) {
     const u = (users || []).find((x) => x.email === e);
     return u ? u.full_name || e.split("@")[0] : e;
 }
-function psComposeNotice(type, f1, f2) {
-    const a = String(f1 || "").trim(), b = String(f2 || "").trim();
-    if (type === "holiday")
-        return { title: "Chhutti ki soochna", message: "Soochna: " + (b || "[tithi]") + " ko " + (a || "[avsar]") + " ke avsar par karyalay band rahega. Agle karya-diwas se kaam yathavat shuru hoga. Kripya apne lambit kaam ek din pehle poore kar lein." };
-    if (type === "meeting")
-        return { title: "Meeting ki soochna", message: "Aapko soochit kiya jata hai ki " + (a || "[din aur samay]") + " ko meeting rakhi gayi hai." + (b ? " Vishay/sthan: " + b + "." : "") + " Kripya samay par upasthit rahein." };
-    if (type === "reminder")
-        return { title: "Yaad dilane ke liye", message: "Yaad dilane ke liye: " + (a || "[kaam]") + ". Kripya is par aaj hi karyavahi karein aur apne reporting manager ko soochit karein." };
-    return { title: a || "Soochna", message: b };
-}
 // Rule based question answering over the data Saarthi already loaded. No AI, nothing leaves the ERP.
 function psAnswer(text, raw, brief) {
     const q = " " + String(text || "").toLowerCase().replace(/[?.,!:;]/g, " ").replace(/\s+/g, " ").trim() + " ";
@@ -3614,14 +3604,6 @@ function psAnswer(text, raw, brief) {
     const hit = rows.find((s) => { const full = s.name.toLowerCase(); return q.includes(" " + full + " ") || full.split(" ").some((t) => t.length >= 3 && q.includes(" " + t + " ")); });
     const bz = has("graspion") ? "Graspion" : has("routix") ? "Routix" : has("infotech") ? "Grasp Infotech" : null;
     const dOf = (i) => String(i.date || "").slice(0, 10);
-    if (has("notice", "sabko batao", "sabko bata", "message bhej", "yaad dila", "reminder")) {
-        const part = String(text).indexOf(":") >= 0 ? String(text).split(":").slice(1).join(":").trim() : "";
-        const reminder = has("yaad dila", "reminder");
-        const c = { type: reminder ? "reminder" : "general", aud: hit ? "staff" : bz ? "biz:" + bz : "all", staff: hit ? hit.email : "", f1: reminder ? part : "", f2: reminder ? "" : part };
-        if (!reminder && part)
-            c.f1 = "Soochna";
-        return { lines: ["Neeche notice banane ka form khol diya hai. Sandesh dekhkar \"Bhejein\" dabayenge tabhi jayega."], composer: c };
-    }
     if (hit && !has("overdue", "stock", "quotation", "kharch", "expense")) {
         const s = hit;
         L.push(s.name + " (" + s.biz + ")");
@@ -3643,6 +3625,17 @@ function psAnswer(text, raw, brief) {
         if (now.getHours() < 11)
             L.push("Abhi subah ka samay hai, kuchh log baad me aa sakte hain.");
         return { lines: L };
+    }
+    if (has("haal", "kaisa chal", "overall", "sab theek", "summary", "sthiti kya", "kaisa hai sab")) {
+        return { lines: [brief.verdict.label + ": " + brief.verdict.text].concat(brief.priorities.slice(0, 3)) };
+    }
+    if (has(" best ", " top ", "sabse achha", "sabse accha", "sabse badhiya")) {
+        const w = rows.filter((x) => x.target > 0 && x.pct !== null && x.sales > 0).sort((x, y) => y.pct - x.pct).slice(0, 3);
+        return { lines: w.length ? w.map((x, i) => (i + 1) + ". " + x.name + ": target ka " + Math.round(x.pct * 100) + "%") : ["Abhi kisi ki sale target ke mukable darj nahi hui."] };
+    }
+    if (has("peeche", "kamzor", "sabse kam", "worst")) {
+        const w = rows.filter((x) => x.pace !== null && x.pace < 0.7).sort((x, y) => x.pace - y.pace).slice(0, 5);
+        return { lines: w.length ? w.map((x) => x.name + ": target ka " + Math.round((x.pct || 0) * 100) + "% (apekshit lagbhag " + Math.round((raw.now.getDate() / new Date(raw.now.getFullYear(), raw.now.getMonth() + 1, 0).getDate()) * 100) + "%)") : ["Abhi koi staff target se bahut peeche nahi dikh raha."] };
     }
     if (has("late")) {
         const l = rows.filter((s) => s.late > 0).sort((a, b) => b.late - a.late).slice(0, 5);
@@ -3707,14 +3700,199 @@ function psAnswer(text, raw, brief) {
     }
     return { lines: ["Ye sawal main abhi samajh nahi paya. Aap aise pooch sakte hain:", "\u2022 Aaj kaun absent hai?", "\u2022 Overdue kiska hai?", "\u2022 Is mahine ki sale (ya Graspion ki sale)", "\u2022 Rani ka target kitna hua?", "\u2022 Stock kam kya hai? / Leave pending? / Payroll?", "\u2022 Notice bhejo: ..."] };
 }
+const PS_FESTIVALS = { diwali: "Diwali", dipawali: "Diwali", deepawali: "Diwali", holi: "Holi", eid: "Eid", dussehra: "Dussehra", dusshera: "Dussehra", dashahara: "Dussehra", "raksha bandhan": "Raksha Bandhan", rakhi: "Raksha Bandhan", christmas: "Christmas", "independence day": "Independence Day", "republic day": "Republic Day", "gandhi jayanti": "Gandhi Jayanti", janmashtami: "Janmashtami", chhath: "Chhath", navratri: "Navratri", "makar sankranti": "Makar Sankranti", "guru nanak jayanti": "Guru Nanak Jayanti" };
+const PS_DAYS = [["ravivaar", "raviwar"], ["somvaar", "somwar"], ["mangalvaar", "mangalwar"], ["budhvaar", "budhwar"], ["guruvaar", "guruwar"], ["shukravaar", "shukrawar"], ["shanivaar", "shaniwar"]];
+const psFmtDay = (d) => ["Ravivaar", "Somvaar", "Mangalvaar", "Budhvaar", "Guruvaar", "Shukravaar", "Shanivaar"][d.getDay()] + ", " + d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+function psParseWhen(q, now) {
+    const add = (n) => { const d = new Date(now); d.setDate(d.getDate() + n); return d; };
+    let when = "";
+    if (q.includes(" kal "))
+        when = "kal (" + psFmtDay(add(1)) + ")";
+    else if (q.includes(" parso "))
+        when = "parso (" + psFmtDay(add(2)) + ")";
+    else if (q.includes(" aaj "))
+        when = "aaj (" + psFmtDay(add(0)) + ")";
+    else {
+        PS_DAYS.forEach((names, i) => { if (!when && names.some((n) => q.includes(" " + n + " "))) {
+            let diff = (i - now.getDay() + 7) % 7;
+            if (diff === 0)
+                diff = 7;
+            when = psFmtDay(add(diff));
+        } });
+        if (!when) {
+            const m = q.match(/(\d{1,2})\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/);
+            if (m)
+                when = m[1] + " " + m[2].charAt(0).toUpperCase() + m[2].slice(1);
+        }
+    }
+    const t = q.match(/(subah|dopahar|shaam|sham|raat)?\s*(\d{1,2})(?::(\d{2}))?\s*baje/);
+    return { when, time: t ? (t[1] ? t[1] + " " : "") + t[2] + (t[3] ? ":" + t[3] : "") + " baje" : "" };
+}
+function psClean(original, extra) {
+    let t = " " + String(original || "").replace(/[?!]/g, " ") + " ";
+    const words = ["notice bhej do", "notice bhejo", "yaad dila do", "yaad dilao", "yaad dilana", "reminder bhejo", "sabko bata do", "sabko batao ki", "sabko batao", "sabhi ko batao", "sabhi ko", "bata do", "batao ki", "batao", "bhej do", "bhejo", "soochit karo", "notice", "reminder", "yaad dila"].concat(extra || []);
+    words.forEach((w) => { t = t.replace(new RegExp("\\s" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?=\\s)", "ig"), " "); });
+    t = t.replace(/^[\s:,\-]+|[\s:,\-]+$/g, "").replace(/\s+/g, " ").trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+}
+function psStaffNudges(s, hour) {
+    const a = [];
+    if (s.leads > 0)
+        a.push(s.leads + " leads ka follow-up");
+    if (s.tickets > 0)
+        a.push(s.tickets + " service ticket ki tithi");
+    if (s.pace !== null && s.pace < 0.7)
+        a.push("target ke liye sale badhana");
+    if (s.late >= 3)
+        a.push("samay par check-in");
+    if (!s.checkedToday && !s.onLeave && hour >= 11)
+        a.push("aaj ki check-in darj karna");
+    return a;
+}
+// Reads a typed situation and writes the notice for it. Returns null when the line is a question, not a task.
+function psDraft(text, raw, brief) {
+    const original = String(text || "").trim();
+    const q = " " + original.toLowerCase().replace(/[?.,!;:]/g, " ").replace(/\s+/g, " ").trim() + " ";
+    const has = (...w) => w.some((x) => q.includes(x));
+    const st = brief.stats, rows = st.rows, now = raw.now, R = dailyMoney;
+    const dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const hit = rows.find((s) => { const full = s.name.toLowerCase(); return q.includes(" " + full + " ") || full.split(" ").some((t) => t.length >= 3 && q.includes(" " + t + " ")); });
+    const bz = has("graspion") ? "Graspion" : has("routix") ? "Routix" : has("infotech") ? "Grasp Infotech" : null;
+    const aud = hit ? "staff" : bz ? "biz:" + bz : "all";
+    const festival = Object.keys(PS_FESTIVALS).find((k) => q.includes(" " + k + " "));
+    const push = ["notice", "bhejo", "bhej do", "yaad dila", "sabko", "sabhi", "prerit", "chetavni", "reminder"];
+    let type = null;
+    if (has("maintenance", "system update", "erp update", "server", "system band", "erp band", "app band", "app update"))
+        type = "system";
+    else if (has("chhutti", "holiday", "karyalay band", "office band", "avkash") || festival)
+        type = "holiday";
+    else if (has("meeting", "baithak"))
+        type = "meeting";
+    else if ((has("vasooli", "overdue", "payment") && has(...push)))
+        type = "collection";
+    else if (has("target", "lakshya") && has(...push))
+        type = "target";
+    else if (has("late", "check in", "check-in", "attendance") && has(...push))
+        type = "attendance";
+    else if (has("entry", "entries", "erp me update") && has(...push))
+        type = "entries";
+    else if (has("mahine ke ant", "month end", "mahine ka ant") && has(...push))
+        type = "monthend";
+    else if (has("yaad dila", "reminder"))
+        type = "reminder";
+    else if (has("notice", "sabko batao", "sabko bata", "sabhi ko", "soochit", "announce", "message bhej", "bhejo", "bhej do"))
+        type = "general";
+    if (!type)
+        return null;
+    const w = psParseWhen(q, now);
+    const extras = [];
+    if (hit) {
+        extras.push(hit.name.toLowerCase() + " ko");
+        hit.name.toLowerCase().split(" ").filter((t) => t.length >= 3).forEach((t) => extras.push(t + " ko"));
+    }
+    if (bz)
+        ["walon ko", "ke staff ko", "ko"].forEach((x) => extras.push(bz.toLowerCase() + " " + x));
+    const colon = original.indexOf(":") >= 0 ? original.split(":").slice(1).join(":").trim() : "";
+    if (colon && ["collection", "target", "attendance", "entries", "monthend"].includes(type))
+        type = has("yaad dila", "reminder") ? "reminder" : "general";
+    let title = "Soochna", message = "", note = "";
+    if (type === "holiday") {
+        const occ = festival ? PS_FESTIVALS[festival] : "";
+        title = "Chhutti ki soochna";
+        message = "Soochna: " + (w.when || "[tithi]") + " ko " + (occ ? occ + " ke avsar par " : "") + "karyalay band rahega. Agle karya-diwas se kaam yathavat shuru hoga. Kripya apne lambit kaam ek din pehle poore kar lein.";
+        if (!w.when)
+            note = "Tithi nahi mili, kripya [tithi] ki jagah bhar dein.";
+    }
+    else if (type === "meeting") {
+        title = "Meeting ki soochna";
+        const topic = has("target") ? " Vishay: target review." : has("review") ? " Vishay: review." : "";
+        message = "Aapko soochit kiya jata hai ki " + (w.when ? w.when + (w.time ? " " + w.time : "") : "[din aur samay]") + " ko meeting rakhi gayi hai." + topic + " Kripya samay par upasthit rahein.";
+        if (!w.when)
+            note = "Din/samay nahi mila, kripya [din aur samay] ki jagah bhar dein.";
+    }
+    else if (type === "system") {
+        title = "System ki soochna";
+        message = "Soochna: " + (w.when ? w.when + " ko " : "") + "ERP/system me maintenance ya update kiya jayega, jiske dauran kuchh samay ke liye access band ho sakta hai. Kripya apna kaam samay se pehle ERP me save kar lein.";
+    }
+    else if (type === "reminder") {
+        title = "Yaad dilane ke liye";
+        let task = colon || psClean(original, extras);
+        if (!task && hit) {
+            const n = psStaffNudges(hit, now.getHours());
+            if (n.length)
+                task = n.join(", ");
+        }
+        if (!task) {
+            task = "[kya yaad dilana hai]";
+            note = "Kya yaad dilana hai, ye likh dijiye.";
+        }
+        message = "Yaad dilane ke liye: " + task + ". Kripya is par aaj hi karyavahi karein aur apne reporting manager ko soochit karein.";
+    }
+    else if (type === "collection") {
+        title = "Vasooli ki yaad";
+        message = st.totalOver > 0 ? "Overdue vasooli " + R(st.totalOver) + " (" + st.totalOverN + " invoice) baaki hai. Kripya apne grahakon se payment follow-up karein aur ERP me update darj karein." : "Sabhi bhugtan abhi samay par hain. Niyamit follow-up jaari rakhein aur ERP me update darj karte rahein.";
+    }
+    else if (type === "target") {
+        title = "Lakshya ki yaad";
+        const sc = rows.filter((x) => x.target > 0 && (hit ? x.email === hit.email : bz ? x.biz === bz : true));
+        const tT = sc.reduce((a, x) => a + x.target, 0), tS = sc.reduce((a, x) => a + x.sales, 0);
+        const exp = Math.round((dom / dim) * 100);
+        message = tT > 0 ? (hit ? "Is mahine aapka target " + R(tT) + " hai aur ab tak " + Math.round((tS / tT) * 100) + "% poora hua hai" : "Is mahine ab tak " + (bz ? bz + " team" : "team") + " ka lakshya " + Math.round((tS / tT) * 100) + "% poora hua hai") + " (is samay tak lagbhag " + exp + "% apekshit). Shesh " + (dim - dom + 1) + " din me niyamit follow-up aur pending quotations par baat karke lakshya tak pahunchne ka prayas karein. Aapke sahyog ke liye dhanyavaad." : "Is mahine ke lakshya ko dhyan me rakhte hue niyamit follow-up aur pending quotations par baat karein. Aapke sahyog ke liye dhanyavaad.";
+    }
+    else if (type === "attendance") {
+        title = "Attendance ki yaad";
+        message = "Sabhi se anurodh hai ki karyalay ke nirdharit samay par ERP me check-in darj karein. Baar-baar late check-in ya bina soochna ke anupasthiti ka asar performance par pad sakta hai.";
+    }
+    else if (type === "entries") {
+        title = "ERP update ki yaad";
+        message = "Sabhi se anurodh hai ki apne lenden, leads, orders aur follow-up aaj hi ERP me sahi roop se update karein. Adhoori ya galat entry se hisaab me dikkat aati hai.";
+    }
+    else if (type === "monthend") {
+        title = "Mahine ke ant ki soochna";
+        message = "Mahina khatam hone wala hai. Kripya vasooli, pending entries, attendance aur target ka kaam is hafte poora karein.";
+    }
+    else {
+        const body = colon || psClean(original, extras);
+        title = "Soochna";
+        message = body ? "Soochna: " + body + (/[.!]$/.test(body) ? "" : ".") + " Kripya dhyan dein." : "[sandesh likhein]";
+        if (!body)
+            note = "Sandesh likh dijiye.";
+    }
+    return { type, title, message, aud, staff: hit ? hit.email : "", note };
+}
+function psRulesPlan(text, raw, brief) {
+    const d = psDraft(text, raw, brief);
+    if (d)
+        return { kind: "draft", draft: d };
+    return { kind: "answer", lines: psAnswer(text, raw, brief).lines };
+}
+// The one place that decides what a typed line means.
+// TODAY: rules (free, private, nothing leaves the ERP).
+// LATER (when the work grows): set PS_ENGINE.ai to an async function (text, raw, brief) that returns the SAME shapes,
+//   { kind: "answer", lines: [...] }  or  { kind: "draft", draft: { title, message, aud, staff, note } }
+// and set PS_ENGINE.mode = "ai". `raw` and `brief.stats` are the facts to hand to the AI. The screen needs no change,
+// and if the AI call fails it falls back to these rules automatically.
+const PS_ENGINE = {
+    mode: "rules",
+    ai: null,
+    async handle(text, raw, brief) {
+        if (this.mode === "ai" && typeof this.ai === "function") {
+            try {
+                return await this.ai(text, raw, brief);
+            }
+            catch (e) { }
+        }
+        return psRulesPlan(text, raw, brief);
+    },
+};
 function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull }) {
     const [brief, setBrief] = useState(psCache && Date.now() - psCache.at < 300000 ? psCache.brief : null);
     const [rawData, setRawData] = useState(psCache && Date.now() - psCache.at < 300000 ? psCache.raw : null);
-    const [open, setOpen] = useState({ ask: true, team: true, odd: true, ideas: false, time: false });
-    const blankDesk = { open: false, type: "general", aud: "all", staff: "", f1: "", f2: "" };
+    const [open, setOpen] = useState({ ask: false, team: true, odd: true, ideas: false, time: false });
     const [askText, setAskText] = useState("");
-    const [qa, setQa] = useState([]);
-    const [desk, setDesk] = useState(blankDesk);
+    const [reply, setReply] = useState(null);
+    const [draft, setDraft] = useState(null);
+    const [thinking, setThinking] = useState(false);
     const [deskBusy, setDeskBusy] = useState(false);
     const [deskMsg, setDeskMsg] = useState("");
     useEffect(() => {
@@ -3807,72 +3985,78 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull })
         ])),
     ];
     const users = (rawData && rawData.users ? rawData.users : []).filter((u) => !u.is_admin && u.is_active !== false);
-    const runAsk = (t) => {
+    const runAsk = async (t) => {
         const text = String(t || "").trim();
-        if (!text || !rawData)
+        if (!text || !rawData || thinking)
             return;
-        const res = psAnswer(text, rawData, brief);
-        if (res.composer) {
-            setDesk(Object.assign({}, blankDesk, res.composer, { open: true }));
-            setDeskMsg("");
+        setThinking(true);
+        setDeskMsg("");
+        let plan;
+        try {
+            plan = await PS_ENGINE.handle(text, rawData, brief);
         }
-        setQa([{ q: text, lines: res.lines }].concat(qa).slice(0, 3));
+        catch (e) {
+            plan = { kind: "answer", lines: ["Abhi jawab nahi bana paya, thodi der baad dobara koshish karein."] };
+        }
+        if (plan.kind === "draft") {
+            setDraft(plan.draft);
+            setReply(null);
+        }
+        else {
+            setReply({ q: text, lines: plan.lines });
+            setDraft(null);
+        }
         setAskText("");
+        setThinking(false);
     };
-    const preview = psComposeNotice(desk.type, desk.f1, desk.f2);
-    const audValue = desk.aud === "staff" ? "staff:" + desk.staff : desk.aud;
-    const canSend = !!desk.f1.trim() && (desk.type !== "general" || !!desk.f2.trim()) && (desk.aud !== "staff" || !!desk.staff);
+    const audValue = draft ? (draft.aud === "staff" ? "staff:" + draft.staff : draft.aud) : "all";
+    const canSend = !!draft && !!draft.title.trim() && !!draft.message.trim() && draft.message.indexOf("[") < 0 && draft.title.indexOf("[") < 0 && (draft.aud !== "staff" || !!draft.staff);
     const sendNotice = async () => {
         if (!canSend || deskBusy)
             return;
         setDeskBusy(true);
         setDeskMsg("");
-        const { error } = await sb.from("grasp_notices").insert({ id: uid(), title: preview.title, message: preview.message, audience: audValue, created_by: session.user.email, created_by_id: session.user.id, created_at: new Date().toISOString() });
+        const { error } = await sb.from("grasp_notices").insert({ id: uid(), title: draft.title.trim(), message: draft.message.trim(), audience: audValue, created_by: session.user.email, created_by_id: session.user.id, created_at: new Date().toISOString() });
         setDeskBusy(false);
         if (error)
             setDeskMsg("Notice nahi bhej paya: " + error.message);
         else {
             setDeskMsg("Notice bhej diya gaya (" + psAudLabel(audValue, users) + ").");
-            setDesk(blankDesk);
+            setDraft(null);
         }
     };
-    const smallBtn = (k, text, onClick, primary) => React.createElement("button", { key: k, onClick: onClick, style: { padding: "7px 11px", borderRadius: 16, border: primary ? "none" : "1px solid " + COLORS.border, background: primary ? COLORS.indigo : "#fff", color: primary ? "#fff" : COLORS.indigo, fontWeight: 700, fontSize: 11.5 } }, text);
-    const inputStyle = { width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13, marginBottom: 8 };
-    const fieldLabels = { general: ["Vishay (title)", "Sandesh"], holiday: ["Avsar (jaise Diwali)", "Tithi (jaise 29 Oct)"], meeting: ["Din aur samay", "Vishay / jagah"], reminder: ["Kya yaad dilana hai", null] }[desk.type];
-    const composer = desk.open && React.createElement("div", { key: "composer", className: "card", style: { padding: 12, marginTop: 8, background: "#FAF9FF" } }, [
-        React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 12.5, marginBottom: 8 } }, "Notice banayein"),
-        React.createElement("select", { key: "ty", value: desk.type, onChange: (e) => setDesk(Object.assign({}, desk, { type: e.target.value, aud: e.target.value === "reminder" ? "staff" : desk.aud })), style: inputStyle }, [["general", "Samanya soochna"], ["holiday", "Chhutti ki soochna"], ["meeting", "Meeting ki soochna"], ["reminder", "Yaad dilana (ek staff ko)"]].map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
-        React.createElement("select", { key: "au", value: desk.aud, onChange: (e) => setDesk(Object.assign({}, desk, { aud: e.target.value })), style: inputStyle }, [["all", "Sabko"], ["biz:Grasp Infotech", "Sirf Grasp Infotech"], ["biz:Graspion", "Sirf Graspion"], ["biz:Routix", "Sirf Routix"], ["staff", "Ek staff ko"]].map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
-        desk.aud === "staff" && React.createElement("select", { key: "st", value: desk.staff, onChange: (e) => setDesk(Object.assign({}, desk, { staff: e.target.value })), style: inputStyle }, [React.createElement("option", { key: "x", value: "" }, "Staff chuniye\u2026")].concat(users.map((u) => React.createElement("option", { key: u.email, value: u.email }, u.full_name || u.email.split("@")[0])))),
-        React.createElement("input", { key: "f1", value: desk.f1, onChange: (e) => setDesk(Object.assign({}, desk, { f1: e.target.value })), placeholder: fieldLabels[0], style: inputStyle }),
-        fieldLabels[1] && React.createElement("textarea", { key: "f2", value: desk.f2, onChange: (e) => setDesk(Object.assign({}, desk, { f2: e.target.value })), placeholder: fieldLabels[1], rows: desk.type === "general" ? 4 : 2, style: Object.assign({}, inputStyle, { fontFamily: "inherit", resize: "vertical" }) }),
-        React.createElement("div", { key: "pv", style: { background: "#fff", border: "1px dashed " + COLORS.border, borderRadius: 9, padding: "9px 11px", marginBottom: 8 } }, [
-            React.createElement("div", { key: "h", style: { fontSize: 10.5, fontWeight: 800, color: COLORS.violet, textTransform: "uppercase", marginBottom: 4 } }, "Preview \u2192 " + psAudLabel(audValue, users)),
-            React.createElement("div", { key: "tt", style: { fontWeight: 700, fontSize: 12.5 } }, preview.title),
-            React.createElement("div", { key: "m", style: { fontSize: 12.5, lineHeight: 1.55, whiteSpace: "pre-wrap" } }, preview.message || "\u2026"),
+    const setD = (patch) => setDraft(Object.assign({}, draft, patch));
+    const fld = { width: "100%", padding: "8px 9px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 12.5, marginBottom: 6 };
+    const chip = (t) => React.createElement("button", { key: t, onClick: () => runAsk(t), style: { padding: "6px 10px", borderRadius: 14, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 11 } }, t);
+    const replyCard = reply && React.createElement("div", { key: "reply", style: { background: "#F5F2FE", borderRadius: 10, padding: "8px 10px", marginTop: 6 } }, [
+        React.createElement("div", { key: "q", style: { display: "flex", justifyContent: "space-between", fontSize: 10.5, color: COLORS.muted, fontWeight: 700, marginBottom: 3 } }, [React.createElement("span", { key: "a" }, reply.q), React.createElement("button", { key: "x", onClick: () => setReply(null), style: { border: "none", background: "none", color: COLORS.muted, fontWeight: 800 } }, "\u00D7")]),
+        ...reply.lines.map((l, j) => React.createElement("div", { key: "l" + j, style: { fontSize: 12.5, lineHeight: 1.5 } }, l)),
+    ]);
+    const draftCard = draft && React.createElement("div", { key: "draft", style: { background: "#FAF9FF", border: "1px solid " + COLORS.border, borderRadius: 10, padding: 9, marginTop: 6 } }, [
+        React.createElement("div", { key: "h", style: { display: "flex", gap: 6, alignItems: "center", marginBottom: 6 } }, [
+            React.createElement("span", { key: "l", style: { fontSize: 10.5, fontWeight: 800, color: COLORS.violet, textTransform: "uppercase" } }, "Notice \u2192"),
+            React.createElement("select", { key: "a", value: draft.aud, onChange: (e) => setD({ aud: e.target.value }), style: { flex: 1, padding: "5px 6px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 12 } }, [["all", "Sabko"], ["biz:Grasp Infotech", "Grasp Infotech"], ["biz:Graspion", "Graspion"], ["biz:Routix", "Routix"], ["staff", "Ek staff"]].map(([k, l]) => React.createElement("option", { key: k, value: k }, l))),
+            draft.aud === "staff" && React.createElement("select", { key: "s", value: draft.staff, onChange: (e) => setD({ staff: e.target.value }), style: { flex: 1, padding: "5px 6px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 12 } }, [React.createElement("option", { key: "x", value: "" }, "Staff chuniye\u2026")].concat(users.map((u) => React.createElement("option", { key: u.email, value: u.email }, u.full_name || u.email.split("@")[0])))),
         ]),
+        React.createElement("input", { key: "t", value: draft.title, onChange: (e) => setD({ title: e.target.value }), style: Object.assign({}, fld, { fontWeight: 700 }) }),
+        React.createElement("textarea", { key: "m", value: draft.message, onChange: (e) => setD({ message: e.target.value }), rows: 4, style: Object.assign({}, fld, { fontFamily: "inherit", resize: "vertical", lineHeight: 1.5 }) }),
+        draft.note && React.createElement("div", { key: "n", style: { fontSize: 11, color: "#B4530E", marginBottom: 6 } }, draft.note),
         React.createElement("div", { key: "bt", style: { display: "flex", gap: 8 } }, [
-            React.createElement("button", { key: "s", onClick: sendNotice, disabled: !canSend || deskBusy, style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13, opacity: canSend ? 1 : 0.5 } }, deskBusy ? "Bhej raha hai\u2026" : "Bhejein"),
-            React.createElement("button", { key: "c", onClick: () => setDesk(blankDesk), style: { padding: "10px 14px", borderRadius: 10, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13 } }, "Cancel"),
+            React.createElement("button", { key: "s", onClick: sendNotice, disabled: !canSend || deskBusy, style: { flex: 1, padding: "9px", borderRadius: 9, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5, opacity: canSend ? 1 : 0.5 } }, deskBusy ? "Bhej raha hai\u2026" : "Bhejein"),
+            React.createElement("button", { key: "c", onClick: () => setDraft(null), style: { padding: "9px 14px", borderRadius: 9, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 12.5 } }, "Cancel"),
         ]),
     ]);
-    const askSection = section("ask", "Saarthi se poochhein / kaam dein", [
-        React.createElement("div", { key: "row", style: { display: "flex", gap: 6, marginBottom: 8 } }, [
+    const askSection = section("ask", "Saarthi se poochhein / situation batayein", [
+        React.createElement("div", { key: "row", style: { display: "flex", gap: 6 } }, [
             React.createElement("input", { key: "i", value: askText, onChange: (e) => setAskText(e.target.value), onKeyDown: (e) => { if (e.key === "Enter")
-                    runAsk(askText); }, placeholder: "Jaise: aaj kaun absent hai?", style: { flex: 1, padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13 } }),
-            React.createElement("button", { key: "b", onClick: () => runAsk(askText), style: { padding: "9px 14px", borderRadius: 9, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, "Poochhein"),
+                    runAsk(askText); }, placeholder: "Jaise: kal Diwali ki chhutti hai sabko batao", style: { flex: 1, padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13 } }),
+            React.createElement("button", { key: "b", onClick: () => runAsk(askText), disabled: thinking, style: { padding: "9px 14px", borderRadius: 9, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, thinking ? "\u2026" : "Ok"),
         ]),
-        React.createElement("div", { key: "chips", style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 } }, ["Aaj kaun absent hai?", "Overdue kiska hai?", "Is mahine ki sale", "Target ki sthiti", "Stock kam kya hai?", "Leave pending?"].map((t) => smallBtn(t, t, () => runAsk(t)))),
-        ...qa.map((x, i) => React.createElement("div", { key: "qa" + i, style: { background: "#F5F2FE", borderRadius: 10, padding: "9px 11px", marginBottom: 7 } }, [
-            React.createElement("div", { key: "q", style: { fontSize: 11, color: COLORS.muted, fontWeight: 700, marginBottom: 3 } }, "Aapne poochha: " + x.q),
-            ...x.lines.map((l, j) => React.createElement("div", { key: "l" + j, style: { fontSize: 12.5, lineHeight: 1.55 } }, l)),
-        ])),
-        React.createElement("div", { key: "tasks", style: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 } }, [
-            smallBtn("n", "Notice bhejein", () => { setDesk(Object.assign({}, blankDesk, { open: true })); setDeskMsg(""); }, true),
-            smallBtn("r", "Staff ko yaad dilayein", () => { setDesk(Object.assign({}, blankDesk, { open: true, type: "reminder", aud: "staff" })); setDeskMsg(""); }, true),
-        ]),
-        deskMsg && React.createElement("div", { key: "dm", style: { fontSize: 12, fontWeight: 700, color: deskMsg.indexOf("nahi") >= 0 ? COLORS.rose : COLORS.emerald, marginTop: 8 } }, deskMsg),
-        composer,
+        !reply && !draft && React.createElement("div", { key: "ch", style: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 } }, ["Haal kya hai?", "Aaj ki sale", "Target ki sthiti"].map(chip)),
+        replyCard,
+        draftCard,
+        deskMsg && React.createElement("div", { key: "dm", style: { fontSize: 12, fontWeight: 700, color: deskMsg.indexOf("nahi") >= 0 ? COLORS.rose : COLORS.emerald, marginTop: 6 } }, deskMsg),
+        React.createElement("div", { key: "hint", style: { fontSize: 10, color: COLORS.muted, marginTop: 6 } }, "Sandesh apne aap banta hai; bhejne se pehle aap badal sakte hain. Kuchh bhi apne aap nahi jata."),
     ]);
     if (compact)
         return box([...head, onOpenFull && React.createElement("button", { key: "more", onClick: onOpenFull, style: { width: "100%", marginTop: 8, padding: "9px", borderRadius: 9, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 12 } }, "Poori report dekhein (teeno business, team, sujhav)")]);
