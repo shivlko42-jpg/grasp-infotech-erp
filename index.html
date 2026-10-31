@@ -2194,9 +2194,22 @@ function QuotationTracker({ invoices, onBack, onOpenInvoice, onConvert }) {
                     ")"),
                 converted.map((q) => React.createElement(Row, { key: q.id, q: q }))))));
 }
+const GUIDE_PARTS = [["common", "Part A \u2013 Common"], ["grasp_infotech", "Part B \u2013 Grasp Infotech"], ["graspion", "Part B \u2013 Graspion"], ["routix", "Part B \u2013 Routix"]];
+// Which Part B a person must follow (Part A is for everyone).
+function guidePartsFor(business) {
+    if (business === "Graspion")
+        return ["graspion"];
+    if (business === "Routix")
+        return ["routix"];
+    if (business === "Graspion + Routix")
+        return ["graspion", "routix"];
+    if (business === "HR / Finance (All Businesses)")
+        return ["grasp_infotech", "graspion", "routix"];
+    return ["grasp_infotech"];
+}
 function Guidelines({ session, perms, onBack }) {
-    const [content, setContent] = useState("");
-    const [updatedAt, setUpdatedAt] = useState(null);
+    const [docs, setDocs] = useState({});
+    const [selected, setSelected] = useState("common");
     const [draft, setDraft] = useState("");
     const [editing, setEditing] = useState(false);
     const [loaded, setLoaded] = useState(false);
@@ -2207,16 +2220,15 @@ function Guidelines({ session, perms, onBack }) {
     const [allReads, setAllReads] = useState([]);
     useEffect(() => {
         (async () => {
-            const gRes = await sb.from("grasp_guidelines").select("*").eq("id", "main").maybeSingle();
-            const data = gRes.data;
-            setContent((data && data.content) || "");
-            setDraft((data && data.content) || "");
-            setUpdatedAt((data && data.updated_at) || null);
+            const gRes = await sb.from("grasp_guidelines").select("*").in("id", GUIDE_PARTS.map(([k]) => k));
+            const map = {};
+            (gRes.data || []).forEach((r) => { map[r.id] = { content: r.content || "", updated_at: r.updated_at }; });
+            setDocs(map);
             const myRead = await sb.from("grasp_guideline_reads").select("*").eq("staff_email", session.user.email).maybeSingle();
             setMyConfirmedAt((myRead.data && myRead.data.confirmed_at) || null);
             if (perms.isAdmin) {
                 const [uRes, rRes] = await Promise.all([
-                    sb.from("grasp_users").select("email, full_name, is_admin"),
+                    sb.from("grasp_users").select("email, full_name, is_admin, business"),
                     sb.from("grasp_guideline_reads").select("*"),
                 ]);
                 setStaffList((uRes.data || []).filter((u) => !u.is_admin));
@@ -2225,16 +2237,18 @@ function Guidelines({ session, perms, onBack }) {
             setLoaded(true);
         })();
     }, []);
+    const partTitle = (id) => (GUIDE_PARTS.find(([k]) => k === id) || [id, id])[1];
+    const latest = (ids) => ids.reduce((m, id) => { const t = docs[id] && docs[id].updated_at ? new Date(docs[id].updated_at).getTime() : 0; return t > m ? t : m; }, 0);
+    const myParts = ["common"].concat(guidePartsFor(perms.business));
     const save = async () => {
         setBusy(true);
         setError("");
         const nowIso = new Date().toISOString();
-        const { error } = await sb.from("grasp_guidelines").update({ content: draft, updated_by: session.user.email, updated_at: nowIso }).eq("id", "main");
+        const { error } = await sb.from("grasp_guidelines").update({ content: draft, updated_by: session.user.email, updated_at: nowIso }).eq("id", selected);
         if (error)
             setError(error.message);
         else {
-            setContent(draft);
-            setUpdatedAt(nowIso);
+            setDocs(Object.assign(Object.assign({}, docs), { [selected]: { content: draft, updated_at: nowIso } }));
             setEditing(false);
         }
         setBusy(false);
@@ -2250,29 +2264,41 @@ function Guidelines({ session, perms, onBack }) {
             setMyConfirmedAt(nowIso);
         setBusy(false);
     };
-    const isConfirmed = myConfirmedAt && updatedAt && new Date(myConfirmedAt) >= new Date(updatedAt);
+    const myLatest = latest(myParts);
+    const hasContent = myParts.some((id) => docs[id] && docs[id].content);
+    const isConfirmed = myConfirmedAt && myLatest > 0 && new Date(myConfirmedAt).getTime() >= myLatest;
+    const card = (id, text) => React.createElement("div", { key: id },
+        React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: COLORS.violet, textTransform: "uppercase", letterSpacing: 0.5, margin: "4px 0 6px" } }, partTitle(id)),
+        React.createElement("div", { className: "card", style: { padding: 16, whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: 13.5, color: COLORS.ink, marginBottom: 14 } }, text));
+    const chip = ([k, label]) => React.createElement("button", { key: k, onClick: () => { setSelected(k); setEditing(false); setDraft((docs[k] && docs[k].content) || ""); }, style: { padding: "7px 12px", borderRadius: 18, border: "none", whiteSpace: "nowrap", fontWeight: 700, fontSize: 11.5, background: selected === k ? COLORS.indigo : "#F1ECFE", color: selected === k ? "#fff" : COLORS.violet } }, label);
+    const whoSees = (id) => id === "common" ? "Edit karne par sabko dobara confirm karna padega." : "Edit karne par sirf us business ke staff ko dobara confirm karna padega.";
     return (React.createElement("div", null,
         React.createElement(SubHeader, { title: "Staff Guidelines", onBack: onBack }),
         React.createElement("div", { style: { padding: "0 16px" } },
-            !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026")) : editing ? (React.createElement(React.Fragment, null,
-                React.createElement("textarea", { value: draft, onChange: (e) => setDraft(e.target.value), rows: 16, style: { width: "100%", padding: 12, borderRadius: 12, border: "1px solid " + COLORS.border, fontSize: 13.5, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit" } }),
-                React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
-                    React.createElement("button", { onClick: save, disabled: busy, style: { flex: 1, padding: "11px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Save"),
-                    React.createElement("button", { onClick: () => { setDraft(content); setEditing(false); }, style: { padding: "11px 16px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))) : (React.createElement(React.Fragment, null,
-                content ? (React.createElement("div", { className: "card", style: { padding: 16, whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: 13.5, color: COLORS.ink } }, content)) : (React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Abhi tak koi guideline nahi likhi gayi hai.")),
-                content && (isConfirmed ? React.createElement("div", { className: "card", style: { padding: 14, marginTop: 12, background: "#E3FBF1", border: "1px solid #C8F0DC", display: "flex", alignItems: "center", gap: 8 } },
+            !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "30px 0", color: COLORS.muted } }, "Loading\u2026")) : perms.isAdmin ? (React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", marginBottom: 12 } }, GUIDE_PARTS.map(chip)),
+                editing ? (React.createElement(React.Fragment, null,
+                    React.createElement("textarea", { value: draft, onChange: (e) => setDraft(e.target.value), rows: 18, style: { width: "100%", padding: 12, borderRadius: 12, border: "1px solid " + COLORS.border, fontSize: 13.5, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit" } }),
+                    React.createElement("div", { style: { fontSize: 11, color: COLORS.muted, marginTop: 6 } }, whoSees(selected)),
+                    React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
+                        React.createElement("button", { onClick: save, disabled: busy, style: { flex: 1, padding: "11px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "Saving\u2026" : "Save"),
+                        React.createElement("button", { onClick: () => { setDraft((docs[selected] && docs[selected].content) || ""); setEditing(false); }, style: { padding: "11px 16px", borderRadius: 11, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 13.5 } }, "Cancel")))) : (React.createElement(React.Fragment, null,
+                    docs[selected] && docs[selected].content ? card(selected, docs[selected].content) : React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Is hisse me abhi kuchh nahi likha hai."),
+                    React.createElement("button", { onClick: () => { setDraft((docs[selected] && docs[selected].content) || ""); setEditing(true); }, style: { width: "100%", marginTop: 4, padding: "11px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5 } }, docs[selected] && docs[selected].content ? "Edit \u2013 " + partTitle(selected) : "Write \u2013 " + partTitle(selected)),
+                    staffList.length > 0 && React.createElement("div", { style: { marginTop: 20 } },
+                        React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 700, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 } }, "Kisne Confirm Kiya"),
+                        staffList.map((u) => {
+                            const read = allReads.find((r) => r.staff_email === u.email);
+                            const need = latest(["common"].concat(guidePartsFor(u.business)));
+                            const confirmed = read && need > 0 && new Date(read.confirmed_at).getTime() >= need;
+                            return React.createElement("div", { key: u.email, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid " + COLORS.border } },
+                                React.createElement("span", { style: { fontSize: 13, fontWeight: 600 } }, (u.full_name || u.email.split("@")[0]) + " \u00B7 " + (u.business || "Grasp Infotech")),
+                                confirmed ? React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, color: COLORS.emerald, background: "#E3FBF1", padding: "3px 9px", borderRadius: 7 } }, "\u2713 Confirmed") : React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, color: COLORS.rose, background: "#FDE7EB", padding: "3px 9px", borderRadius: 7 } }, "Pending"));
+                        })))))) : (React.createElement(React.Fragment, null,
+                hasContent ? myParts.filter((id) => docs[id] && docs[id].content).map((id) => card(id, docs[id].content)) : React.createElement("div", { className: "card", style: { padding: 24, textAlign: "center", color: COLORS.muted, fontSize: 13.5 } }, "Abhi tak koi guideline nahi likhi gayi hai."),
+                hasContent && (isConfirmed ? React.createElement("div", { className: "card", style: { padding: 14, background: "#E3FBF1", border: "1px solid #C8F0DC", display: "flex", alignItems: "center", gap: 8 } },
                     React.createElement(Icon, { size: 16 }, "\u2705"),
-                    React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#0F7A54" } }, "Aapne padh liya hai aur confirm kar diya hai")) : React.createElement("button", { onClick: confirmRead, disabled: busy, style: { width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#10B981,#0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "\u2026" : "\u2713 I Have Read & Understood")),
-                perms.isAdmin && React.createElement("button", { onClick: () => setEditing(true), style: { width: "100%", marginTop: 12, padding: "11px", borderRadius: 11, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 13.5 } }, content ? "Edit Guidelines" : "Write Guidelines"),
-                perms.isAdmin && staffList.length > 0 && React.createElement("div", { style: { marginTop: 20 } },
-                    React.createElement("div", { style: { fontSize: 12, color: COLORS.muted, fontWeight: 700, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 } }, "Kisne Confirm Kiya"),
-                    staffList.map((u) => {
-                        const read = allReads.find((r) => r.staff_email === u.email);
-                        const confirmed = read && updatedAt && new Date(read.confirmed_at) >= new Date(updatedAt);
-                        return React.createElement("div", { key: u.email, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid " + COLORS.border } },
-                            React.createElement("span", { style: { fontSize: 13, fontWeight: 600 } }, u.full_name || u.email.split("@")[0]),
-                            confirmed ? React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, color: COLORS.emerald, background: "#E3FBF1", padding: "3px 9px", borderRadius: 7 } }, "\u2713 Confirmed") : React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, color: COLORS.rose, background: "#FDE7EB", padding: "3px 9px", borderRadius: 7 } }, "Pending"));
-                    })))),
+                    React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#0F7A54" } }, "Aapne padh liya hai aur confirm kar diya hai")) : React.createElement("button", { onClick: confirmRead, disabled: busy, style: { width: "100%", padding: "13px", borderRadius: 12, border: "none", background: "linear-gradient(120deg,#10B981,#0EA5E9)", color: "#fff", fontWeight: 700, fontSize: 13.5 } }, busy ? "\u2026" : "\u2713 I Have Read & Understood")))),
             error && React.createElement("div", { style: { marginTop: 12, padding: "10px 14px", background: "#FDE7EB", color: COLORS.rose, borderRadius: 10, fontSize: 13 } }, error))));
 }
 function Notices({ session, perms, onBack }) {
