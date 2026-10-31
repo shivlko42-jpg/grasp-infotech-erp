@@ -1055,7 +1055,7 @@ function BillingApp({ session, perms }) {
             React.createElement("div", { className: "no-print" },
                 React.createElement(Header, { profile: profile })),
             React.createElement("main", { className: "app-main", style: { flex: 1, padding: view === "preview" ? "16px 0 90px" : "16px 16px 90px", overflowY: "auto" } },
-                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenRoutixJobs: () => setView("routixjobs"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), onOpenLowStock: () => setView("items"), itemCatalog: itemCatalog, staffNames: staffNames })) : view === "businessoverview" && canUse(perms, "business_overview", perms.designation === "Accountant") ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, isAdmin: perms.isAdmin, session: session, perms: perms, invoices: invoices, itemCatalog: itemCatalog, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" && canUse(perms, "ecom_orders", legacyOrdersAccess(perms, "Graspion")) ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: async (o) => {
+                !loaded ? (React.createElement("div", { style: { textAlign: "center", padding: "60px 0", color: COLORS.muted } }, "Loading\u2026")) : view === "home" ? (React.createElement(Home, { totals: totals, invoices: fyInvoices, fy: fy, fyOptions: fyOptions, setFy: setFy, perms: perms, session: session, profile: profile, onCreate: () => { setEditingInv(null); setView("create"); }, onView: () => { setFolderFilter("all"); setView("invoices"); }, onOpen: (id) => { setPreviewId(id); setView("preview"); }, onOpenFolder: (docType) => { setFolderFilter(docType); setView("invoices"); }, onOpenExpenses: () => setView("expenses"), onOpenPayroll: () => setView("payroll"), onOpenCashBook: () => setView("cashbook"), onOpenDue: () => setView("due"), onOpenQuotations: () => setView("quotations"), onOpenAttendance: () => setView("attendance"), onOpenGuidelines: () => setView("guidelines"), onOpenNotices: () => setView("notices"), onOpenManagementDashboard: () => setView("managementdash"), onOpenMyPerformance: () => setView("myperformance"), onOpenLeads: () => setView("leads"), onOpenEcomOrders: () => setView("ecomorders"), onOpenRoutixJobs: () => setView("routixjobs"), onOpenGemTenders: () => setView("gemtenders"), onOpenServiceTickets: () => setView("servicetickets"), onOpenLeave: () => setView("leave"), onOpenHolidays: () => setView("holidays"), onOpenMyDocuments: () => { setDocsStaffTarget({ id: session.user.id, email: session.user.email }); setView("staffdocs"); }, onOpenBusinessOverview: () => setView("businessoverview"), onOpenLowStock: () => setView("items"), itemCatalog: itemCatalog, staffNames: staffNames })) : view === "businessoverview" && canUse(perms, "business_overview", perms.designation === "Accountant") ? (React.createElement(BusinessOverview, { totals: totals, profile: profile, onSaveProfile: saveProfile, isAdmin: perms.isAdmin, session: session, perms: perms, onGo: (v) => setView(v), invoices: invoices, itemCatalog: itemCatalog, onBack: () => setView("home") })) : view === "staffdocs" && docsStaffTarget ? (React.createElement(StaffDocuments, { staffEmail: docsStaffTarget.email, staffId: docsStaffTarget.id, isAdmin: perms.isAdmin, session: session, onBack: () => setView(perms.isAdmin ? "staff" : "home") })) : view === "ecomorders" && canUse(perms, "ecom_orders", legacyOrdersAccess(perms, "Graspion")) ? (React.createElement(EcomOrders, { session: session, perms: perms, onBack: () => setView("home"), onCreateSaleInvoice: async (o) => {
     if (!String(o.id || "").startsWith("graspion_")) {
         setEditingInv({ docType: "sale", business: defaultInvoiceBusiness(perms), party: o.customer_name || o.marketplace, items: [{ id: uid(), name: o.product || "", qty: o.quantity || 1, rate: o.selling_price || 0 }], date: todayISO() });
         setView("create");
@@ -3626,7 +3626,7 @@ function psAnswer(text, raw, brief) {
             L.push("Abhi subah ka samay hai, kuchh log baad me aa sakte hain.");
         return { lines: L };
     }
-    if (has("haal", "kaisa chal", "overall", "sab theek", "summary", "sthiti kya", "kaisa hai sab")) {
+    if (has("haal", "kaisa chal", "kaise chal", "overall", "sab theek", "summary", "sthiti kya", "kaisa hai sab")) {
         return { lines: [brief.verdict.label + ": " + brief.verdict.text].concat(brief.priorities.slice(0, 3)) };
     }
     if (has(" best ", " top ", "sabse achha", "sabse accha", "sabse badhiya")) {
@@ -3861,10 +3861,23 @@ function psDraft(text, raw, brief) {
     return { type, title, message, aud, staff: hit ? hit.email : "", note };
 }
 function psRulesPlan(text, raw, brief) {
+    const q = " " + String(text || "").toLowerCase().replace(/[?.,!;:]/g, " ").replace(/\s+/g, " ").trim() + " ";
+    const how = ["kahan", "kidhar", "kaise banate", "kaise banaye", "kaise karte", "kaise karein", "kaise kare", "kaise bhej", "kaise dekh", "kaise jod", "kaun sa", "kaunsa", "kya karta", "kis kaam", "steps", "samjhao", "guide", "kya kya", "teeno app", "features"].some((w) => q.includes(w));
+    if (how) {
+        const g = psGuidePlan(q, text);
+        if (g)
+            return g;
+    }
     const d = psDraft(text, raw, brief);
     if (d)
         return { kind: "draft", draft: d };
-    return { kind: "answer", lines: psAnswer(text, raw, brief).lines };
+    const a = psAnswer(text, raw, brief);
+    if (a.lines[0] && a.lines[0].indexOf("Ye sawal main abhi samajh nahi paya") === 0) {
+        const g = psGuidePlan(q, text);
+        if (g)
+            return g;
+    }
+    return { kind: "answer", lines: a.lines };
 }
 // The one place that decides what a typed line means.
 // TODAY: rules (free, private, nothing leaves the ERP).
@@ -3885,7 +3898,106 @@ const PS_ENGINE = {
         return psRulesPlan(text, raw, brief);
     },
 };
-function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull }) {
+// ---- Saarthi's map: what is where, across the three apps. Add one line here whenever a feature is added anywhere. ----
+// [app, name, where, what it does, steps, keywords, open ("erp:<screen>" or "url:<link>"), who]
+const PS_GP = "https://graspion.in/";
+const PS_MAP = [
+    ["ERP", "Naya bill / invoice banana", "Home \u2192 New Document", "Sale Invoice, Quotation, Challan jaise document banata hai.", ["Home par 'New Document' dabayein", "Document ka type chuniye", "Party aur items bharkar Save karein"], "invoice bill banana naya new document sale quotation challan proforma banao", "erp:home"],
+    ["ERP", "Bills ki list aur payment darj karna", "Invoices tab (neeche)", "Saare bills dekhna, share/print karna, payment darj karna.", ["Neeche 'Invoices' tab kholein", "Bill par tap karein", "Payment darj karna ho to payment wala hissa"], "invoices bills list payment received paid share print pdf whatsapp dekhna", "erp:invoices"],
+    ["ERP", "Quotations", "Home \u2192 Documents \u2192 Quotations", "Quotation banana aur use invoice me badalna.", ["Quotations kholein", "Quotation kholkar 'Convert' dabayein"], "quotation quote estimate convert", "erp:quotations"],
+    ["ERP", "Purchase Bills, Credit/Debit Note, Purchase Order", "Home \u2192 Documents", "Kharid ke document. Sirf Admin aur Accountant ke liye.", [], "purchase kharid supplier credit debit note order bill", "erp:invoices", "Admin, Accountant"],
+    ["ERP", "Parties (customer / supplier)", "Parties tab (neeche)", "Customer aur supplier ki list, aur unka khata.", ["Neeche 'Parties' tab kholein", "Party par tap karke ledger dekhein"], "parties party customer supplier ledger khata", "erp:parties"],
+    ["ERP", "Leads & Follow-up", "Home \u2192 Leads & Follow-up", "Enquiry darj karna aur follow-up ki tithi rakhna.", [], "leads lead follow followup enquiry customer", "erp:leads"],
+    ["ERP", "GeM Tenders", "Home \u2192 Company \u2192 GeM Tenders", "Sarkari GeM bid ka record.", [], "gem tender tenders bid government sarkari", "erp:gemtenders"],
+    ["ERP", "Service Tickets", "Home \u2192 Company \u2192 Service Tickets", "Customer ki complaint se kaam poora hone tak: tithi, samay par hua ya nahi, pehli baar me theek hua ya nahi, customer ki rating.", [], "service ticket tickets complaint repair visit technician csat", "erp:servicetickets"],
+    ["ERP", "E-commerce Orders", "Home \u2192 Company \u2192 E-commerce Orders", "Graspion ke delivered orders apne aap aate hain (invoice sirf Accountant/Admin banata hai). Amazon/Flipkart jaise orders haath se.", ["Folder kholein", "Delivered order par 'Sale Invoice Banayein'"], "ecommerce order orders graspion amazon flipkart commission invoice marketplace", "erp:ecomorders"],
+    ["ERP", "Routix Jobs", "Home \u2192 Company \u2192 Routix Jobs", "Routix ke delivered jobs; yahin se unki invoice banti hai (Accountant/Admin).", [], "routix job jobs delivery invoice", "erp:routixjobs"],
+    ["ERP", "Aaj ki attendance (Check In)", "Home \u2192 Today's Attendance", "Staff apni hajiri yahin se lagata hai.", ["Home par 'Check In' dabayein"], "check checkin attendance hajiri aaj", "erp:home"],
+    ["ERP", "Poori team ki Attendance", "Home \u2192 Attendance", "Kaun aaya, kaun late, kaun absent. Admin, Manager aur Accountant ke liye.", [], "attendance team staff hajiri absent late upasthiti", "erp:attendance", "Admin, Manager, Accountant"],
+    ["ERP", "Leave", "Home \u2192 Company \u2192 Leave", "Leave ki request aur uski manzoori.", [], "leave chhutti request approve manzoor", "erp:leave"],
+    ["ERP", "Holidays", "Home \u2192 Company \u2192 Holidays", "Company ki chhuttiyon ki list.", [], "holiday holidays chhutti calendar", "erp:holidays"],
+    ["ERP", "Notices", "Home \u2192 Company \u2192 Notices", "Sabko, ek business ko ya ek staff ko soochna. Kisne padha, ye bhi dikhta hai.", ["Naya notice: Saarthi me situation likhiye (jaise 'kal Diwali ki chhutti hai sabko batao')", "Draft padhkar 'Bhejein' dabayein"], "notice notices soochna announcement bhejna message", "erp:notices"],
+    ["ERP", "Staff Guidelines", "Home \u2192 Company \u2192 Staff Guidelines", "Company ke niyam: Part A sabke liye, Part B apne business ka. Staff 'I Have Read & Understood' dabata hai.", [], "guideline guidelines niyam policy rules confirm", "erp:guidelines"],
+    ["ERP", "My Performance", "Home \u2192 Company \u2192 My Performance", "Apna target, sale aur performance.", [], "performance target mera sale myperformance", "erp:myperformance"],
+    ["ERP", "Management Dashboard", "Home \u2192 Management Dashboard", "Apne business ki sale, vasooli, team ka HR aur target. Admin aur Manager ke liye.", [], "dashboard management team sale target hr", "erp:managementdash", "Admin, Manager"],
+    ["ERP", "Daily Activity", "Management Dashboard \u2192 Daily Activity", "Staff ne aaj kya kiya.", [], "daily activity staff kaam", "erp:dailyactivity", "Admin, Manager"],
+    ["ERP", "Expenses", "Home \u2192 Expenses", "Kharch darj karna aur dekhna.", [], "expense expenses kharch kharcha", "erp:expenses"],
+    ["ERP", "Cash / Bank Book", "Home \u2192 Cash/Bank Book", "Paise ka aana-jaana.", [], "cash bank book naqad", "erp:cashbook", "Admin, Accountant"],
+    ["ERP", "Due Payments (vasooli)", "Home \u2192 Due", "Kiska paisa baaki hai.", [], "due baaki overdue vasooli pending payment udhaar", "erp:due"],
+    ["ERP", "Payroll", "Home \u2192 Payroll & Incentives", "Mahine ki tankhwah banana aur bhugtan darj karna.", [], "payroll salary tankhwah vetan", "erp:payroll", "Admin, Accountant"],
+    ["ERP", "Incentives", "Account \u2192 Settings \u2192 Incentives", "Staff ke incentive.", [], "incentive incentives bonus", "erp:incentives", "Admin"],
+    ["ERP", "Business Overview (aur Saarthi)", "Home \u2192 Business Overview", "Teeno business ka ek nazar me haal, aur Saarthi ki poori report.", [], "business overview saarthi summary teeno", "erp:businessoverview", "Admin, Accountant"],
+    ["ERP", "Manage Staff", "Account \u2192 Settings \u2192 Manage Staff", "Naya staff jodna, business aur post tay karna, approve karna, features aur document ki permission.", ["Settings me 'Manage Staff' kholein", "Staff chuniye, Business aur Designation tay karein", "'Save Access' aur 'Approve Karein'"], "staff add naya approve role designation business access permission features employee", "erp:staff", "Admin"],
+    ["ERP", "Audit Log", "Account \u2192 Settings \u2192 Audit Log", "Kisne kya badla ya delete kiya.", [], "audit log record kisne delete edit", "erp:auditlog", "Admin"],
+    ["ERP", "KPI aur Appraisal", "Account \u2192 Settings \u2192 KPI / Appraisal", "Staff ka performance review.", [], "kpi appraisal rating review", "erp:kpi", "Admin"],
+    ["ERP", "Management Reports", "Account \u2192 Settings \u2192 Management Reports", "Management ke liye reports.", [], "management reports report", "erp:mgmtreports", "Admin"],
+    ["ERP", "Company P&L", "Account \u2192 Settings \u2192 Company P&L", "Poori company ka nafa-nuksaan.", [], "pnl profit loss nafa nuksan", "erp:pnlreport", "Admin, Accountant"],
+    ["ERP", "Bank Reconciliation", "Account \u2192 Settings \u2192 Bank Reconciliation", "Bank statement ko ERP se milana.", [], "bank reconciliation statement milana match", "erp:bankrecon", "Admin, Accountant"],
+    ["ERP", "CA Export", "Account \u2192 Settings \u2192 CA Export", "Sales/Purchase register aur TCS summary CA ke liye download.", [], "ca export register gst tcs csv download", "erp:caexport", "Admin, Accountant"],
+    ["ERP", "FY Budget", "Account \u2192 Settings \u2192 FY Budget", "Saal ka sales target aur kharch ka budget.", [], "budget fy target kharch saal", "erp:fybudget", "Admin, Accountant"],
+    ["ERP", "Reports (GST)", "Account \u2192 Settings \u2192 Reports", "GST aur dusre reports.", [], "reports report gst gstr", "erp:reports", "Admin, Accountant"],
+    ["ERP", "Analytics", "Account \u2192 Settings \u2192 Analytics", "Kaun sa item aur grahak sabse zyada.", [], "analytics top item customer", "erp:analytics"],
+    ["ERP", "Data Export", "Account \u2192 Settings \u2192 Data Export", "Poora data download.", [], "export data download backup csv", "erp:dataexport", "Admin, Accountant"],
+    ["ERP", "Items aur Stock", "Account \u2192 Settings \u2192 Manage Items (ya Home ka low-stock banner)", "Items, rate aur stock. Kam stock ka alert Home par aata hai.", [], "item items stock inventory product rate maal", "erp:items"],
+    ["ERP", "Business ki jaankari badalna", "Account \u2192 Settings \u2192 Edit Business", "Company ka naam, GST, pata, bank, QR.", [], "business details gst address logo bank qr company edit", "erp:editbusiness", "Admin"],
+    ["ERP", "My Documents (staff ke apne)", "Home \u2192 Company \u2192 My Documents", "Har staff ke apne documents (offer letter, ID). Sirf wahi dekh sakta hai, aur Admin.", [], "documents document offer letter id proof my", "erp:staffdocs"],
+    ["ERP", "Aaj ka Report", "Home \u2192 Aaj Ka Report", "Aaj khaas kaam na hua ho to wajah likhna.", [], "aaj report reason wajah khaas kaam", "erp:home"],
+    ["ERP", "Graspion / Routix ke panel kholna", "Home \u2192 'Graspion Kholein' / 'Routix Kholein'", "Un dono ke apne panel ke shortcut.", [], "graspion routix kholein shortcut link panel khol", "erp:home"],
+    ["Graspion", "Graspion ki customer site", "graspion.in", "Customer yahan se kharidte hain (SHOP LOCAL \u00B7 SHOP INDIAN).", [], "graspion store customer website shopping dukan", "url:" + PS_GP],
+    ["Graspion", "Graspion Admin panel", "graspion.in/admin.html", "Graspion ka office panel: orders, vendors, hisaab, banners, marketing report. Andar ke tab ka naam abhi map me nahi hai.", [], "graspion admin panel orders vendors office", "url:" + PS_GP + "admin.html"],
+    ["Graspion", "Vendor panel", "graspion.in/vendor.html", "Vendor apni shop, products aur orders sambhalta hai. Naya order countdown ke andar Accept ya Reject karna hota hai.", [], "vendor shop seller product order accept reject panel dukandar", "url:" + PS_GP + "vendor.html"],
+    ["Graspion", "Policies", "graspion.in/policies.html", "Graspion ki policy ka page.", [], "policy policies terms refund return privacy", "url:" + PS_GP + "policies.html"],
+    ["Graspion", "Vendor ka hisaab (commission, GST, TDS/TCS)", "Graspion Admin me", "Vendor ko kitna dena hai: commission, GST, TDS/TCS. Commission ki invoice ERP ke E-commerce Orders se banti hai.", [], "settlement commission gst tds tcs vendor payment payout hisaab", "url:" + PS_GP + "admin.html"],
+    ["Graspion", "Pan-India courier (Shiprocket)", "Graspion Admin me", "Pan-India order courier se jata hai (Shiprocket). Local order Routix rider se.", [], "shiprocket courier pan india tracking dispatch shipping", "url:" + PS_GP + "admin.html"],
+    ["Graspion", "Banners aur marketing report", "Graspion Admin me", "Banner lagana aur UTM marketing report dekhna.", [], "banner banners utm marketing report ad campaign meta", "url:" + PS_GP + "admin.html"],
+    ["Graspion", "Cancel aur refund", "Graspion me (apne aap)", "Safe cancellation ke baad refund apne aap hota hai.", [], "cancel cancellation refund wapas", ""],
+    ["Graspion", "Pre-order (advance)", "Graspion customer site", "Customer Razorpay se advance deta hai aur OTP se confirm hota hai.", [], "preorder pre-order advance razorpay otp", ""],
+    ["Routix", "Routix Control (office)", "graspion.in/routix.html", "Routix ka office. Rider ki application ki approval yahin hoti hai, Graspion admin me nahi.", [], "routix control office rider approve approval application job", "url:" + PS_GP + "routix.html"],
+    ["Routix", "Customer booking", "graspion.in/routix-book.html", "Customer yahan se parcel pickup/delivery book karta hai.", [], "booking book customer parcel pickup delivery order routix", "url:" + PS_GP + "routix-book.html"],
+    ["Routix", "Shop Khaata portal", "graspion.in/routix-shop.html", "Dukan ka Routix khaata.", [], "shop khaata portal dukan ledger", "url:" + PS_GP + "routix-shop.html"],
+    ["Routix", "Parcel Suraksha", "graspion.in/routix-suraksha.html", "Routix ki guarantee ke niyam (insurance nahi, 'Parcel Suraksha').", [], "parcel suraksha guarantee claim safety", "url:" + PS_GP + "routix-suraksha.html"],
+    ["Routix", "Rider app", "graspion.in/rider.html", "Rider mobile number aur 6 ank ke PIN se login karta hai. Wallet aur Share & Earn bhi yahin. COD cash ki seema \u20B95,000.", [], "rider app login pin wallet share earn cod cash", "url:" + PS_GP + "rider.html"],
+    ["Routix", "Routix ke rate", "Routix me tay hai", "3 km \u20B940 \u00B7 6 km \u20B960 \u00B7 10 km \u20B990 \u00B7 15 km \u20B9120 \u00B7 25 km \u20B9150; 10-20 kg par +\u20B930; Graspion ke har job par Routix fee \u20B95.", [], "price rate rates kitna charge km kg fee dar bhav", ""],
+    ["Routix", "Routix job ki invoice", "ERP \u2192 Routix Jobs", "Routix ke delivered jobs ki invoice ERP me Accountant/Admin banata hai.", [], "routix job invoice banana bill", "erp:routixjobs"],
+];
+const PS_STOP = new Set(["kahan", "kaha", "kidhar", "hai", "hain", "ka", "ki", "ke", "ko", "me", "mein", "se", "kaise", "kese", "karein", "karen", "kare", "kar", "karna", "karte", "karta", "kaun", "kaunsa", "sa", "kya", "aur", "ya", "batao", "bataiye", "dikhao", "dekhna", "dekhein", "dekhe", "hota", "hoti", "hote", "hoga", "jata", "chahiye", "mujhe", "mere", "apna", "apne", "wala", "wali", "wale", "ek", "koi", "khol", "kholo", "open", "guide", "steps", "karne", "dena", "dete", "dekhne", "milta", "milega", "sakta", "sakte", "banate", "banana", "banaye", "bhejte", "bhejna", "hu", "hun", "jaata", "isme", "yahan", "wahan"]);
+function psGuide(text) {
+    const toks = String(text || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((t) => t && !PS_STOP.has(t));
+    const q = " " + toks.join(" ") + " ";
+    const app = q.includes("graspion") ? "Graspion" : q.includes("routix") || q.includes("rider") ? "Routix" : q.includes(" erp ") ? "ERP" : null;
+    const ranked = PS_MAP.map((e) => {
+        let sc = 0;
+        const kws = e[5].split(" ");
+        toks.forEach((t) => {
+            if (kws.includes(t))
+                sc += 3;
+            else if (t.length >= 4 && kws.some((k) => k.length >= 4 && (k.startsWith(t) || t.startsWith(k))))
+                sc += 1.5;
+            const nm = e[1].toLowerCase();
+            if (nm.split(/[^a-z0-9]+/).includes(t))
+                sc += 2;
+            else if (t.length >= 4 && nm.includes(t))
+                sc += 1;
+        });
+        if (app && sc > 0)
+            sc += e[0] === app ? 2 : -2;
+        return { e, sc };
+    }).filter((x) => x.sc >= 3).sort((a, b) => b.sc - a.sc);
+    if (ranked.length === 0)
+        return [];
+    return ranked.filter((x) => x.sc >= Math.max(3, ranked[0].sc * 0.7)).slice(0, 3).map((x) => x.e);
+}
+function psGuidePlan(q, original) {
+    const has = (...w) => w.some((x) => q.includes(x));
+    const app = has("graspion") ? "Graspion" : has("routix", "rider") ? "Routix" : has(" erp ") ? "ERP" : null;
+    if (has("teeno app", "kis kaam", "kaun sa app", "kaunsa app", "sab app"))
+        return { kind: "answer", lines: ["ERP: paisa, hisaab aur staff (bill, vasooli, payroll, attendance, reports).", "Graspion: customers, vendors aur orders (customer site, vendor panel, admin panel).", "Routix: riders aur delivery (booking, rider app, Routix Control, shop portal).", "Graspion/Routix ke andar ke tab ka naam abhi map me nahi hai; logbook milne par jod dunga."] };
+    if (app && has("kya kya", "features", "list", "sab kuchh"))
+        return { kind: "answer", lines: [app + " me ye cheezein hain:"].concat(PS_MAP.filter((e) => e[0] === app).map((e) => "\u2022 " + e[1])) };
+    const items = psGuide(original);
+    return items.length ? { kind: "guide", items } : null;
+}
+function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull, onGo }) {
     const [brief, setBrief] = useState(psCache && Date.now() - psCache.at < 300000 ? psCache.brief : null);
     const [rawData, setRawData] = useState(psCache && Date.now() - psCache.at < 300000 ? psCache.raw : null);
     const [open, setOpen] = useState({ ask: false, team: true, odd: true, ideas: false, time: false });
@@ -4003,7 +4115,7 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull })
             setReply(null);
         }
         else {
-            setReply({ q: text, lines: plan.lines });
+            setReply({ q: text, lines: plan.lines || [], guide: plan.items || null });
             setDraft(null);
         }
         setAskText("");
@@ -4028,9 +4140,27 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull })
     const setD = (patch) => setDraft(Object.assign({}, draft, patch));
     const fld = { width: "100%", padding: "8px 9px", borderRadius: 8, border: "1px solid " + COLORS.border, fontSize: 12.5, marginBottom: 6 };
     const chip = (t) => React.createElement("button", { key: t, onClick: () => runAsk(t), style: { padding: "6px 10px", borderRadius: 14, border: "1px solid " + COLORS.border, background: "#fff", color: COLORS.indigo, fontWeight: 700, fontSize: 11 } }, t);
+    const openTarget = (t) => {
+        if (t.indexOf("erp:") === 0)
+            onGo && onGo(t.slice(4));
+        else if (t.indexOf("url:") === 0)
+            window.open(t.slice(4), "_blank", "noopener");
+    };
+    const appColor = { ERP: [COLORS.indigo, "#E8E6FB"], Graspion: ["#BE185D", "#FCE7F3"], Routix: ["#C2410C", "#FFEDD5"] };
+    const guideCard = (e, i) => React.createElement("div", { key: "g" + i, style: { background: "#fff", border: "1px solid " + COLORS.border, borderRadius: 9, padding: "8px 10px", marginTop: 6 } }, [
+        React.createElement("div", { key: "h", style: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" } }, [
+            React.createElement("span", { key: "a", style: { fontSize: 10, fontWeight: 800, color: appColor[e[0]][0], background: appColor[e[0]][1], borderRadius: 6, padding: "2px 7px" } }, e[0]),
+            React.createElement("span", { key: "n", style: { fontWeight: 800, fontSize: 13 } }, e[1]),
+        ]),
+        React.createElement("div", { key: "w", style: { fontSize: 11.5, color: COLORS.muted, marginTop: 3 } }, "Kahan: " + e[2] + (e[7] ? "  \u00B7  Kaun: " + e[7] : "")),
+        React.createElement("div", { key: "d", style: { fontSize: 12.5, lineHeight: 1.5, marginTop: 3 } }, e[3]),
+        e[4].length > 0 && React.createElement("div", { key: "s", style: { fontSize: 12, lineHeight: 1.55, marginTop: 3, whiteSpace: "pre-line" } }, e[4].map((x, j) => (j + 1) + ". " + x).join("\n")),
+        e[6] && React.createElement("button", { key: "o", onClick: () => openTarget(e[6]), style: { marginTop: 6, padding: "6px 12px", borderRadius: 14, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 11.5 } }, e[6].indexOf("url:") === 0 ? "Kholein (naya tab)" : "Kholein"),
+    ]);
     const replyCard = reply && React.createElement("div", { key: "reply", style: { background: "#F5F2FE", borderRadius: 10, padding: "8px 10px", marginTop: 6 } }, [
         React.createElement("div", { key: "q", style: { display: "flex", justifyContent: "space-between", fontSize: 10.5, color: COLORS.muted, fontWeight: 700, marginBottom: 3 } }, [React.createElement("span", { key: "a" }, reply.q), React.createElement("button", { key: "x", onClick: () => setReply(null), style: { border: "none", background: "none", color: COLORS.muted, fontWeight: 800 } }, "\u00D7")]),
         ...reply.lines.map((l, j) => React.createElement("div", { key: "l" + j, style: { fontSize: 12.5, lineHeight: 1.5 } }, l)),
+        ...(reply.guide ? reply.guide.map(guideCard) : []),
     ]);
     const draftCard = draft && React.createElement("div", { key: "draft", style: { background: "#FAF9FF", border: "1px solid " + COLORS.border, borderRadius: 10, padding: 9, marginTop: 6 } }, [
         React.createElement("div", { key: "h", style: { display: "flex", gap: 6, alignItems: "center", marginBottom: 6 } }, [
@@ -4046,13 +4176,13 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull })
             React.createElement("button", { key: "c", onClick: () => setDraft(null), style: { padding: "9px 14px", borderRadius: 9, border: "1px solid " + COLORS.border, background: "#fff", fontWeight: 700, fontSize: 12.5 } }, "Cancel"),
         ]),
     ]);
-    const askSection = section("ask", "Saarthi se poochhein / situation batayein", [
+    const askSection = section("ask", "Saarthi se poochhein / guide / kaam", [
         React.createElement("div", { key: "row", style: { display: "flex", gap: 6 } }, [
             React.createElement("input", { key: "i", value: askText, onChange: (e) => setAskText(e.target.value), onKeyDown: (e) => { if (e.key === "Enter")
-                    runAsk(askText); }, placeholder: "Jaise: kal Diwali ki chhutti hai sabko batao", style: { flex: 1, padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13 } }),
+                    runAsk(askText); }, placeholder: "Jaise: rider approve kahan hota hai?", style: { flex: 1, padding: "9px 10px", borderRadius: 9, border: "1px solid " + COLORS.border, fontSize: 13 } }),
             React.createElement("button", { key: "b", onClick: () => runAsk(askText), disabled: thinking, style: { padding: "9px 14px", borderRadius: 9, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 700, fontSize: 12.5 } }, thinking ? "\u2026" : "Ok"),
         ]),
-        !reply && !draft && React.createElement("div", { key: "ch", style: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 } }, ["Haal kya hai?", "Aaj ki sale", "Target ki sthiti"].map(chip)),
+        !reply && !draft && React.createElement("div", { key: "ch", style: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 } }, ["Haal kya hai?", "Invoice kaise banate hain?", "Teeno app kis kaam ke liye?"].map(chip)),
         replyCard,
         draftCard,
         deskMsg && React.createElement("div", { key: "dm", style: { fontSize: 12, fontWeight: 700, color: deskMsg.indexOf("nahi") >= 0 ? COLORS.rose : COLORS.emerald, marginTop: 6 } }, deskMsg),
@@ -4083,7 +4213,7 @@ function PSAssistant({ session, perms, profile, itemCatalog, mode, onOpenFull })
         React.createElement("div", { key: "foot", style: { fontSize: 10, color: COLORS.muted, marginTop: 8, lineHeight: 1.5 } }, "Ye suchna ERP ke data par adharit hai. Attendance staff ke check-in par nirbhar karti hai."),
     ]);
 }
-function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalog, isAdmin, session, perms, onBack }) {
+function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalog, isAdmin, session, perms, onGo, onBack }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState("");
@@ -4263,7 +4393,7 @@ function BusinessOverview({ totals, profile, onSaveProfile, invoices, itemCatalo
                 pendingEcomCount > 0 && React.createElement("div", { key: "e", style: { fontSize: 12, color: "#7A5A00" } }, pendingEcomCount + " Graspion order" + (pendingEcomCount > 1 ? "s" : "") + " delivered hai, invoice nahi bani \u2014 \"E-commerce Orders\" mein jaake banaiye"),
                 pendingRoutixCount > 0 && React.createElement("div", { key: "r", style: { fontSize: 12, color: "#7A5A00", marginTop: 2 } }, pendingRoutixCount + " Routix job" + (pendingRoutixCount > 1 ? "s" : "") + " delivered hai, invoice nahi bani \u2014 \"Routix Jobs\" mein jaake banaiye"),
             ]),
-            isAdmin ? React.createElement(PSAssistant, { key: "ps", session: session, perms: perms, profile: profile, itemCatalog: itemCatalog, mode: "full" }) : (goodPoints.length > 0 || attentionPoints.length > 0) && React.createElement("div", { key: "daycheck", className: "card", style: { padding: 14, marginBottom: 14 } }, [
+            isAdmin ? React.createElement(PSAssistant, { key: "ps", session: session, perms: perms, profile: profile, itemCatalog: itemCatalog, mode: "full", onGo: onGo }) : (goodPoints.length > 0 || attentionPoints.length > 0) && React.createElement("div", { key: "daycheck", className: "card", style: { padding: 14, marginBottom: 14 } }, [
                 React.createElement("div", { key: "t", style: { fontWeight: 800, fontSize: 13.5, marginBottom: 10, fontFamily: "'Sora', sans-serif" } }, "\uD83D\uDCCB Aaj Ka Business Check"),
                 goodPoints.length > 0 && React.createElement("div", { key: "good", style: { marginBottom: attentionPoints.length > 0 ? 10 : 0 } }, [
                     React.createElement("div", { key: "h", style: { fontSize: 10.5, fontWeight: 800, color: COLORS.emerald, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.3 } }, "\u2705 Achha Hua"),
